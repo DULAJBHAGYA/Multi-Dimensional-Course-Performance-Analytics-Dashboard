@@ -14,8 +14,8 @@ const Sidebar = () => {
     if (user?.role === 'admin') {
       return [
         { path: '/admin', label: 'Admin Panel', icon: 'admin' },
-        { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-        { path: '/report-generation', label: 'Reports', icon: 'reports' },
+        { path: '/admin-dashboard', label: 'Admin Dashboard', icon: 'dashboard' },
+        { path: '/admin-reports', label: 'Admin Reports', icon: 'reports' },
       ];
     } else {
       // Instructor role

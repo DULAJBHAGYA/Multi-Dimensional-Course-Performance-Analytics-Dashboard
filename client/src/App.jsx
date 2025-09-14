@@ -12,6 +12,8 @@ import CourseAnalytics from './pages/courseAnalytics/CourseAnalytics';
 import PredictiveAnalytics from './pages/predictiveAnalytics/PredictiveAnalytics';
 import ReportGeneration from './pages/reportGeneration/ReportGeneration';
 import AdminPanel from './pages/admin/AdminPanel';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminReports from './pages/admin/AdminReports';
 
 function App() {
   return (
@@ -62,6 +64,22 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AdminPanel />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin-dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin-reports" 
+                element={
+                  <ProtectedRoute>
+                    <AdminReports />
                   </ProtectedRoute>
                 } 
               />
