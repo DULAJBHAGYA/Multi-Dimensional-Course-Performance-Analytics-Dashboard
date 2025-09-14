@@ -2,12 +2,16 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-const Sidebar = () => {
+const Sidebar = ({ onClose, onLogoutClick }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
 
   const isActive = (path) => {
     return location.pathname === path;
+  };
+
+  const handleLogoutClick = () => {
+    onLogoutClick && onLogoutClick();
   };
 
   const getRoleBasedMenuItems = () => {
@@ -75,9 +79,22 @@ const Sidebar = () => {
   const menuItems = getRoleBasedMenuItems();
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col">
-      {/* Logo/Brand */}
-      <div className="p-6 border-b border-gray-200">
+    <div className="w-full bg-white h-screen flex flex-col">
+      {/* Mobile Close Button */}
+      <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
+        <h1 className="text-xl font-bold text-indigo-600">EduAnalytics</h1>
+        <button
+          onClick={onClose}
+          className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Logo/Brand - Desktop */}
+      <div className="hidden lg:block p-6 border-b border-gray-200">
         <h1 className="text-xl font-bold text-indigo-600">EduAnalytics</h1>
         <p className="text-sm text-gray-500 mt-1">
           {user?.role === 'admin' ? 'Administrator' : 'Instructor'} Portal
@@ -106,6 +123,7 @@ const Sidebar = () => {
             <li key={item.path}>
               <Link
                 to={item.path}
+                onClick={() => onClose && onClose()}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive(item.path)
                     ? 'bg-indigo-50 text-indigo-700'
@@ -123,7 +141,7 @@ const Sidebar = () => {
       {/* Logout Button */}
       <div className="p-4 border-t border-gray-200">
         <button
-          onClick={logout}
+          onClick={handleLogoutClick}
           className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
