@@ -108,7 +108,7 @@ const Sidebar = () => {
                 to={item.path}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive(item.path)
-                    ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-700'
+                    ? 'bg-indigo-50 text-indigo-700'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
