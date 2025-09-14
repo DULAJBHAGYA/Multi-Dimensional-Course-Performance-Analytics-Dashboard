@@ -8,6 +8,10 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/auth/Login';
 import HomeDashboard from './pages/dashboard/HomeDashboard';
+import CourseAnalytics from './pages/courseAnalytics/CourseAnalytics';
+import PredictiveAnalytics from './pages/predictiveAnalytics/PredictiveAnalytics';
+import ReportGeneration from './pages/reportGeneration/ReportGeneration';
+import AdminPanel from './pages/admin/AdminPanel';
 
 function App() {
   return (
@@ -26,6 +30,38 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <HomeDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/course-analytics" 
+                element={
+                  <ProtectedRoute>
+                    <CourseAnalytics />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/predictive-analytics" 
+                element={
+                  <ProtectedRoute>
+                    <PredictiveAnalytics />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/report-generation" 
+                element={
+                  <ProtectedRoute>
+                    <ReportGeneration />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin" 
+                element={
+                  <ProtectedRoute>
+                    <AdminPanel />
                   </ProtectedRoute>
                 } 
               />
