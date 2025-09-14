@@ -10,6 +10,7 @@ const Login = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -44,8 +45,109 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-white flex relative">
+      {/* Development Navigation */}
+      <div className="fixed top-4 right-4 z-50 bg-gray-800 text-white p-2 rounded-lg shadow-lg">
+        <div className="text-xs font-mono">
+          <div className="mb-1">Dev Navigation:</div>
+          <div className="space-y-1">
+            <Link to="/" className="block text-blue-300 hover:text-blue-100">Landing</Link>
+            <Link to="/login" className="block text-green-300 hover:text-green-100">Login</Link>
+            <button 
+              onClick={() => {
+                localStorage.setItem('user', JSON.stringify({
+                  email: 'instructor@example.com',
+                  name: 'Instructor User',
+                  role: 'instructor',
+                  id: 'instructor-user'
+                }));
+                window.location.href = '/dashboard';
+              }}
+              className="block text-yellow-300 hover:text-yellow-100 w-full text-left"
+            >
+              Login as Instructor
+            </button>
+            <button 
+              onClick={() => {
+                localStorage.setItem('user', JSON.stringify({
+                  email: 'admin@example.com',
+                  name: 'Admin User',
+                  role: 'admin',
+                  id: 'admin-user'
+                }));
+                window.location.href = '/dashboard';
+              }}
+              className="block text-red-300 hover:text-red-100 w-full text-left"
+            >
+              Login as Admin
+            </button>
+            <Link to="/dashboard" className="block text-yellow-300 hover:text-yellow-100">Dashboard</Link>
+            <Link to="/course-analytics" className="block text-purple-300 hover:text-purple-100">Course Analytics</Link>
+            <Link to="/predictive-analytics" className="block text-pink-300 hover:text-pink-100">Predictive</Link>
+            <Link to="/report-generation" className="block text-orange-300 hover:text-orange-100">Reports</Link>
+            <Link to="/admin" className="block text-red-300 hover:text-red-100">Admin</Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Vertical Divider Line */}
+      <div className="hidden lg:block absolute left-1/2 top-1/4 bottom-1/4 w-px bg-gray-300 transform -translate-x-1/2"></div>
+      
+      {/* Left Side - Information */}
+      <div className="hidden lg:flex lg:w-1/2 bg-white flex-col justify-center px-16">
+        <div className="max-w-xl ml-24">
+          <h1 className="text-4xl font-bold text-gray-900 mb-6">
+            Welcome to
+            <span className="text-indigo-600 block">EduAnalytics</span>
+          </h1>
+          <p className="text-lg text-gray-600 mb-8">
+            Transform your educational institution with powerful analytics and insights. 
+            Make data-driven decisions that improve student outcomes and institutional performance.
+          </p>
+          
+          <div className="space-y-6">
+            <div className="flex items-start space-x-4">
+              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Course Analytics</h3>
+                <p className="text-gray-600">Comprehensive analysis of course performance metrics and student engagement.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-4">
+              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Predictive Analytics</h3>
+                <p className="text-gray-600">AI-powered predictions to identify at-risk students and optimize strategies.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-4">
+              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Report Generation</h3>
+                <p className="text-gray-600">Generate detailed reports and visualizations for stakeholders.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
           <Link to="/" className="inline-block">
@@ -90,17 +192,35 @@ const Login = () => {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter your password"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPassword ? (
+                    <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between">
@@ -143,18 +263,6 @@ const Login = () => {
               )}
             </button>
           </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-md">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</h3>
-            <p className="text-xs text-gray-600">
-              <strong>Email:</strong> admin@example.com<br />
-              <strong>Password:</strong> password123
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Or use any email/password combination to login
-            </p>
-          </div>
         </div>
 
         {/* Footer */}
@@ -165,6 +273,7 @@ const Login = () => {
               Contact administrator
             </a>
           </p>
+        </div>
         </div>
       </div>
     </div>
