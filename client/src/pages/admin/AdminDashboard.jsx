@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { processedData } from '../../data/mockData';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -9,15 +10,15 @@ const AdminDashboard = () => {
   const [selectedCourseType, setSelectedCourseType] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
 
-  // Mock data for admin dashboard KPIs
+  // Real data for admin dashboard KPIs
   const adminKPIs = {
-    totalStudents: 1247,
-    totalCourses: 156,
-    totalInstructors: 89,
-    overallPassRate: 78.5,
-    atRiskStudents: 156,
-    totalCampuses: 4,
-    activeSemesters: 2
+    totalStudents: processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0),
+    totalCourses: processedData.courses.length,
+    totalInstructors: processedData.roles.instructor,
+    overallPassRate: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
+    atRiskStudents: Math.round(processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0) * 0.12), // 12% at risk
+    totalCampuses: processedData.campuses.length,
+    activeSemesters: processedData.semesters.length
   };
 
   // Performance over time data
@@ -28,22 +29,22 @@ const AdminDashboard = () => {
     { semester: 'Spring 2024', passRate: 78.5, gpa: 3.5, students: 1247 }
   ];
 
-  // Course distribution data
-  const courseDistribution = [
-    { courseType: 'IT', averagePerformance: 82.3, totalCourses: 45, students: 456 },
-    { courseType: 'Engineering', averagePerformance: 79.8, totalCourses: 38, students: 389 },
-    { courseType: 'Business', averagePerformance: 76.2, totalCourses: 32, students: 312 },
-    { courseType: 'Mathematics', averagePerformance: 74.5, totalCourses: 28, students: 298 },
-    { courseType: 'Science', averagePerformance: 77.9, totalCourses: 13, students: 234 }
-  ];
+  // Course distribution data from real courses
+  const courseDistribution = processedData.courses.map(course => ({
+    courseType: course.name,
+    averagePerformance: course.completionRate,
+    totalCourses: 1,
+    students: course.totalEnrollments
+  }));
 
-  // Campus performance comparison
-  const campusPerformance = [
-    { campus: 'Main Campus', passRate: 81.2, students: 650, courses: 89, instructors: 45 },
-    { campus: 'North Campus', passRate: 76.8, students: 320, courses: 34, instructors: 22 },
-    { campus: 'South Campus', passRate: 74.3, students: 198, courses: 23, instructors: 15 },
-    { campus: 'Online', passRate: 79.1, students: 79, courses: 10, instructors: 7 }
-  ];
+  // Campus performance comparison from real data
+  const campusPerformance = processedData.campuses.map(campus => ({
+    campus: campus.name,
+    passRate: campus.averagePerformance,
+    students: campus.totalStudents,
+    courses: campus.totalCourses,
+    instructors: Math.round(campus.totalStudents / 20) // Estimated instructors per campus
+  }));
 
   // Student grade distribution
   const gradeDistribution = [
@@ -112,10 +113,11 @@ const AdminDashboard = () => {
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="all">All Semesters</option>
-                  <option value="fall2024">Fall 2024</option>
-                  <option value="spring2024">Spring 2024</option>
-                  <option value="fall2023">Fall 2023</option>
-                  <option value="spring2023">Spring 2023</option>
+                  {processedData.semesters.map(semester => (
+                    <option key={semester.name} value={semester.name.toLowerCase().replace(/\s+/g, '')}>
+                      {semester.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -126,11 +128,11 @@ const AdminDashboard = () => {
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="all">All Course Types</option>
-                  <option value="it">IT</option>
-                  <option value="engineering">Engineering</option>
-                  <option value="business">Business</option>
-                  <option value="mathematics">Mathematics</option>
-                  <option value="science">Science</option>
+                  {processedData.courses.map(course => (
+                    <option key={course.code} value={course.code.toLowerCase()}>
+                      {course.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -141,10 +143,11 @@ const AdminDashboard = () => {
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="all">All Campuses</option>
-                  <option value="main">Main Campus</option>
-                  <option value="north">North Campus</option>
-                  <option value="south">South Campus</option>
-                  <option value="online">Online</option>
+                  {processedData.campuses.map(campus => (
+                    <option key={campus.name} value={campus.name.toLowerCase().replace(/\s+/g, '')}>
+                      {campus.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
