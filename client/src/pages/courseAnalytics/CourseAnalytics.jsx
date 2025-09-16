@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { processedData } from '../../data/mockData';
 
 const CourseAnalytics = () => {
   const { user } = useAuth();
@@ -8,22 +9,22 @@ const CourseAnalytics = () => {
   const [dateRange, setDateRange] = useState('30d');
   const [cohort, setCohort] = useState('all');
 
-  // Mock data - in real app, this would come from API
+  // Real course data from dataset
   const courses = [
     { id: 'all', name: 'All Courses' },
-    { id: 'math101', name: 'Mathematics 101' },
-    { id: 'physics201', name: 'Physics 201' },
-    { id: 'chemistry101', name: 'Chemistry 101' },
-    { id: 'biology201', name: 'Biology 201' }
+    ...processedData.courses.map(course => ({
+      id: course.code.toLowerCase(),
+      name: course.name
+    }))
   ];
 
   const kpiData = {
-    totalEnrollments: 1247,
-    activeStudents: 892,
-    completionRate: 78.5,
-    averageProgress: 65.3,
-    averageRating: 4.6,
-    revenue: 18750
+    totalEnrollments: processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0),
+    activeStudents: processedData.courses.reduce((sum, course) => sum + course.activeStudents, 0),
+    completionRate: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
+    averageProgress: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
+    averageRating: Math.round(processedData.courses.reduce((sum, course) => sum + course.averageRating, 0) / processedData.courses.length * 10) / 10,
+    revenue: processedData.courses.reduce((sum, course) => sum + course.revenue, 0)
   };
 
   const enrollmentTrend = [

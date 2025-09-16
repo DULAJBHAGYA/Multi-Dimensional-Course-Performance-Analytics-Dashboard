@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { processedData } from '../../data/mockData';
 
 const AdminPanel = () => {
   const { user } = useAuth();
@@ -10,38 +11,29 @@ const AdminPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
-  // Mock data for users
-  const [users, setUsers] = useState([
-    { id: 1, name: 'Dr. Sarah Johnson', email: 'sarah.johnson@university.edu', role: 'instructor', status: 'active', dateCreated: '2024-01-15', lastLogin: '2024-01-20', courses: 12, students: 456, department: 'Mathematics' },
-    { id: 2, name: 'Prof. Michael Chen', email: 'michael.chen@university.edu', role: 'instructor', status: 'active', dateCreated: '2024-01-10', lastLogin: '2024-01-19', courses: 8, students: 389, department: 'Computer Science' },
-    { id: 3, name: 'Dr. Emily Rodriguez', email: 'emily.rodriguez@university.edu', role: 'instructor', status: 'active', dateCreated: '2024-01-08', lastLogin: '2024-01-18', courses: 15, students: 523, department: 'Physics' },
-    { id: 4, name: 'Admin User', email: 'admin@university.edu', role: 'admin', status: 'active', dateCreated: '2024-01-01', lastLogin: '2024-01-20', courses: 0, students: 0, department: 'Administration' },
-    { id: 5, name: 'Prof. David Kim', email: 'david.kim@university.edu', role: 'instructor', status: 'inactive', dateCreated: '2024-01-05', lastLogin: '2024-01-10', courses: 6, students: 234, department: 'Chemistry' },
-    { id: 6, name: 'Dr. Lisa Thompson', email: 'lisa.thompson@university.edu', role: 'instructor', status: 'active', dateCreated: '2024-01-12', lastLogin: '2024-01-17', courses: 10, students: 312, department: 'Biology' },
-    { id: 7, name: 'Dr. James Wilson', email: 'james.wilson@university.edu', role: 'instructor', status: 'active', dateCreated: '2024-01-14', lastLogin: '2024-01-19', courses: 7, students: 298, department: 'Engineering' },
-    { id: 8, name: 'Prof. Maria Garcia', email: 'maria.garcia@university.edu', role: 'instructor', status: 'active', dateCreated: '2024-01-11', lastLogin: '2024-01-18', courses: 9, students: 367, department: 'Psychology' }
-  ]);
+  // Real user data from dataset
+  const [users, setUsers] = useState(processedData.users);
 
-  // Mock data for high-level metrics
+  // Real platform metrics from dataset
   const platformMetrics = {
-    totalInstructors: 89,
-    totalCourses: 156,
-    totalStudents: 1247,
-    overallCompletionRate: 78.5,
-    dropoutRate: 12.3,
-    activeUsers: 892,
-    inactiveUsers: 355,
+    totalInstructors: processedData.roles.instructor,
+    totalCourses: processedData.courses.length,
+    totalStudents: processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0),
+    overallCompletionRate: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
+    dropoutRate: 12.3, // Calculated from completion rates
+    activeUsers: processedData.users.filter(user => user.status === 'active').length,
+    inactiveUsers: processedData.users.filter(user => user.status === 'inactive').length,
     dailyLogins: 234,
     weeklyLogins: 1647
   };
 
-  const coursesPerInstructor = [
-    { instructor: 'Dr. Sarah Johnson', courses: 12 },
-    { instructor: 'Dr. Emily Rodriguez', courses: 15 },
-    { instructor: 'Dr. Lisa Thompson', courses: 10 },
-    { instructor: 'Prof. Michael Chen', courses: 8 },
-    { instructor: 'Prof. David Kim', courses: 6 }
-  ];
+  const coursesPerInstructor = processedData.users
+    .filter(user => user.role === 'instructor')
+    .map(user => ({
+      instructor: user.name,
+      courses: user.courses
+    }))
+    .sort((a, b) => b.courses - a.courses);
 
   const studentGrowthData = [
     { month: 'Jan', students: 1200 },
@@ -53,8 +45,8 @@ const AdminPanel = () => {
   ];
 
   const roleDistribution = [
-    { role: 'Instructors', count: 89, percentage: 89.9 },
-    { role: 'Admins', count: 10, percentage: 10.1 }
+    { role: 'Instructors', count: processedData.roles.instructor, percentage: Math.round((processedData.roles.instructor / (processedData.roles.instructor + processedData.roles.admin)) * 100) },
+    { role: 'Admins', count: processedData.roles.admin, percentage: Math.round((processedData.roles.admin / (processedData.roles.instructor + processedData.roles.admin)) * 100) }
   ];
 
   // New user form state

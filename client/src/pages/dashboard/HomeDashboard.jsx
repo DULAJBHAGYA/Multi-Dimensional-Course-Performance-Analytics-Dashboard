@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { processedData } from '../../data/mockData';
 
 const HomeDashboard = () => {
   const { user } = useAuth();
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
 
-  // Mock data - in real app, this would come from API
+  // Real data from dataset
   const kpiData = {
-    totalStudents: 1247,
-    activeCourses: 8,
-    avgPerformance: 87.3,
-    completionRate: 92.1
+    totalStudents: processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0),
+    activeCourses: processedData.courses.length,
+    avgPerformance: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
+    completionRate: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length)
   };
 
   const performanceData = [
@@ -23,16 +24,12 @@ const HomeDashboard = () => {
     { month: 'Jun', performance: 87 }
   ];
 
-  const courseData = [
-    { name: 'Mathematics 101', students: 156, performance: 89, status: 'active' },
-    { name: 'Physics 201', students: 134, performance: 85, status: 'active' },
-    { name: 'Chemistry 101', students: 142, performance: 92, status: 'active' },
-    { name: 'Biology 201', students: 128, performance: 88, status: 'active' },
-    { name: 'Computer Science 101', students: 167, performance: 91, status: 'active' },
-    { name: 'English Literature', students: 145, performance: 86, status: 'active' },
-    { name: 'History 101', students: 132, performance: 84, status: 'active' },
-    { name: 'Economics 201', students: 139, performance: 90, status: 'active' }
-  ];
+  const courseData = processedData.courses.map(course => ({
+    name: course.name,
+    students: course.totalEnrollments,
+    performance: course.completionRate,
+    status: 'active'
+  }));
 
   const recentActivity = [
     { type: 'submission', course: 'Mathematics 101', student: 'John Doe', time: '2 hours ago' },
