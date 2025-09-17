@@ -66,16 +66,16 @@ const PredictiveAnalytics = () => {
   ];
 
   const getRiskColor = (score) => {
-    if (score >= 80) return 'text-red-400 bg-red-50';
-    if (score >= 60) return 'text-yellow-600 bg-yellow-100';
-    return 'text-green-600 bg-green-100';
+    if (score >= 80) return 'text-red-400 bg-red-100';
+    if (score >= 60) return 'text-yellow-400 bg-yellow-100';
+    return 'text-green-400 bg-green-100';
   };
 
   const getEngagementColor = (score) => {
-    if (score >= 90) return 'text-green-600 bg-green-100';
-    if (score >= 70) return 'text-blue-600 bg-blue-100';
-    if (score >= 50) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-400 bg-red-50';
+    if (score >= 90) return 'text-green-400 bg-green-100';
+    if (score >= 70) return 'text-blue-400 bg-blue-100';
+    if (score >= 50) return 'text-yellow-400 bg-yellow-100';
+    return 'text-red-400 bg-red-100';
   };
 
   // AI Chat functionality
@@ -162,7 +162,7 @@ const PredictiveAnalytics = () => {
               <select 
                 value={timeHorizon} 
                 onChange={(e) => setTimeHorizon(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="7d">Next 7 days</option>
                 <option value="30d">Next 30 days</option>
@@ -172,7 +172,7 @@ const PredictiveAnalytics = () => {
               <select 
                 value={selectedCourse} 
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="all">All Courses</option>
                 <option value="math101">Mathematics 101</option>
@@ -184,15 +184,15 @@ const PredictiveAnalytics = () => {
         </div>
 
         {/* AI Status Banner */}
-        <div className="mb-8 bg-gradient-to-r from-purple-50 to-[#f0f0ff] border border-purple-200 rounded-lg p-4">
+        <div className="mb-8 bg-[#D3CEFC] rounded-3xl p-4">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-purple-800">
+              <p className="text-sm font-medium text-[#6e63e5]">
                 AI models are actively analyzing your course data. Predictions updated every 6 hours.
               </p>
             </div>
@@ -201,10 +201,10 @@ const PredictiveAnalytics = () => {
 
         {/* Predictive KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="flex items-center">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-3 bg-blue-100 rounded-2xl">
+                <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -216,9 +216,9 @@ const PredictiveAnalytics = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="flex items-center">
-              <div className="p-3 bg-red-50 rounded-lg">
+              <div className="p-3 bg-red-100 rounded-2xl">
                 <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
@@ -231,32 +231,32 @@ const PredictiveAnalytics = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm ">
             <div className="flex items-center">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-3 bg-yellow-100 rounded-2xl">
+                <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Future Enrollments</p>
                 <p className="text-2xl font-bold text-gray-900">{predictiveKPIs.futureEnrollments}</p>
-                <p className="text-xs text-blue-600 mt-1">Next 30 days</p>
+                <p className="text-xs text-green-600 mt-1">Next 30 days</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="flex items-center">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-3 bg-[#D3CEFC] rounded-2xl">
+                <svg className="w-6 h-6 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Revenue Projection</p>
                 <p className="text-2xl font-bold text-gray-900">${predictiveKPIs.revenueProjection.toLocaleString()}</p>
-                <p className="text-xs text-purple-600 mt-1">Next quarter</p>
+                <p className="text-xs text-[#48A860] mt-1">Next quarter</p>
               </div>
             </div>
           </div>
@@ -265,7 +265,7 @@ const PredictiveAnalytics = () => {
         {/* At-Risk Students and Engagement Scores */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* At-Risk Students */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -274,7 +274,7 @@ const PredictiveAnalytics = () => {
             </h3>
             <div className="space-y-4">
               {atRiskStudents.map((student, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div key={index} className="border border-gray-200 rounded-3xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="text-sm font-medium text-gray-900">{student.name}</p>
@@ -286,7 +286,7 @@ const PredictiveAnalytics = () => {
                   </div>
                   <div className="flex flex-wrap gap-1 mb-2">
                     {student.reasons.map((reason, i) => (
-                      <span key={i} className="px-2 py-1 text-xs bg-red-50 text-red-800 rounded">
+                      <span key={i} className="px-2 py-1 text-xs bg-red-100 text-red-400 rounded-3xl">
                         {reason}
                       </span>
                     ))}
@@ -298,16 +298,16 @@ const PredictiveAnalytics = () => {
           </div>
 
           {/* Engagement Scores */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
               Student Engagement Scores
             </h3>
             <div className="space-y-4">
               {engagementScores.map((student, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-3xl">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{student.student}</p>
                     <p className="text-xs text-gray-500">Engagement probability</p>
@@ -316,9 +316,9 @@ const PredictiveAnalytics = () => {
                     <div className="w-20 bg-gray-200 rounded-full h-2">
                       <div 
                         className={`h-2 rounded-full ${
-                          student.color === 'green' ? 'bg-green-500' :
-                          student.color === 'blue' ? 'bg-blue-500' :
-                          student.color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                          student.color === 'green' ? 'bg-green-400' :
+                          student.color === 'blue' ? 'bg-blue-400' :
+                          student.color === 'yellow' ? 'bg-yellow-400' : 'bg-red-400'
                         }`}
                         style={{ width: `${student.score}%` }}
                       ></div>
@@ -336,22 +336,22 @@ const PredictiveAnalytics = () => {
         {/* Content Predictions and Enrollment Forecast */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Content Predictions */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <svg className="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-[#6e63e5] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
               Content Predictions
             </h3>
             <div className="space-y-4">
               {contentPredictions.map((content, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div key={index} className="border border-gray-200 rounded-3xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium text-gray-900">{content.lesson}</p>
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      content.riskLevel === 'High' ? 'bg-red-50 text-red-800' :
-                      content.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
+                      content.riskLevel === 'High' ? 'bg-red-100 text-red-400' :
+                      content.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-400' :
+                      'bg-green-100 text-green-400'
                     }`}>
                       {content.riskLevel} Risk
                     </span>
@@ -360,7 +360,7 @@ const PredictiveAnalytics = () => {
                     <div className="flex-1">
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
-                          className="bg-purple-500 h-2 rounded-full"
+                          className="bg-[#6e63e5] h-2 rounded-full"
                           style={{ width: `${content.predictedEngagement}%` }}
                         ></div>
                       </div>
@@ -374,7 +374,7 @@ const PredictiveAnalytics = () => {
           </div>
 
           {/* Enrollment Forecast */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <svg className="w-5 h-5 text-[#6e63e5] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -393,7 +393,7 @@ const PredictiveAnalytics = () => {
                       ></div>
                     )}
                     <div 
-                      className={`rounded-t w-full ${data.actual ? 'bg-purple-400' : 'bg-purple-500'}`}
+                      className={`rounded-t w-full ${data.actual ? 'bg-[#6e63e5]' : 'bg-[#d3cefc]'}`}
                       style={{ height: `${(data.predicted / 250) * 150}px` }}
                       title={`Predicted: ${data.predicted}`}
                     ></div>
@@ -409,7 +409,7 @@ const PredictiveAnalytics = () => {
                 <span className="text-xs text-gray-600">Actual</span>
               </div>
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-purple-500 rounded mr-2"></div>
+                <div className="w-3 h-3 bg-[#d3cefc] rounded mr-2"></div>
                 <span className="text-xs text-gray-600">Predicted</span>
               </div>
             </div>
@@ -417,20 +417,20 @@ const PredictiveAnalytics = () => {
         </div>
 
         {/* AI Recommendations */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-6 rounded-3xl shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <svg className="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[#6e63e5] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
             AI Recommendations
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {aiRecommendations.map((rec, index) => (
-              <div key={index} className={`p-4 rounded-lg border-l-4 ${
-                rec.type === 'urgent' ? 'bg-red-50 border-red-500' :
-                rec.type === 'warning' ? 'bg-yellow-50 border-yellow-500' :
-                rec.type === 'improvement' ? 'bg-blue-50 border-blue-500' :
-                'bg-green-50 border-green-500'
+              <div key={index} className={`p-4 rounded-3xl ${
+                rec.type === 'urgent' ? 'bg-red-100 border-red-400' :
+                rec.type === 'warning' ? 'bg-yellow-100 border-yellow-400' :
+                rec.type === 'improvement' ? 'bg-blue-100 border-blue-400' :
+                'bg-green-100 border-green-400'
               }`}>
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -462,7 +462,7 @@ const PredictiveAnalytics = () => {
           {!isChatOpen && (
             <button
               onClick={() => setIsChatOpen(true)}
-              className="bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+              className="bg-[#6e63e5] hover:bg-[#4c46a0] text-white p-4 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -472,12 +472,12 @@ const PredictiveAnalytics = () => {
 
           {/* Chat Window */}
           {isChatOpen && (
-            <div className="bg-white rounded-lg shadow-2xl w-96 h-96 flex flex-col border border-gray-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-96 h-96 flex flex-col">
               {/* Chat Header */}
-              <div className="bg-purple-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+              <div className="bg-[#6e63e5] text-white p-4 rounded-t-3xl flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 bg-[#d3cefc] rounded-full flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5" fill="none" stroke="#6e63e5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
@@ -488,7 +488,7 @@ const PredictiveAnalytics = () => {
                 </div>
                 <button
                   onClick={() => setIsChatOpen(false)}
-                  className="text-purple-200 hover:text-white transition-colors"
+                  className="text-[#d3cefc] hover:text-white transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -527,11 +527,11 @@ const PredictiveAnalytics = () => {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Ask about your predictions..."
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 border border-gray-300 rounded-3xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <button
                     type="submit"
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    className="bg-[#6e63e5] hover:bg-[#4c46a0] text-white px-4 py-2 rounded-2xl transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

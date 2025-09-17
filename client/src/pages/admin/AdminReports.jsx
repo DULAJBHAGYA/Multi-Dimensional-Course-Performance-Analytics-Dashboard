@@ -136,7 +136,7 @@ const AdminReports = () => {
         </div>
 
         {/* Report Configuration */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+        <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Report Configuration</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -146,7 +146,7 @@ const AdminReports = () => {
               <select 
                 value={selectedReport} 
                 onChange={(e) => setSelectedReport(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="system">System Overview</option>
                 <option value="users">User Analytics</option>
@@ -163,7 +163,7 @@ const AdminReports = () => {
               <select 
                 value={dateRange} 
                 onChange={(e) => setDateRange(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -200,7 +200,7 @@ const AdminReports = () => {
               <select 
                 value={exportFormat} 
                 onChange={(e) => setExportFormat(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="pdf">PDF</option>
                 <option value="xlsx">Excel (XLSX)</option>
@@ -214,7 +214,7 @@ const AdminReports = () => {
             <button
               onClick={handleGenerateReport}
               disabled={isGenerating}
-              className="flex items-center px-6 py-2 bg-red-400 hover:bg-red-500 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+              className="flex items-center px-6 py-2 bg-[#6E63E5] hover:bg-[#4c46a0] disabled:bg-gray-400 text-white rounded-xl transition-colors"
             >
               {isGenerating ? (
                 <>
@@ -238,42 +238,42 @@ const AdminReports = () => {
 
         {/* System Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{systemOverview.totalUsers.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-blue-400">{systemOverview.totalUsers.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Total Users</div>
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{systemOverview.activeUsers.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-pink-400">{systemOverview.activeUsers.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Active Users</div>
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{systemOverview.newRegistrations}</div>
+              <div className="text-2xl font-bold text-yellow-400">{systemOverview.newRegistrations}</div>
               <div className="text-sm text-gray-600">New This Month</div>
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="text-center">
               <div className="text-2xl font-bold text-[#6e63e5]">{systemOverview.systemUptime}%</div>
               <div className="text-sm text-gray-600">System Uptime</div>
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">${systemOverview.totalRevenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-400">${systemOverview.totalRevenue.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Total Revenue</div>
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="text-center">
               <div className="text-2xl font-bold text-red-400">+{systemOverview.monthlyGrowth}%</div>
               <div className="text-sm text-gray-600">Monthly Growth</div>
@@ -283,7 +283,7 @@ const AdminReports = () => {
 
         {/* Generated Report Content */}
         {generatedReport && (
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+          <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Generated Report Content</h2>
               <button

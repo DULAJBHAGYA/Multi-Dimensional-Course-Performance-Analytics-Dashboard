@@ -88,7 +88,7 @@ const AdminDashboard = () => {
               <select
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -102,7 +102,7 @@ const AdminDashboard = () => {
         {/* System Overview Content */}
         <div className="space-y-8">
           {/* Filtering Options */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Options</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -110,7 +110,7 @@ const AdminDashboard = () => {
                 <select
                   value={selectedSemester}
                   onChange={(e) => setSelectedSemester(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="all">All Semesters</option>
                   {processedData.semesters.map(semester => (
@@ -125,7 +125,7 @@ const AdminDashboard = () => {
                 <select
                   value={selectedCourseType}
                   onChange={(e) => setSelectedCourseType(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="all">All Course Types</option>
                   {processedData.courses.map(course => (
@@ -140,7 +140,7 @@ const AdminDashboard = () => {
                 <select
                   value={selectedCampus}
                   onChange={(e) => setSelectedCampus(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="all">All Campuses</option>
                   {processedData.campuses.map(campus => (
@@ -156,10 +156,10 @@ const AdminDashboard = () => {
           {/* Key Performance Indicators */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {/* Total Students */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-blue-100 rounded-2xl">
+                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                   </svg>
                 </div>
@@ -172,10 +172,10 @@ const AdminDashboard = () => {
             </div>
 
             {/* Total Courses */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-pink-100 rounded-2xl">
+                  <svg className="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
@@ -188,10 +188,10 @@ const AdminDashboard = () => {
             </div>
 
             {/* Total Instructors */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-yellow-100 rounded-2xl">
+                  <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
@@ -204,10 +204,10 @@ const AdminDashboard = () => {
             </div>
 
             {/* Overall Pass Rate */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 bg-yellow-100 rounded-lg">
-                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-[#d3cefc] rounded-2xl">
+                  <svg className="w-6 h-6 text-[#6E63E5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -220,10 +220,10 @@ const AdminDashboard = () => {
             </div>
 
             {/* At-Risk Students */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-3 bg-green-100 rounded-2xl">
+                  <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
@@ -239,14 +239,14 @@ const AdminDashboard = () => {
           {/* Aggregate Charts & Visualizations */}
           <div className="space-y-8">
             {/* Performance Over Time Chart */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Over Time</h3>
               <div className="h-80 flex items-end justify-between space-x-4">
                 {performanceOverTime.map((data, index) => (
                   <div key={index} className="flex flex-col items-center flex-1">
-                    <div className="w-full bg-gradient-to-t from-blue-500 to-blue-300 rounded-t mb-2 relative group">
+                    <div className="w-full rounded-t mb-2 relative group">
                       <div 
-                        className="w-full transition-all duration-300 hover:from-blue-600 hover:to-blue-400"
+                        className={`${index % 2 === 0 ? 'bg-[#D3CEFC]' : 'bg-[#6e63e5]'} rounded-2xl w-full mb-2 transition-all duration-300 ${index % 2 === 0 ? 'hover:bg-indigo-300' : 'hover:bg-[#4c46a0]'}`}
                         style={{ height: `${(data.passRate / 80) * 200}px` }}
                         title={`${data.semester}: ${data.passRate}% pass rate`}
                       ></div>
@@ -267,7 +267,7 @@ const AdminDashboard = () => {
             {/* Course Distribution and Campus Performance */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Course Distribution Bar Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Distribution by Performance</h3>
                 <div className="space-y-4">
                   {courseDistribution.map((course, index) => (
@@ -279,7 +279,7 @@ const AdminDashboard = () => {
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div 
-                            className="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all duration-300"
+                            className="bg-[#6e63e5] h-2 rounded-full transition-all duration-300"
                             style={{ width: `${course.averagePerformance}%` }}
                           ></div>
                         </div>
@@ -294,7 +294,7 @@ const AdminDashboard = () => {
               </div>
 
               {/* Campus Performance Comparison */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Campus Performance Comparison</h3>
                 <div className="space-y-4">
                   {campusPerformance.map((campus, index) => (
@@ -307,9 +307,9 @@ const AdminDashboard = () => {
                         <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                           <div 
                             className={`h-2 rounded-full transition-all duration-300 ${
-                              campus.passRate >= 80 ? 'bg-gradient-to-r from-green-400 to-green-600' :
-                              campus.passRate >= 70 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
-                              'bg-gradient-to-r from-red-400 to-red-400'
+                              campus.passRate >= 80 ? 'bg-gradient-to-r from-[#d3cefc] to-[#6e63e5]' :
+                              campus.passRate >= 70 ? 'bg-gradient-to-r from-[#d3cefc] to-[#6e63e5]' :
+                              'bg-gradient-to-r from-[#4c46a0] to-[#6e63e5]'
                             }`}
                             style={{ width: `${campus.passRate}%` }}
                           ></div>
@@ -336,16 +336,16 @@ const AdminDashboard = () => {
             </div>
 
             {/* Student Grade Distribution */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Grade Distribution</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {gradeDistribution.map((grade, index) => (
                   <div key={index} className="text-center">
-                    <div className={`w-full h-24 rounded-lg flex items-center justify-center text-white font-bold text-lg mb-2 ${
-                      grade.grade.startsWith('A') ? 'bg-green-500' :
-                      grade.grade.startsWith('B') ? 'bg-blue-500' :
-                      grade.grade.startsWith('C') ? 'bg-yellow-500' :
-                      'bg-red-500'
+                    <div className={`w-full h-24 rounded-3xl flex items-center justify-center text-white font-bold text-lg mb-2 ${
+                      grade.grade.startsWith('A') ? 'bg-green-400' :
+                      grade.grade.startsWith('B') ? 'bg-blue-400' :
+                      grade.grade.startsWith('C') ? 'bg-yellow-400' :
+                      'bg-red-400'
                     }`}>
                       {grade.grade}
                     </div>
@@ -357,26 +357,26 @@ const AdminDashboard = () => {
             </div>
 
             {/* AI Predictive Insights */}
-            <div className="bg-gradient-to-r from-purple-50 to-[#f0f0ff] p-6 rounded-lg border border-purple-200">
+            <div className="bg-[#d3cefc] p-6 rounded-3xl shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <svg className="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="#6e63e5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
                 AI Predictive Insights
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="text-center p-4 bg-white rounded-lg">
-                  <div className="text-2xl font-bold text-purple-600">{aiPredictions.nextSemesterProjection}%</div>
+                <div className="text-center p-4 bg-white rounded-3xl">
+                  <div className="text-2xl font-bold text-[#6e63e5]">{aiPredictions.nextSemesterProjection}%</div>
                   <div className="text-sm text-gray-600">Projected Pass Rate</div>
                   <div className="text-xs text-gray-500">Next Semester</div>
                 </div>
-                <div className="text-center p-4 bg-white rounded-lg">
-                  <div className="text-2xl font-bold text-orange-600">{aiPredictions.atRiskStudentsNextSemester}</div>
+                <div className="text-center p-4 bg-white rounded-3xl">
+                  <div className="text-2xl font-bold text-red-400">{aiPredictions.atRiskStudentsNextSemester}</div>
                   <div className="text-sm text-gray-600">At-Risk Students</div>
                   <div className="text-xs text-gray-500">Predicted</div>
                 </div>
-                <div className="text-center p-4 bg-white rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{aiPredictions.expectedEnrollment}</div>
+                <div className="text-center p-4 bg-white rounded-3xl">
+                  <div className="text-2xl font-bold text-blue-400">{aiPredictions.expectedEnrollment}</div>
                   <div className="text-sm text-gray-600">Expected Enrollment</div>
                   <div className="text-xs text-gray-500">Next Semester</div>
                 </div>
@@ -386,7 +386,7 @@ const AdminDashboard = () => {
                 <ul className="space-y-2">
                   {aiPredictions.recommendedInterventions.map((intervention, index) => (
                     <li key={index} className="flex items-start">
-                      <svg className="w-4 h-4 text-purple-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-[#6e63e5] mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                       <span className="text-sm text-gray-700">{intervention}</span>

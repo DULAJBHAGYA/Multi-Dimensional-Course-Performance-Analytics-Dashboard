@@ -126,7 +126,7 @@ const ReportGeneration = () => {
         </div>
 
         {/* Report Options / Filters */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+        <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Report Configuration</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -136,7 +136,7 @@ const ReportGeneration = () => {
               <select 
                 value={selectedCourse} 
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
               >
                 {courses.map(course => (
                   <option key={course.id} value={course.id}>{course.name}</option>
@@ -150,7 +150,7 @@ const ReportGeneration = () => {
               <select 
                 value={dateRange} 
                 onChange={(e) => setDateRange(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -187,7 +187,7 @@ const ReportGeneration = () => {
               <select 
                 value={exportFormat} 
                 onChange={(e) => setExportFormat(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
               >
                 <option value="pdf">PDF</option>
                 <option value="xlsx">Excel (XLSX)</option>
@@ -244,27 +244,27 @@ const ReportGeneration = () => {
         </div>
 
         {/* Preview / Summary Section */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+        <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Report Preview</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{previewData.avgCompletionRate}%</div>
+            <div className="text-center p-4 bg-blue-100 rounded-3xl">
+              <div className="text-2xl font-bold text-blue-400">{previewData.avgCompletionRate}%</div>
               <div className="text-sm text-gray-600">Avg Completion Rate</div>
             </div>
             
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <div className="text-2xl font-bold text-red-400">{previewData.dropoutRate}%</div>
+            <div className="text-center p-4 bg-pink-100 rounded-3xl">
+              <div className="text-2xl font-bold text-pink-400">{previewData.dropoutRate}%</div>
               <div className="text-sm text-gray-600">Dropout Rate</div>
             </div>
             
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{previewData.avgQuizScore}%</div>
+            <div className="text-center p-4 bg-yellow-100 rounded-3xl">
+              <div className="text-2xl font-bold text-yellow-400">{previewData.avgQuizScore}%</div>
               <div className="text-sm text-gray-600">Avg Quiz Score</div>
             </div>
             
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">{previewData.activeStudents}</div>
+            <div className="text-center p-4 bg-[#D3CEFC] rounded-3xl">
+              <div className="text-2xl font-bold text-[#6e63e5]">{previewData.activeStudents}</div>
               <div className="text-sm text-gray-600">Active Students</div>
             </div>
           </div>
@@ -286,7 +286,7 @@ const ReportGeneration = () => {
 
         {/* Generated Content */}
         {generatedReport && (
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+          <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Generated Report Content</h2>
             
             {/* Student Performance Report */}
@@ -365,7 +365,7 @@ const ReportGeneration = () => {
         )}
 
         {/* Export Controls */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-6 rounded-3xl shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Export Controls</h2>
           
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -373,7 +373,7 @@ const ReportGeneration = () => {
               <button
                 onClick={handleGenerateReport}
                 disabled={isGenerating || Object.values(reportTypes).every(type => !type)}
-                className="flex items-center px-6 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+                className="flex items-center px-6 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white rounded-2xl transition-colors"
               >
                 {isGenerating ? (
                   <>

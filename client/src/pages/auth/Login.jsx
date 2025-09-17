@@ -96,7 +96,7 @@ const Login = () => {
       {/* Left Side - Information */}
       <div className="hidden lg:flex lg:w-1/2 bg-white flex-col justify-center px-16">
         <div className="max-w-xl ml-24">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">
+          <h1 className="text-5xl font-semibold text-gray-900 mb-6">
             Welcome to
             <span className="text-[#6e63e5] block">EduAnalytics</span>
           </h1>
@@ -107,7 +107,7 @@ const Login = () => {
           
           <div className="space-y-6">
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 bg-[#f0f0ff] rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+              <div className="w-8 h-8 bg-[#d3cefc] rounded-xl flex items-center justify-center flex-shrink-0 mt-1">
                 <svg className="w-4 h-4 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
@@ -119,7 +119,7 @@ const Login = () => {
             </div>
 
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 bg-[#f0f0ff] rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+              <div className="w-8 h-8 bg-[#d3cefc] rounded-xl flex items-center justify-center flex-shrink-0 mt-1">
                 <svg className="w-4 h-4 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
@@ -131,7 +131,7 @@ const Login = () => {
             </div>
 
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 bg-[#f0f0ff] rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+              <div className="w-8 h-8 bg-[#d3cefc] rounded-xl flex items-center justify-center flex-shrink-0 mt-1">
                 <svg className="w-4 h-4 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -153,7 +153,7 @@ const Login = () => {
           <Link to="/" className="inline-block">
             <h1 className="text-3xl font-bold text-[#6e63e5] mb-2">EduAnalytics</h1>
           </Link>
-          <h2 className="text-2xl font-bold text-gray-900">Sign in to your account</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">Sign in to your account</h2>
           <p className="mt-2 text-sm text-gray-600">
             Or{' '}
             <Link to="/" className="font-medium text-[#6e63e5] hover:text-[#4c46a0]">
@@ -163,7 +163,7 @@ const Login = () => {
         </div>
 
         {/* Login Form */}
-        <div className="bg-white py-8 px-6 shadow-xl rounded-lg">
+        <div className="bg-white py-8 px-6 shadow-xl rounded-3xl">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-400 px-4 py-3 rounded-md text-sm">
@@ -183,7 +183,7 @@ const Login = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#6e63e5] focus:border-[#6e63e5]"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#6e63e5] focus:border-[#6e63e5]"
                 placeholder="Enter your email"
               />
             </div>
@@ -201,7 +201,7 @@ const Login = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#6e63e5] focus:border-[#6e63e5]"
+                  className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#6e63e5] focus:border-[#6e63e5]"
                   placeholder="Enter your password"
                 />
                 <button
@@ -248,7 +248,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#6e63e5] hover:bg-[#4c46a0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6e63e5] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-3xl shadow-sm text-sm font-medium text-white bg-[#6e63e5] hover:bg-[#4c46a0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6e63e5] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <div className="flex items-center">

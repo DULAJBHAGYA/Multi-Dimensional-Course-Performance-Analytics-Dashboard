@@ -55,7 +55,7 @@ const HomeDashboard = () => {
                 <select 
                   value={selectedTimeRange} 
                   onChange={(e) => setSelectedTimeRange(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                  className="border border-gray-300 rounded-xl px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                 >
                   <option value="7d">Last 7 days</option>
                   <option value="30d">Last 30 days</option>
