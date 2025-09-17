@@ -109,7 +109,7 @@ const ReportGeneration = () => {
       case 'Excellent': return 'text-green-600 bg-green-100';
       case 'Good': return 'text-blue-600 bg-blue-100';
       case 'Fair': return 'text-yellow-600 bg-yellow-100';
-      case 'At Risk': return 'text-red-600 bg-red-100';
+      case 'At Risk': return 'text-red-400 bg-red-50';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
@@ -254,7 +254,7 @@ const ReportGeneration = () => {
             </div>
             
             <div className="text-center p-4 bg-red-50 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">{previewData.dropoutRate}%</div>
+              <div className="text-2xl font-bold text-red-400">{previewData.dropoutRate}%</div>
               <div className="text-sm text-gray-600">Dropout Rate</div>
             </div>
             
@@ -276,8 +276,8 @@ const ReportGeneration = () => {
                 <div className="text-sm text-gray-600">Total Revenue</div>
               </div>
               
-              <div className="text-center p-4 bg-indigo-50 rounded-lg">
-                <div className="text-2xl font-bold text-indigo-600">{previewData.avgEngagement}%</div>
+              <div className="text-center p-4 bg-[#f0f0ff] rounded-lg">
+                <div className="text-2xl font-bold text-[#6e63e5]">{previewData.avgEngagement}%</div>
                 <div className="text-sm text-gray-600">Avg Engagement</div>
               </div>
             </div>

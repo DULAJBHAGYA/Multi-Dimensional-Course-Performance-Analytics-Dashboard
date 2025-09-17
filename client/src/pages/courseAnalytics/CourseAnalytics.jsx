@@ -103,7 +103,7 @@ const CourseAnalytics = () => {
               <select 
                 value={selectedCourse} 
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 {courses.map(course => (
                   <option key={course.id} value={course.id}>{course.name}</option>
@@ -112,7 +112,7 @@ const CourseAnalytics = () => {
               <select 
                 value={dateRange} 
                 onChange={(e) => setDateRange(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -122,7 +122,7 @@ const CourseAnalytics = () => {
               <select 
                 value={cohort} 
                 onChange={(e) => setCohort(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 <option value="all">All Students</option>
                 <option value="first-time">First-time Learners</option>
@@ -211,8 +211,8 @@ const CourseAnalytics = () => {
 
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="p-3 bg-indigo-100 rounded-lg">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-3 bg-[#f0f0ff] rounded-lg">
+                <svg className="w-6 h-6 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
@@ -234,7 +234,7 @@ const CourseAnalytics = () => {
               {enrollmentTrend.map((data, index) => (
                 <div key={index} className="flex flex-col items-center flex-1">
                   <div 
-                    className="bg-indigo-500 rounded-t w-full mb-2 transition-all duration-300 hover:bg-indigo-600"
+                    className="bg-[#6e63e5] rounded-t w-full mb-2 transition-all duration-300 hover:bg-[#4c46a0]"
                     style={{ height: `${(data.enrollments / 200) * 200}px` }}
                   ></div>
                   <span className="text-xs text-gray-600">{data.month}</span>
@@ -384,7 +384,7 @@ const CourseAnalytics = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Reviews</h3>
             <div className="space-y-4">
               {recentReviews.map((review, index) => (
-                <div key={index} className="border-l-4 border-indigo-500 pl-4">
+                <div key={index} className="border-l-4 border-[#6e63e5] pl-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium text-gray-900">{review.student}</p>
                     <div className="flex items-center space-x-1">
@@ -440,13 +440,13 @@ const CourseAnalytics = () => {
               <p className="text-sm text-gray-600 mt-1">Download analytics data and manage course settings</p>
             </div>
             <div className="mt-4 sm:mt-0 flex flex-wrap gap-3">
-              <button className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+              <button className="flex items-center px-4 py-2 bg-[#6e63e5] text-white rounded-lg hover:bg-[#4c46a0] transition-colors">
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Export CSV
               </button>
-              <button className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+              <button className="flex items-center px-4 py-2 bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors">
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>

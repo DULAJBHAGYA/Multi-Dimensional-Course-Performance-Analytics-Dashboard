@@ -66,7 +66,7 @@ const PredictiveAnalytics = () => {
   ];
 
   const getRiskColor = (score) => {
-    if (score >= 80) return 'text-red-600 bg-red-100';
+    if (score >= 80) return 'text-red-400 bg-red-50';
     if (score >= 60) return 'text-yellow-600 bg-yellow-100';
     return 'text-green-600 bg-green-100';
   };
@@ -75,7 +75,7 @@ const PredictiveAnalytics = () => {
     if (score >= 90) return 'text-green-600 bg-green-100';
     if (score >= 70) return 'text-blue-600 bg-blue-100';
     if (score >= 50) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-600 bg-red-100';
+    return 'text-red-400 bg-red-50';
   };
 
   // AI Chat functionality
@@ -184,7 +184,7 @@ const PredictiveAnalytics = () => {
         </div>
 
         {/* AI Status Banner */}
-        <div className="mb-8 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4">
+        <div className="mb-8 bg-gradient-to-r from-purple-50 to-[#f0f0ff] border border-purple-200 rounded-lg p-4">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,15 +218,15 @@ const PredictiveAnalytics = () => {
 
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="p-3 bg-red-100 rounded-lg">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-3 bg-red-50 rounded-lg">
+                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Predicted Dropout Rate</p>
                 <p className="text-2xl font-bold text-gray-900">{predictiveKPIs.predictedDropoutRate}%</p>
-                <p className="text-xs text-red-600 mt-1">High risk students: 23</p>
+                <p className="text-xs text-red-400 mt-1">High risk students: 23</p>
               </div>
             </div>
           </div>
@@ -267,7 +267,7 @@ const PredictiveAnalytics = () => {
           {/* At-Risk Students */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
               At-Risk Students
@@ -286,7 +286,7 @@ const PredictiveAnalytics = () => {
                   </div>
                   <div className="flex flex-wrap gap-1 mb-2">
                     {student.reasons.map((reason, i) => (
-                      <span key={i} className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded">
+                      <span key={i} className="px-2 py-1 text-xs bg-red-50 text-red-800 rounded">
                         {reason}
                       </span>
                     ))}
@@ -349,7 +349,7 @@ const PredictiveAnalytics = () => {
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium text-gray-900">{content.lesson}</p>
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      content.riskLevel === 'High' ? 'bg-red-100 text-red-800' :
+                      content.riskLevel === 'High' ? 'bg-red-50 text-red-800' :
                       content.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-green-100 text-green-800'
                     }`}>
@@ -376,7 +376,7 @@ const PredictiveAnalytics = () => {
           {/* Enrollment Forecast */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <svg className="w-5 h-5 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-[#6e63e5] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
               Enrollment Forecast
@@ -387,7 +387,7 @@ const PredictiveAnalytics = () => {
                   <div className="flex flex-col items-center space-y-1">
                     {data.actual && (
                       <div 
-                        className="bg-indigo-500 rounded-t w-full mb-1"
+                        className="bg-[#6e63e5] rounded-t w-full mb-1"
                         style={{ height: `${(data.actual / 250) * 150}px` }}
                         title={`Actual: ${data.actual}`}
                       ></div>
@@ -405,7 +405,7 @@ const PredictiveAnalytics = () => {
             </div>
             <div className="mt-4 flex items-center justify-center space-x-4">
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-indigo-500 rounded mr-2"></div>
+                <div className="w-3 h-3 bg-[#6e63e5] rounded mr-2"></div>
                 <span className="text-xs text-gray-600">Actual</span>
               </div>
               <div className="flex items-center">
@@ -435,7 +435,7 @@ const PredictiveAnalytics = () => {
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
                     <svg className={`w-5 h-5 ${
-                      rec.type === 'urgent' ? 'text-red-600' :
+                      rec.type === 'urgent' ? 'text-red-400' :
                       rec.type === 'warning' ? 'text-yellow-600' :
                       rec.type === 'improvement' ? 'text-blue-600' :
                       'text-green-600'
