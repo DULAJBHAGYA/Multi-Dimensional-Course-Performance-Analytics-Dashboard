@@ -109,7 +109,7 @@ const ReportGeneration = () => {
       case 'Excellent': return 'text-green-600 bg-green-100';
       case 'Good': return 'text-blue-600 bg-blue-100';
       case 'Fair': return 'text-yellow-600 bg-yellow-100';
-      case 'At Risk': return 'text-red-400 bg-red-50';
+      case 'At Risk': return 'text-red-400 bg-red-100';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
@@ -136,7 +136,7 @@ const ReportGeneration = () => {
               <select 
                 value={selectedCourse} 
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 {courses.map(course => (
                   <option key={course.id} value={course.id}>{course.name}</option>
@@ -150,7 +150,7 @@ const ReportGeneration = () => {
               <select 
                 value={dateRange} 
                 onChange={(e) => setDateRange(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -169,13 +169,13 @@ const ReportGeneration = () => {
                     type="date"
                     value={customDateRange.start}
                     onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                   />
                   <input
                     type="date"
                     value={customDateRange.end}
                     onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                   />
                 </div>
               </div>
@@ -187,7 +187,7 @@ const ReportGeneration = () => {
               <select 
                 value={exportFormat} 
                 onChange={(e) => setExportFormat(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 <option value="pdf">PDF</option>
                 <option value="xlsx">Excel (XLSX)</option>
@@ -205,7 +205,7 @@ const ReportGeneration = () => {
                   type="checkbox"
                   checked={reportTypes.studentPerformance}
                   onChange={() => handleReportTypeChange('studentPerformance')}
-                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-yellow-600 focus:ring-[#6e63e5] border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">Student Performance</span>
               </label>
@@ -215,7 +215,7 @@ const ReportGeneration = () => {
                   type="checkbox"
                   checked={reportTypes.engagement}
                   onChange={() => handleReportTypeChange('engagement')}
-                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-yellow-600 focus:ring-[#6e63e5] border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">Engagement Report</span>
               </label>
@@ -225,7 +225,7 @@ const ReportGeneration = () => {
                   type="checkbox"
                   checked={reportTypes.completion}
                   onChange={() => handleReportTypeChange('completion')}
-                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-yellow-600 focus:ring-[#6e63e5] border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">Completion/Dropout</span>
               </label>
@@ -235,7 +235,7 @@ const ReportGeneration = () => {
                   type="checkbox"
                   checked={reportTypes.revenue}
                   onChange={() => handleReportTypeChange('revenue')}
-                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-yellow-600 focus:ring-[#6e63e5] border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">Revenue Report</span>
               </label>
@@ -271,13 +271,13 @@ const ReportGeneration = () => {
 
           {reportTypes.revenue && (
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-600">${previewData.totalRevenue.toLocaleString()}</div>
+              <div className="text-center p-4 bg-orange-100 rounded-3xl">
+                <div className="text-2xl font-bold text-orange-400">${previewData.totalRevenue.toLocaleString()}</div>
                 <div className="text-sm text-gray-600">Total Revenue</div>
               </div>
               
-              <div className="text-center p-4 bg-[#f0f0ff] rounded-lg">
-                <div className="text-2xl font-bold text-[#6e63e5]">{previewData.avgEngagement}%</div>
+              <div className="text-center p-4 bg-green-100 rounded-3xl">
+                <div className="text-2xl font-bold text-green-400">{previewData.avgEngagement}%</div>
                 <div className="text-sm text-gray-600">Avg Engagement</div>
               </div>
             </div>
@@ -332,7 +332,7 @@ const ReportGeneration = () => {
                   {generatedReport.data.engagement.map((data, index) => (
                     <div key={index} className="flex flex-col items-center flex-1">
                       <div 
-                        className="bg-blue-500 rounded-t w-full mb-2"
+                        className="bg-blue-400 rounded-t-2xl w-full mb-2"
                         style={{ height: `${(data.logins / 70) * 150}px` }}
                         title={`${data.logins} logins`}
                       ></div>
@@ -351,7 +351,7 @@ const ReportGeneration = () => {
                   {generatedReport.data.revenue.map((data, index) => (
                     <div key={index} className="flex flex-col items-center flex-1">
                       <div 
-                        className="bg-green-500 rounded-t w-full mb-2"
+                        className="bg-green-400 rounded-t-2xl w-full mb-2"
                         style={{ height: `${(data.revenue / 7000) * 150}px` }}
                         title={`$${data.revenue}`}
                       ></div>
@@ -373,7 +373,7 @@ const ReportGeneration = () => {
               <button
                 onClick={handleGenerateReport}
                 disabled={isGenerating || Object.values(reportTypes).every(type => !type)}
-                className="flex items-center px-6 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white rounded-2xl transition-colors"
+                className="flex items-center px-6 py-2 bg-[#6e63e5] hover:bg- disabled:bg-gray-400 text-white rounded-2xl transition-colors"
               >
                 {isGenerating ? (
                   <>
@@ -396,7 +396,7 @@ const ReportGeneration = () => {
               {generatedReport && (
                 <button
                   onClick={handleDownloadReport}
-                  className="flex items-center px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                  className="flex items-center px-6 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -413,7 +413,7 @@ const ReportGeneration = () => {
                   type="checkbox"
                   checked={scheduleEnabled}
                   onChange={(e) => setScheduleEnabled(e.target.checked)}
-                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-yellow-600 focus:ring-[#6e63e5] border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">Schedule Auto-Reports</span>
               </label>
@@ -421,19 +421,19 @@ const ReportGeneration = () => {
           </div>
 
           {scheduleEnabled && (
-            <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-              <h3 className="text-sm font-medium text-yellow-800 mb-2">Auto-Report Settings</h3>
+            <div className="mt-4 p-4 bg-[#d3cefc] rounded-3xl">
+              <h3 className="text-sm font-medium text-[#6e63e5] mb-2">Auto-Report Settings</h3>
               <div className="flex flex-col sm:flex-row gap-4">
-                <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <select className="border border-[#6e63e5] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]">
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
                 </select>
                 <input
                   type="email"
                   placeholder="Email address for reports"
-                  className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                 />
-                <button className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md text-sm transition-colors">
+                <button className="px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl text-sm transition-colors">
                   Save Schedule
                 </button>
               </div>
