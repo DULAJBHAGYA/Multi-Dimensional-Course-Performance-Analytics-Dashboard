@@ -109,13 +109,13 @@ const AdminPanel = () => {
   const getStatusColor = (status) => {
     return status === 'active' 
       ? 'text-green-600 bg-green-100' 
-      : 'text-red-400 bg-red-50';
+      : 'text-red-400 bg-red-100';
   };
 
   const getRoleColor = (role) => {
     return role === 'admin' 
-      ? 'text-purple-600 bg-purple-100' 
-      : 'text-blue-600 bg-blue-100';
+      ? 'text-[#6e63e5] bg-[#D3CEFC]' 
+      : 'text-blue-400 bg-blue-100';
   };
 
   return (
@@ -179,7 +179,7 @@ const AdminPanel = () => {
                     placeholder="Search users..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
                   />
                   <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -188,7 +188,7 @@ const AdminPanel = () => {
                 <select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                  className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
                 >
                   <option value="all">All Roles</option>
                   <option value="instructor">Instructors</option>
@@ -197,7 +197,7 @@ const AdminPanel = () => {
               </div>
               <button
                 onClick={() => setShowAddUserForm(true)}
-                className="flex items-center px-4 py-2 bg-red-400 hover:bg-red-500 text-white rounded-md text-sm font-medium transition-colors"
+                className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl text-sm font-medium transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -209,7 +209,7 @@ const AdminPanel = () => {
             {/* Add User Form Modal */}
             {showAddUserForm && (
               <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-3xl bg-white">
                   <div className="mt-3">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Add New User</h3>
                     <form onSubmit={handleAddUser} className="space-y-4">
@@ -219,7 +219,7 @@ const AdminPanel = () => {
                           type="text"
                           value={newUser.name}
                           onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
                           required
                         />
                       </div>
@@ -229,7 +229,7 @@ const AdminPanel = () => {
                           type="email"
                           value={newUser.email}
                           onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
                           required
                         />
                       </div>
@@ -238,7 +238,7 @@ const AdminPanel = () => {
                         <select
                           value={newUser.role}
                           onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
                         >
                           <option value="instructor">Instructor</option>
                           <option value="admin">Admin</option>
@@ -249,7 +249,7 @@ const AdminPanel = () => {
                         <select
                           value={newUser.department}
                           onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
                         >
                           <option value="">Select Department</option>
                           <option value="Mathematics">Mathematics</option>
@@ -268,7 +268,7 @@ const AdminPanel = () => {
                           type="password"
                           value={newUser.password}
                           onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
                           placeholder="Auto-generate or set custom"
                         />
                       </div>
@@ -276,13 +276,13 @@ const AdminPanel = () => {
                         <button
                           type="button"
                           onClick={() => setShowAddUserForm(false)}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-colors"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-2 text-sm font-medium text-white bg-red-400 hover:bg-red-500 rounded-md transition-colors"
+                          className="px-4 py-2 text-sm font-medium text-white bg-[#6e63e5] hover:bg-[#4c46a0] rounded-2xl transition-colors"
                         >
                           Add User
                         </button>
@@ -382,7 +382,7 @@ const AdminPanel = () => {
             )}
 
             {/* Users Table */}
-            <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-white shadow-sm border border-gray-200 rounded-3xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -425,7 +425,7 @@ const AdminPanel = () => {
                             {/* Edit Button */}
                             <button
                               onClick={() => handleEditUser(user.id)}
-                              className="p-2 text-[#6e63e5] hover:text-[#4c46a0] hover:bg-[#f0f0ff] rounded-md transition-colors"
+                              className="p-2 text-[#6e63e5] hover:bg-[#D3CEFC] rounded-md transition-colors"
                               title="Edit User"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,8 +438,8 @@ const AdminPanel = () => {
                               onClick={() => handleToggleUserStatus(user.id)}
                               className={`p-2 rounded-md transition-colors ${
                                 user.status === 'active' 
-                                  ? 'text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50' 
-                                  : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                                  ? 'text-yellow-400 hover:bg-yellow-100' 
+                                  : 'text-green-400  hover:bg-green-100'
                               }`}
                               title={user.status === 'active' ? 'Deactivate User' : 'Activate User'}
                             >
@@ -457,7 +457,7 @@ const AdminPanel = () => {
                             {/* Delete Button */}
                             <button
                               onClick={() => handleDeleteUser(user.id)}
-                              className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                              className="p-2 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-md transition-colors"
                               title="Delete User"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -480,28 +480,28 @@ const AdminPanel = () => {
           <div className="space-y-6">
             {/* High-Level Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{platformMetrics.totalInstructors}</div>
+                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.totalInstructors}</div>
                   <div className="text-sm text-gray-600">Total Instructors</div>
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{platformMetrics.totalCourses}</div>
+                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.totalCourses}</div>
                   <div className="text-sm text-gray-600">Total Courses</div>
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{platformMetrics.totalStudents.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.totalStudents.toLocaleString()}</div>
                   <div className="text-sm text-gray-600">Total Students</div>
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.overallCompletionRate}%</div>
                   <div className="text-sm text-gray-600">Completion Rate</div>
@@ -511,30 +511,30 @@ const AdminPanel = () => {
 
             {/* Additional Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-red-400">{platformMetrics.dropoutRate}%</div>
+                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.dropoutRate}%</div>
                   <div className="text-sm text-gray-600">Dropout Rate</div>
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{platformMetrics.activeUsers}</div>
+                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.activeUsers}</div>
                   <div className="text-sm text-gray-600">Active Users</div>
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-600">{platformMetrics.inactiveUsers}</div>
+                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.inactiveUsers}</div>
                   <div className="text-sm text-gray-600">Inactive Users</div>
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">{platformMetrics.dailyLogins}</div>
+                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.dailyLogins}</div>
                   <div className="text-sm text-gray-600">Daily Logins</div>
                 </div>
               </div>
@@ -543,14 +543,14 @@ const AdminPanel = () => {
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Courses per Instructor Bar Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Courses per Instructor</h3>
                 <div className="h-64 flex items-end justify-between space-x-2">
                   {coursesPerInstructor.map((instructor, index) => (
                     <div key={index} className="flex flex-col items-center flex-1">
                       <div 
-                        className="bg-blue-500 rounded-t w-full mb-2"
-                        style={{ height: `${(instructor.courses / 15) * 150}px` }}
+                        className={`${index % 2 === 0 ? 'bg-[#D3CEFC]' : 'bg-[#6e63e5]'} rounded-2xl w-full mb-2 transition-all duration-300 ${index % 2 === 0 ? 'hover:bg-indigo-300' : 'hover:bg-[#4c46a0]'}`}
+                        style={{ height: `${(instructor.courses / 10) * 150}px` }}
                         title={`${instructor.courses} courses`}
                       ></div>
                       <span className="text-xs text-gray-600 text-center">{instructor.instructor.split(' ')[1]}</span>
@@ -560,13 +560,13 @@ const AdminPanel = () => {
               </div>
 
               {/* Student Growth Line Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Growth Trend</h3>
                 <div className="h-64 flex items-end justify-between space-x-2">
                   {studentGrowthData.map((data, index) => (
                     <div key={index} className="flex flex-col items-center flex-1">
                       <div 
-                        className="bg-green-500 rounded-t w-full"
+                        className={`${index % 2 === 0 ? 'bg-[#D3CEFC]' : 'bg-[#6e63e5]'} rounded-2xl w-full mb-2 transition-all duration-300 ${index % 2 === 0 ? 'hover:bg-indigo-300' : 'hover:bg-[#4c46a0]'}`}
                         style={{ height: `${((data.students - 1200) / 250) * 150}px` }}
                         title={`${data.students} students`}
                       ></div>
@@ -578,12 +578,12 @@ const AdminPanel = () => {
             </div>
 
             {/* Role Distribution Pie Chart */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Role Distribution</h3>
               <div className="flex items-center justify-center">
                 <div className="w-64 h-64 relative">
-                  <div className="absolute inset-0 rounded-full border-8 border-blue-500" style={{ clipPath: 'polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%)' }}></div>
-                  <div className="absolute inset-0 rounded-full border-8 border-purple-500" style={{ clipPath: 'polygon(50% 50%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%)' }}></div>
+                  <div className="absolute inset-0 rounded-full border-8 border-[#d3cefc]" style={{ clipPath: 'polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%)' }}></div>
+                  <div className="absolute inset-0 rounded-full border-8 border-[#6e63e5]" style={{ clipPath: 'polygon(50% 50%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%)' }}></div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-gray-900">{roleDistribution[0].count + roleDistribution[1].count}</div>
@@ -594,11 +594,11 @@ const AdminPanel = () => {
               </div>
               <div className="mt-4 flex justify-center space-x-6">
                 <div className="flex items-center">
-                  <div className="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+                  <div className="w-4 h-4 bg-[#6e63e5] rounded mr-2"></div>
                   <span className="text-sm text-gray-600">Instructors ({roleDistribution[0].percentage}%)</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-4 h-4 bg-purple-500 rounded mr-2"></div>
+                  <div className="w-4 h-4 bg-[#d3cefc] rounded mr-2"></div>
                   <span className="text-sm text-gray-600">Admins ({roleDistribution[1].percentage}%)</span>
                 </div>
               </div>
@@ -608,8 +608,8 @@ const AdminPanel = () => {
 
         {/* Security Settings Tab */}
         {activeTab === 'security' && (
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="space-y-2">
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Access Control & Security Settings</h3>
               
               <div className="space-y-6">
@@ -670,24 +670,6 @@ const AdminPanel = () => {
                   </div>
                 </div>
 
-                {/* Bulk Actions */}
-                <div>
-                  <h4 className="text-md font-medium text-gray-900 mb-3">Bulk Actions</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors">
-                      Force Password Reset (All Users)
-                    </button>
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-red-400 hover:bg-red-500 rounded-md transition-colors">
-                      Deactivate Inactive Users
-                    </button>
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors">
-                      Export User Data
-                    </button>
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors">
-                      Send Welcome Emails
-                    </button>
-                  </div>
-                </div>
 
                 {/* Advanced Security Settings */}
                 <div>
@@ -716,17 +698,17 @@ const AdminPanel = () => {
                 <div>
                   <h4 className="text-md font-medium text-gray-900 mb-3">System Maintenance</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 border border-gray-200 rounded-lg">
+                    <div className="p-4 border border-gray-200 rounded-3xl">
                       <h5 className="text-sm font-medium text-gray-900 mb-2">Database Cleanup</h5>
                       <p className="text-xs text-gray-600 mb-3">Remove old logs and temporary data</p>
-                      <button className="px-3 py-1 text-xs font-medium text-white bg-gray-600 hover:bg-gray-700 rounded transition-colors">
+                      <button className="px-3 py-1 text-xs font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-xl transition-colors">
                         Clean Database
                       </button>
                     </div>
-                    <div className="p-4 border border-gray-200 rounded-lg">
+                    <div className="p-4 border border-gray-200 rounded-3xl">
                       <h5 className="text-sm font-medium text-gray-900 mb-2">Cache Management</h5>
                       <p className="text-xs text-gray-600 mb-3">Clear system cache for better performance</p>
-                      <button className="px-3 py-1 text-xs font-medium text-white bg-gray-600 hover:bg-gray-700 rounded transition-colors">
+                      <button className="px-3 py-1 text-xs font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-xl transition-colors">
                         Clear Cache
                       </button>
                     </div>
