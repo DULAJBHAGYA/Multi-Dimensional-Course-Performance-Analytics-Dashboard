@@ -82,10 +82,10 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
     <div className="w-full bg-white h-screen flex flex-col">
       {/* Mobile Close Button */}
       <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-indigo-600">EduAnalytics</h1>
+        <h1 className="text-xl font-bold text-[#6e63e5]">EduAnalytics</h1>
         <button
           onClick={onClose}
-          className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -95,7 +95,7 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
 
       {/* Logo/Brand - Desktop */}
       <div className="hidden lg:block p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-indigo-600">EduAnalytics</h1>
+        <h1 className="text-xl font-bold text-[#6e63e5]">EduAnalytics</h1>
         <p className="text-sm text-gray-500 mt-1">
           {user?.role === 'admin' ? 'Administrator' : 'Instructor'} Portal
         </p>
@@ -104,8 +104,8 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
       {/* User Info */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-            <span className="text-indigo-600 font-semibold text-sm">
+          <div className="w-10 h-10 bg-[#D3CEFC] rounded-full flex items-center justify-center">
+            <span className="text-[#6e63e5] font-semibold text-sm">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </span>
           </div>
@@ -126,7 +126,7 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
                 onClick={() => onClose && onClose()}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive(item.path)
-                    ? 'bg-indigo-50 text-indigo-700'
+                    ? 'bg-[#D3CEFC] text-[#4c46a0]'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
@@ -142,7 +142,7 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
       <div className="p-4 border-t border-gray-200">
         <button
           onClick={handleLogoutClick}
-          className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-50 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

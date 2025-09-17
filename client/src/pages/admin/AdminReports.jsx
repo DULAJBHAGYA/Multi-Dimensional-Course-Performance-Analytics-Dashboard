@@ -108,7 +108,7 @@ const AdminReports = () => {
       case 'Excellent': return 'text-green-600 bg-green-100';
       case 'Good': return 'text-blue-600 bg-blue-100';
       case 'Normal': return 'text-gray-600 bg-gray-100';
-      case 'Open': return 'text-red-600 bg-red-100';
+      case 'Open': return 'text-red-400 bg-red-50';
       case 'In Progress': return 'text-yellow-600 bg-yellow-100';
       case 'Resolved': return 'text-green-600 bg-green-100';
       default: return 'text-gray-600 bg-gray-100';
@@ -117,7 +117,7 @@ const AdminReports = () => {
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'High': return 'text-red-600 bg-red-100';
+      case 'High': return 'text-red-400 bg-red-50';
       case 'Medium': return 'text-yellow-600 bg-yellow-100';
       case 'Low': return 'text-green-600 bg-green-100';
       default: return 'text-gray-600 bg-gray-100';
@@ -214,7 +214,7 @@ const AdminReports = () => {
             <button
               onClick={handleGenerateReport}
               disabled={isGenerating}
-              className="flex items-center px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+              className="flex items-center px-6 py-2 bg-red-400 hover:bg-red-500 disabled:bg-gray-400 text-white rounded-lg transition-colors"
             >
               {isGenerating ? (
                 <>
@@ -261,7 +261,7 @@ const AdminReports = () => {
           
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-center">
-              <div className="text-2xl font-bold text-indigo-600">{systemOverview.systemUptime}%</div>
+              <div className="text-2xl font-bold text-[#6e63e5]">{systemOverview.systemUptime}%</div>
               <div className="text-sm text-gray-600">System Uptime</div>
             </div>
           </div>
@@ -275,7 +275,7 @@ const AdminReports = () => {
           
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">+{systemOverview.monthlyGrowth}%</div>
+              <div className="text-2xl font-bold text-red-400">+{systemOverview.monthlyGrowth}%</div>
               <div className="text-sm text-gray-600">Monthly Growth</div>
             </div>
           </div>
