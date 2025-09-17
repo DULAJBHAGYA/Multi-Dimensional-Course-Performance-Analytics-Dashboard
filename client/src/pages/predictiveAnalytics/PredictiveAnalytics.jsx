@@ -162,7 +162,7 @@ const PredictiveAnalytics = () => {
               <select 
                 value={timeHorizon} 
                 onChange={(e) => setTimeHorizon(e.target.value)}
-                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 <option value="7d">Next 7 days</option>
                 <option value="30d">Next 30 days</option>
@@ -172,7 +172,7 @@ const PredictiveAnalytics = () => {
               <select 
                 value={selectedCourse} 
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 <option value="all">All Courses</option>
                 <option value="math101">Mathematics 101</option>
@@ -527,7 +527,7 @@ const PredictiveAnalytics = () => {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Ask about your predictions..."
-                    className="flex-1 border border-gray-300 rounded-3xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 border border-gray-300 rounded-3xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                   />
                   <button
                     type="submit"

@@ -146,7 +146,7 @@ const AdminReports = () => {
               <select 
                 value={selectedReport} 
                 onChange={(e) => setSelectedReport(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 <option value="system">System Overview</option>
                 <option value="users">User Analytics</option>
@@ -163,7 +163,7 @@ const AdminReports = () => {
               <select 
                 value={dateRange} 
                 onChange={(e) => setDateRange(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -182,13 +182,13 @@ const AdminReports = () => {
                     type="date"
                     value={customDateRange.start}
                     onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                   />
                   <input
                     type="date"
                     value={customDateRange.end}
                     onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                   />
                 </div>
               </div>
@@ -200,7 +200,7 @@ const AdminReports = () => {
               <select 
                 value={exportFormat} 
                 onChange={(e) => setExportFormat(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
                 <option value="pdf">PDF</option>
                 <option value="xlsx">Excel (XLSX)</option>
@@ -288,7 +288,7 @@ const AdminReports = () => {
               <h2 className="text-lg font-semibold text-gray-900">Generated Report Content</h2>
               <button
                 onClick={handleDownloadReport}
-                className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -359,7 +359,7 @@ const AdminReports = () => {
                   {revenueData.map((data, index) => (
                     <div key={index} className="flex flex-col items-center flex-1">
                       <div 
-                        className="bg-red-500 rounded-t w-full mb-2"
+                        className="bg-red-400 rounded-t-2xl w-full mb-2"
                         style={{ height: `${(data.revenue / 30000) * 150}px` }}
                         title={`$${data.revenue.toLocaleString()}`}
                       ></div>
@@ -393,7 +393,14 @@ const AdminReports = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.courses}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.students.toLocaleString()}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${instructor.revenue.toLocaleString()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">⭐ {instructor.rating}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div className="flex items-center">
+                              <svg className="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                              {instructor.rating}
+                            </div>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(instructor.status)}`}>
                               {instructor.status}

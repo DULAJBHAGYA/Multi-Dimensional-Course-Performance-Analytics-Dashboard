@@ -179,7 +179,7 @@ const AdminPanel = () => {
                     placeholder="Search users..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                   />
                   <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -188,7 +188,7 @@ const AdminPanel = () => {
                 <select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                  className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                 >
                   <option value="all">All Roles</option>
                   <option value="instructor">Instructors</option>
@@ -219,7 +219,7 @@ const AdminPanel = () => {
                           type="text"
                           value={newUser.name}
                           onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                           required
                         />
                       </div>
@@ -229,7 +229,7 @@ const AdminPanel = () => {
                           type="email"
                           value={newUser.email}
                           onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                           required
                         />
                       </div>
@@ -238,7 +238,7 @@ const AdminPanel = () => {
                         <select
                           value={newUser.role}
                           onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                         >
                           <option value="instructor">Instructor</option>
                           <option value="admin">Admin</option>
@@ -249,7 +249,7 @@ const AdminPanel = () => {
                         <select
                           value={newUser.department}
                           onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                         >
                           <option value="">Select Department</option>
                           <option value="Mathematics">Mathematics</option>
@@ -268,7 +268,7 @@ const AdminPanel = () => {
                           type="password"
                           value={newUser.password}
                           onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                           placeholder="Auto-generate or set custom"
                         />
                       </div>
@@ -296,7 +296,7 @@ const AdminPanel = () => {
             {/* Edit User Form Modal */}
             {editingUser && (
               <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-2xl bg-white">
                   <div className="mt-3">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Edit User</h3>
                     <form onSubmit={handleUpdateUser} className="space-y-4">
@@ -306,7 +306,7 @@ const AdminPanel = () => {
                           type="text"
                           value={editingUser.name}
                           onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                           required
                         />
                       </div>
@@ -316,7 +316,7 @@ const AdminPanel = () => {
                           type="email"
                           value={editingUser.email}
                           onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                           required
                         />
                       </div>
@@ -325,7 +325,7 @@ const AdminPanel = () => {
                         <select
                           value={editingUser.role}
                           onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                         >
                           <option value="instructor">Instructor</option>
                           <option value="admin">Admin</option>
@@ -336,7 +336,7 @@ const AdminPanel = () => {
                         <select
                           value={editingUser.department}
                           onChange={(e) => setEditingUser({ ...editingUser, department: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                         >
                           <option value="">Select Department</option>
                           <option value="Mathematics">Mathematics</option>
@@ -354,7 +354,7 @@ const AdminPanel = () => {
                         <select
                           value={editingUser.status}
                           onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                         >
                           <option value="active">Active</option>
                           <option value="inactive">Inactive</option>
@@ -364,13 +364,13 @@ const AdminPanel = () => {
                         <button
                           type="button"
                           onClick={() => setEditingUser(null)}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-colors"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-2 text-sm font-medium text-white bg-red-400 hover:bg-red-500 rounded-md transition-colors"
+                          className="px-4 py-2 text-sm font-medium text-white bg-[#6e63e5] hover:bg-[#4c46a0] rounded-2xl transition-colors"
                         >
                           Update User
                         </button>
@@ -618,15 +618,15 @@ const AdminPanel = () => {
                   <h4 className="text-md font-medium text-gray-900 mb-3">Password Policy</h4>
                   <div className="space-y-3">
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" defaultChecked />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Require strong passwords (8+ characters, mixed case, numbers)</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" defaultChecked />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Force password reset every 90 days</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
                       <span className="ml-2 text-sm text-gray-700">Prevent password reuse (last 5 passwords)</span>
                     </label>
                   </div>
@@ -637,15 +637,15 @@ const AdminPanel = () => {
                   <h4 className="text-md font-medium text-gray-900 mb-3">Account Security</h4>
                   <div className="space-y-3">
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" defaultChecked />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Enable two-factor authentication for admins</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
                       <span className="ml-2 text-sm text-gray-700">Require email verification for new accounts</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" defaultChecked />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Lock accounts after 5 failed login attempts</span>
                     </label>
                   </div>
@@ -656,15 +656,15 @@ const AdminPanel = () => {
                   <h4 className="text-md font-medium text-gray-900 mb-3">System Access</h4>
                   <div className="space-y-3">
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" defaultChecked />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Allow instructors to create courses</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
                       <span className="ml-2 text-sm text-gray-700">Require admin approval for new courses</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" defaultChecked />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Enable user self-registration</span>
                     </label>
                   </div>
@@ -676,19 +676,19 @@ const AdminPanel = () => {
                   <h4 className="text-md font-medium text-gray-900 mb-3">Advanced Security Settings</h4>
                   <div className="space-y-3">
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
                       <span className="ml-2 text-sm text-gray-700">Enable IP whitelist for admin access</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" defaultChecked />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Log all admin actions for audit trail</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
                       <span className="ml-2 text-sm text-gray-700">Require admin approval for instructor role changes</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-red-400 border-gray-300 rounded" defaultChecked />
+                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Send security alerts for suspicious activities</span>
                     </label>
                   </div>
