@@ -1,9 +1,36 @@
 // Utility functions for chart data processing and configuration
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
 
-// Chart color palettes
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+// Chart color palettes - keeping existing custom colors
 export const colorPalettes = {
   primary: [
-    '#3B82F6', // blue-500
+    '#6e63e5', // Custom purple
     '#10B981', // emerald-500
     '#F59E0B', // amber-500
     '#EF4444', // red-500
@@ -13,7 +40,7 @@ export const colorPalettes = {
     '#F97316', // orange-500
   ],
   pastel: [
-    '#93C5FD', // blue-300
+    '#D3CEFC', // Custom purple pastel
     '#6EE7B7', // emerald-300
     '#FDE68A', // amber-300
     '#FCA5A5', // red-300
@@ -43,20 +70,30 @@ export const generateLineChartData = (data, xField, yField, label) => {
       backgroundColor: colorPalettes.primary[0] + '20',
       tension: 0.4,
       fill: false,
+      pointBackgroundColor: colorPalettes.primary[0],
+      pointBorderColor: colorPalettes.primary[0],
+      pointRadius: 4,
+      pointHoverRadius: 6,
     }]
   };
 };
 
-// Generate chart data for bar charts
+// Generate chart data for bar charts with alternating colors
 export const generateBarChartData = (data, xField, yField, label) => {
   return {
     labels: data.map(item => item[xField]),
     datasets: [{
       label: label || yField,
       data: data.map(item => item[yField]),
-      backgroundColor: colorPalettes.primary[0],
-      borderColor: colorPalettes.primary[0],
-      borderWidth: 1,
+      backgroundColor: data.map((_, index) => 
+        index % 2 === 0 ? colorPalettes.pastel[0] : colorPalettes.primary[0]
+      ),
+      borderColor: data.map((_, index) => 
+        index % 2 === 0 ? colorPalettes.pastel[0] : colorPalettes.primary[0]
+      ),
+      borderWidth: 0,
+      borderRadius: 12, // rounded-xl equivalent
+      borderSkipped: false,
     }]
   };
 };
@@ -97,6 +134,7 @@ export const getChartOptions = (type = 'line', title = '') => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
+        display: false, // Hide legend by default to match existing design
         position: 'top',
       },
       title: {
@@ -106,6 +144,15 @@ export const getChartOptions = (type = 'line', title = '') => {
           size: 16,
           weight: 'bold'
         }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#6e63e5',
+        borderWidth: 1,
+        cornerRadius: 8,
+        displayColors: true,
       }
     }
   };
@@ -116,17 +163,28 @@ export const getChartOptions = (type = 'line', title = '') => {
       scales: {
         x: {
           display: true,
-          title: {
-            display: true,
-            text: 'Time'
+          grid: {
+            display: false,
+          },
+          ticks: {
+            color: '#6B7280',
+            font: {
+              size: 12
+            }
           }
         },
         y: {
           display: true,
-          title: {
-            display: true,
-            text: 'Value'
-          }
+          grid: {
+            color: '#F3F4F6',
+          },
+          ticks: {
+            color: '#6B7280',
+            font: {
+              size: 12
+            }
+          },
+          beginAtZero: true
         }
       }
     };
@@ -138,18 +196,50 @@ export const getChartOptions = (type = 'line', title = '') => {
       scales: {
         x: {
           display: true,
-          title: {
-            display: true,
-            text: 'Category'
+          grid: {
+            display: false,
+          },
+          ticks: {
+            color: '#6B7280',
+            font: {
+              size: 12
+            }
           }
         },
         y: {
           display: true,
-          title: {
-            display: true,
-            text: 'Count'
+          grid: {
+            color: '#F3F4F6',
+          },
+          ticks: {
+            color: '#6B7280',
+            font: {
+              size: 12
+            }
           },
           beginAtZero: true
+        }
+      }
+    };
+  }
+
+  if (type === 'pie') {
+    return {
+      ...baseOptions,
+      plugins: {
+        ...baseOptions.plugins,
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: '#6B7280',
+            font: {
+              size: 12
+            },
+            padding: 20,
+            usePointStyle: true,
+            pointStyle: 'circle'
+          }
         }
       }
     };

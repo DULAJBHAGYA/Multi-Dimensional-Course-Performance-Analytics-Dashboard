@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { processedData } from '../../data/mockData';
+import { Bar, Line, Pie } from 'react-chartjs-2';
+import { generateBarChartData, generateLineChartData, generatePieChartData, getChartOptions } from '../../utils/chartUtils';
 
 const CourseAnalytics = () => {
   const { user } = useAuth();
@@ -75,6 +77,12 @@ const CourseAnalytics = () => {
     { title: 'Testing Strategies', views: 312, completion: 55 },
     { title: 'Performance Optimization', views: 345, completion: 61 }
   ];
+
+  // Chart data using Chart.js format
+  const enrollmentTrendChartData = generateBarChartData(enrollmentTrend, 'month', 'enrollments', 'Enrollments');
+  const progressDistributionChartData = generateBarChartData(progressDistribution, 'range', 'students', 'Students');
+  const dropOffPointsChartData = generateBarChartData(dropOffPoints, 'lesson', 'dropOff', 'Drop Off %');
+  const ratingsBreakdownChartData = generatePieChartData(ratingsBreakdown, 'stars', 'count');
 
   const recentReviews = [
     { student: 'John Doe', rating: 5, comment: 'Excellent course! Very well structured and easy to follow.', date: '2 days ago' },
@@ -230,41 +238,22 @@ const CourseAnalytics = () => {
           {/* Enrollment Trend */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Enrollment Trend</h3>
-            <div className="h-64 flex items-end justify-between space-x-2">
-              {enrollmentTrend.map((data, index) => (
-                <div key={index} className="flex flex-col items-center flex-1">
-                  <div 
-                    className={`${index % 2 === 0 ? 'bg-[#D3CEFC]' : 'bg-[#6e63e5]'} rounded-2xl w-full mb-2 transition-all duration-300 ${index % 2 === 0 ? 'hover:bg-indigo-300' : 'hover:bg-[#4c46a0]'}`}
-                    style={{ height: `${(data.enrollments / 200) * 200}px` }}
-                  ></div>
-                  <span className="text-xs text-gray-600">{data.month}</span>
-                  <span className="text-xs font-medium text-gray-900">{data.enrollments}</span>
-                </div>
-              ))}
+            <div className="h-64">
+              <Bar 
+                data={enrollmentTrendChartData} 
+                options={getChartOptions('bar', '')}
+              />
             </div>
           </div>
 
           {/* Progress Distribution */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Progress Distribution</h3>
-            <div className="space-y-4">
-              {progressDistribution.map((data, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{data.range}</p>
-                    <p className="text-xs text-gray-500">{data.students} students</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-[#6e63e5] h-2 rounded-full"
-                        style={{ width: `${(data.students / 300) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 w-12 text-right">{data.students}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="h-64">
+              <Bar 
+                data={progressDistributionChartData} 
+                options={getChartOptions('bar', '')}
+              />
             </div>
           </div>
         </div>
@@ -274,54 +263,22 @@ const CourseAnalytics = () => {
           {/* Drop-off Points */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Drop-off Points</h3>
-            <div className="space-y-4">
-              {dropOffPoints.map((data, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{data.lesson}</p>
-                    <p className="text-xs text-gray-500">{data.dropOff}% drop-off rate</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-20 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-[#6e63e5] h-2 rounded-full"
-                        style={{ width: `${data.dropOff}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 w-12 text-right">{data.dropOff}%</span>
-                  </div>
-                </div>
-              ))}
+            <div className="h-64">
+              <Bar 
+                data={dropOffPointsChartData} 
+                options={getChartOptions('bar', '')}
+              />
             </div>
           </div>
 
           {/* Ratings Breakdown */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Ratings Breakdown</h3>
-            <div className="space-y-3">
-              {ratingsBreakdown.map((data, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <svg key={i} className={`w-4 h-4 ${i < data.stars ? 'text-[#6e63e5]' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                    </div>
-                    <span className="text-sm text-gray-600">{data.stars} star{data.stars !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-20 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-[#6e63e5] h-2 rounded-full"
-                        style={{ width: `${data.percentage}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 w-12 text-right">{data.count}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="h-64">
+              <Pie 
+                data={ratingsBreakdownChartData} 
+                options={getChartOptions('pie', '')}
+              />
             </div>
           </div>
         </div>
