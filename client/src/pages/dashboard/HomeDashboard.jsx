@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { processedData } from '../../data/mockData';
+import { Bar, Line } from 'react-chartjs-2';
+import { generateBarChartData, generateLineChartData, getChartOptions } from '../../utils/chartUtils';
 
 const HomeDashboard = () => {
   const { user } = useAuth();
@@ -30,6 +32,10 @@ const HomeDashboard = () => {
     performance: course.completionRate,
     status: 'active'
   }));
+
+  // Chart data using Chart.js format
+  const performanceChartData = generateBarChartData(performanceData, 'month', 'performance', 'Performance');
+  const coursePerformanceChartData = generateBarChartData(courseData, 'name', 'performance', 'Course Performance');
 
   const recentActivity = [
     { type: 'submission', course: 'Mathematics 101', student: 'John Doe', time: '2 hours ago' },
@@ -135,41 +141,22 @@ const HomeDashboard = () => {
           {/* Performance Trend Chart */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Trend</h3>
-            <div className="h-64 flex items-end justify-between space-x-2">
-              {performanceData.map((data, index) => (
-                <div key={index} className="flex flex-col items-center flex-1">
-                  <div 
-                    className={`${index % 2 === 0 ? 'bg-[#D3CEFC]' : 'bg-[#6e63e5]'} rounded-2xl w-full mb-2 transition-all duration-300 ${index % 2 === 0 ? 'hover:bg-indigo-300' : 'hover:bg-[#4c46a0]'}`}
-                    style={{ height: `${(data.performance / 100) * 200}px` }}
-                  ></div>
-                  <span className="text-xs text-gray-400">{data.month}</span>
-                  <span className="text-xs font-medium text-gray-500">{data.performance}%</span>
-                </div>
-              ))}
+            <div className="h-64">
+              <Bar 
+                data={performanceChartData} 
+                options={getChartOptions('bar', '')}
+              />
             </div>
           </div>
 
-          {/* Course Distribution */}
+          {/* Course Performance Chart */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Performance</h3>
-            <div className="space-y-4">
-              {courseData.slice(0, 5).map((course, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{course.name}</p>
-                    <p className="text-xs text-gray-500">{course.students} students</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-20 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-[#6e63e5] h-2 rounded-xl"
-                        style={{ width: `${course.performance}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-300 w-12 text-right">{course.performance}%</span>
-                  </div>
-                </div>
-              ))}
+            <div className="h-64">
+              <Bar 
+                data={coursePerformanceChartData} 
+                options={getChartOptions('bar', '')}
+              />
             </div>
           </div>
         </div>

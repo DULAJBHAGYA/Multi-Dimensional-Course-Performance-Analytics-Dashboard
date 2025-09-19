@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { processedData } from '../../data/mockData';
+import { Bar, Line, Pie } from 'react-chartjs-2';
+import { generateBarChartData, generateLineChartData, generatePieChartData, getChartOptions } from '../../utils/chartUtils';
 
 const AdminPanel = () => {
   const { user } = useAuth();
@@ -48,6 +50,11 @@ const AdminPanel = () => {
     { role: 'Instructors', count: processedData.roles.instructor, percentage: Math.round((processedData.roles.instructor / (processedData.roles.instructor + processedData.roles.admin)) * 100) },
     { role: 'Admins', count: processedData.roles.admin, percentage: Math.round((processedData.roles.admin / (processedData.roles.instructor + processedData.roles.admin)) * 100) }
   ];
+
+  // Chart data using Chart.js format
+  const coursesPerInstructorChartData = generateBarChartData(coursesPerInstructor, 'instructor', 'courses', 'Courses');
+  const studentGrowthChartData = generateLineChartData(studentGrowthData, 'month', 'students', 'Students');
+  const roleDistributionChartData = generatePieChartData(roleDistribution, 'role', 'count');
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -545,34 +552,22 @@ const AdminPanel = () => {
               {/* Courses per Instructor Bar Chart */}
               <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Courses per Instructor</h3>
-                <div className="h-64 flex items-end justify-between space-x-2">
-                  {coursesPerInstructor.map((instructor, index) => (
-                    <div key={index} className="flex flex-col items-center flex-1">
-                      <div 
-                        className={`${index % 2 === 0 ? 'bg-[#D3CEFC]' : 'bg-[#6e63e5]'} rounded-2xl w-full mb-2 transition-all duration-300 ${index % 2 === 0 ? 'hover:bg-indigo-300' : 'hover:bg-[#4c46a0]'}`}
-                        style={{ height: `${(instructor.courses / 10) * 150}px` }}
-                        title={`${instructor.courses} courses`}
-                      ></div>
-                      <span className="text-xs text-gray-600 text-center">{instructor.instructor.split(' ')[1]}</span>
-                    </div>
-                  ))}
+                <div className="h-64">
+                  <Bar 
+                    data={coursesPerInstructorChartData} 
+                    options={getChartOptions('bar', '')}
+                  />
                 </div>
               </div>
 
               {/* Student Growth Line Chart */}
               <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Growth Trend</h3>
-                <div className="h-64 flex items-end justify-between space-x-2">
-                  {studentGrowthData.map((data, index) => (
-                    <div key={index} className="flex flex-col items-center flex-1">
-                      <div 
-                        className={`${index % 2 === 0 ? 'bg-[#D3CEFC]' : 'bg-[#6e63e5]'} rounded-2xl w-full mb-2 transition-all duration-300 ${index % 2 === 0 ? 'hover:bg-indigo-300' : 'hover:bg-[#4c46a0]'}`}
-                        style={{ height: `${((data.students - 1200) / 250) * 150}px` }}
-                        title={`${data.students} students`}
-                      ></div>
-                      <span className="text-xs text-gray-600 mt-2">{data.month}</span>
-                    </div>
-                  ))}
+                <div className="h-64">
+                  <Line 
+                    data={studentGrowthChartData} 
+                    options={getChartOptions('line', '')}
+                  />
                 </div>
               </div>
             </div>
@@ -580,27 +575,11 @@ const AdminPanel = () => {
             {/* Role Distribution Pie Chart */}
             <div className="bg-white p-6 rounded-3xl shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Role Distribution</h3>
-              <div className="flex items-center justify-center">
-                <div className="w-64 h-64 relative">
-                  <div className="absolute inset-0 rounded-full border-8 border-[#d3cefc]" style={{ clipPath: 'polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%)' }}></div>
-                  <div className="absolute inset-0 rounded-full border-8 border-[#6e63e5]" style={{ clipPath: 'polygon(50% 50%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%)' }}></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-gray-900">{roleDistribution[0].count + roleDistribution[1].count}</div>
-                      <div className="text-sm text-gray-600">Total Users</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 flex justify-center space-x-6">
-                <div className="flex items-center">
-                  <div className="w-4 h-4 bg-[#6e63e5] rounded mr-2"></div>
-                  <span className="text-sm text-gray-600">Instructors ({roleDistribution[0].percentage}%)</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 bg-[#d3cefc] rounded mr-2"></div>
-                  <span className="text-sm text-gray-600">Admins ({roleDistribution[1].percentage}%)</span>
-                </div>
+              <div className="h-64">
+                <Pie 
+                  data={roleDistributionChartData} 
+                  options={getChartOptions('pie', '')}
+                />
               </div>
             </div>
           </div>

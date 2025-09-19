@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { processedData } from '../../data/mockData';
+import { Bar, Line, Pie } from 'react-chartjs-2';
+import { generateBarChartData, generateLineChartData, generatePieChartData, getChartOptions } from '../../utils/chartUtils';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -59,6 +61,12 @@ const AdminDashboard = () => {
     { grade: 'D', count: 0, percentage: 0.0 },
     { grade: 'F', count: 0, percentage: 0.0 }
   ];
+
+  // Chart data using Chart.js format
+  const performanceOverTimeChartData = generateLineChartData(performanceOverTime, 'semester', 'passRate', 'Pass Rate');
+  const courseDistributionChartData = generateBarChartData(courseDistribution, 'courseType', 'averagePerformance', 'Average Performance');
+  const campusPerformanceChartData = generateBarChartData(campusPerformance, 'campus', 'passRate', 'Pass Rate');
+  const gradeDistributionChartData = generatePieChartData(gradeDistribution, 'grade', 'count');
 
   // AI Predictive Insights
   const aiPredictions = {
@@ -241,26 +249,11 @@ const AdminDashboard = () => {
             {/* Performance Over Time Chart */}
             <div className="bg-white p-6 rounded-3xl shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Over Time</h3>
-              <div className="h-80 flex items-end justify-between space-x-4">
-                {performanceOverTime.map((data, index) => (
-                  <div key={index} className="flex flex-col items-center flex-1">
-                    <div className="w-full rounded-t mb-2 relative group">
-                      <div 
-                        className={`${index % 2 === 0 ? 'bg-[#D3CEFC]' : 'bg-[#6e63e5]'} rounded-2xl w-full mb-2 transition-all duration-300 ${index % 2 === 0 ? 'hover:bg-indigo-300' : 'hover:bg-[#4c46a0]'}`}
-                        style={{ height: `${(data.passRate / 80) * 200}px` }}
-                        title={`${data.semester}: ${data.passRate}% pass rate`}
-                      ></div>
-                      <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                        {data.passRate}%
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-600 font-medium">{data.semester}</div>
-                      <div className="text-xs text-gray-500">GPA: {data.gpa}</div>
-                      <div className="text-xs text-gray-500">{data.students} students</div>
-                    </div>
-                  </div>
-                ))}
+              <div className="h-80">
+                <Line 
+                  data={performanceOverTimeChartData} 
+                  options={getChartOptions('line', '')}
+                />
               </div>
             </div>
 
@@ -269,68 +262,22 @@ const AdminDashboard = () => {
               {/* Course Distribution Bar Chart */}
               <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Distribution by Performance</h3>
-                <div className="space-y-4">
-                  {courseDistribution.map((course, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm font-medium text-gray-900">{course.courseType}</span>
-                          <span className="text-sm text-gray-600">{course.averagePerformance}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-[#6e63e5] h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${course.averagePerformance}%` }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                          <span>{course.totalCourses} courses</span>
-                          <span>{course.students} students</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="h-64">
+                  <Bar 
+                    data={courseDistributionChartData} 
+                    options={getChartOptions('bar', '')}
+                  />
                 </div>
               </div>
 
               {/* Campus Performance Comparison */}
               <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Campus Performance Comparison</h3>
-                <div className="space-y-4">
-                  {campusPerformance.map((campus, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium text-gray-900">{campus.campus}</span>
-                          <span className="text-sm font-bold text-gray-900">{campus.passRate}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                          <div 
-                            className={`h-2 rounded-full transition-all duration-300 ${
-                              campus.passRate >= 80 ? 'bg-gradient-to-r from-[#d3cefc] to-[#6e63e5]' :
-                              campus.passRate >= 70 ? 'bg-gradient-to-r from-[#d3cefc] to-[#6e63e5]' :
-                              'bg-gradient-to-r from-[#4c46a0] to-[#6e63e5]'
-                            }`}
-                            style={{ width: `${campus.passRate}%` }}
-                          ></div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
-                          <div className="text-center">
-                            <div className="font-medium">{campus.students}</div>
-                            <div>Students</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-medium">{campus.courses}</div>
-                            <div>Courses</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-medium">{campus.instructors}</div>
-                            <div>Instructors</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="h-64">
+                  <Bar 
+                    data={campusPerformanceChartData} 
+                    options={getChartOptions('bar', '')}
+                  />
                 </div>
               </div>
             </div>
@@ -338,21 +285,11 @@ const AdminDashboard = () => {
             {/* Student Grade Distribution */}
             <div className="bg-white p-6 rounded-3xl shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Grade Distribution</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {gradeDistribution.map((grade, index) => (
-                  <div key={index} className="text-center">
-                    <div className={`w-full h-24 rounded-3xl flex items-center justify-center text-white font-bold text-lg mb-2 ${
-                      grade.grade.startsWith('A') ? 'bg-green-400' :
-                      grade.grade.startsWith('B') ? 'bg-blue-400' :
-                      grade.grade.startsWith('C') ? 'bg-yellow-400' :
-                      'bg-red-400'
-                    }`}>
-                      {grade.grade}
-                    </div>
-                    <div className="text-sm font-medium text-gray-900">{grade.count}</div>
-                    <div className="text-xs text-gray-500">{grade.percentage}%</div>
-                  </div>
-                ))}
+              <div className="h-64">
+                <Pie 
+                  data={gradeDistributionChartData} 
+                  options={getChartOptions('pie', '')}
+                />
               </div>
             </div>
 
