@@ -12,14 +12,6 @@ const AdminReports = () => {
   const [generatedReport, setGeneratedReport] = useState(null);
 
   // Mock data for admin reports
-  const systemOverview = {
-    totalUsers: 1247,
-    activeUsers: 892,
-    newRegistrations: 156,
-    systemUptime: 99.8,
-    totalRevenue: 89450,
-    monthlyGrowth: 18.5
-  };
 
   const userAnalytics = [
     { category: 'Students', count: 1124, percentage: 90.1, growth: '+12%' },
@@ -80,12 +72,10 @@ const AdminReports = () => {
         format: exportFormat,
         generatedAt: new Date(),
         data: {
-          systemOverview,
           userAnalytics,
           courseAnalytics,
           revenueData,
           instructorPerformance,
-          systemMetrics,
           supportTickets
         }
       };
@@ -236,50 +226,6 @@ const AdminReports = () => {
           </div>
         </div>
 
-        {/* System Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-400">{systemOverview.totalUsers.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Total Users</div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-pink-400">{systemOverview.activeUsers.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Active Users</div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-400">{systemOverview.newRegistrations}</div>
-              <div className="text-sm text-gray-600">New This Month</div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-[#6e63e5]">{systemOverview.systemUptime}%</div>
-              <div className="text-sm text-gray-600">System Uptime</div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">${systemOverview.totalRevenue.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Total Revenue</div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-400">+{systemOverview.monthlyGrowth}%</div>
-              <div className="text-sm text-gray-600">Monthly Growth</div>
-            </div>
-          </div>
-        </div>
 
         {/* Generated Report Content */}
         {generatedReport && (

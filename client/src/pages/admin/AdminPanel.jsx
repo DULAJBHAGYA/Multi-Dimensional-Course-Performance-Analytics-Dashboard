@@ -54,7 +54,26 @@ const AdminPanel = () => {
   // Chart data using Chart.js format
   const coursesPerInstructorChartData = generateBarChartData(coursesPerInstructor, 'instructor', 'courses', 'Courses');
   const studentGrowthChartData = generateLineChartData(studentGrowthData, 'month', 'students', 'Students');
-  const roleDistributionChartData = generatePieChartData(roleDistribution, 'role', 'count');
+  
+  // Custom role distribution chart data with custom colors
+  const roleDistributionChartData = {
+    labels: roleDistribution.map(item => item.role),
+    datasets: [{
+      data: roleDistribution.map(item => item.count),
+      backgroundColor: [
+        '#6e63e5', // Purple for Instructors
+        '#d3cefc', // Amber for Admins
+      ],
+      borderColor: '#ffffff',
+      borderWidth: 3,
+      hoverBackgroundColor: [
+        '#7C3AED', // Darker purple on hover
+        '#D97706', // Darker amber on hover
+      ],
+      hoverBorderColor: '#ffffff',
+      hoverBorderWidth: 4,
+    }]
+  };
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -105,13 +124,6 @@ const AdminPanel = () => {
     }
   };
 
-  const handleToggleUserStatus = (userId) => {
-    setUsers(users.map(u => 
-      u.id === userId 
-        ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' }
-        : u
-    ));
-  };
 
   const getStatusColor = (status) => {
     return status === 'active' 
@@ -356,17 +368,6 @@ const AdminPanel = () => {
                           <option value="Administration">Administration</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Status</label>
-                        <select
-                          value={editingUser.status}
-                          onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                        >
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
-                        </select>
-                      </div>
                       <div className="flex justify-end space-x-3">
                         <button
                           type="button"
@@ -440,26 +441,6 @@ const AdminPanel = () => {
                               </svg>
                             </button>
                             
-                            {/* Toggle Status Button */}
-                            <button
-                              onClick={() => handleToggleUserStatus(user.id)}
-                              className={`p-2 rounded-md transition-colors ${
-                                user.status === 'active' 
-                                  ? 'text-yellow-400 hover:bg-yellow-100' 
-                                  : 'text-green-400  hover:bg-green-100'
-                              }`}
-                              title={user.status === 'active' ? 'Deactivate User' : 'Activate User'}
-                            >
-                              {user.status === 'active' ? (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
-                                </svg>
-                              ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                              )}
-                            </button>
                             
                             {/* Delete Button */}
                             <button
@@ -611,24 +592,6 @@ const AdminPanel = () => {
                   </div>
                 </div>
 
-                {/* Account Security */}
-                <div>
-                  <h4 className="text-md font-medium text-gray-900 mb-3">Account Security</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
-                      <span className="ml-2 text-sm text-gray-700">Enable two-factor authentication for admins</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
-                      <span className="ml-2 text-sm text-gray-700">Require email verification for new accounts</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
-                      <span className="ml-2 text-sm text-gray-700">Lock accounts after 5 failed login attempts</span>
-                    </label>
-                  </div>
-                </div>
 
                 {/* System Access */}
                 <div>
@@ -650,28 +613,6 @@ const AdminPanel = () => {
                 </div>
 
 
-                {/* Advanced Security Settings */}
-                <div>
-                  <h4 className="text-md font-medium text-gray-900 mb-3">Advanced Security Settings</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
-                      <span className="ml-2 text-sm text-gray-700">Enable IP whitelist for admin access</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
-                      <span className="ml-2 text-sm text-gray-700">Log all admin actions for audit trail</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
-                      <span className="ml-2 text-sm text-gray-700">Require admin approval for instructor role changes</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
-                      <span className="ml-2 text-sm text-gray-700">Send security alerts for suspicious activities</span>
-                    </label>
-                  </div>
-                </div>
 
                 {/* System Maintenance */}
                 <div>
