@@ -12,7 +12,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start with false to avoid loading state
 
   useEffect(() => {
     // Check if user is logged in on app load
@@ -25,35 +25,53 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user');
       }
     }
-    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Import apiService dynamically to avoid circular dependency
+      const { default: apiService } = await import('../services/api');
+      const response = await apiService.login(email, password);
       
-      const userData = {
-        email,
-        name: email.split('@')[0],
-        role: 'admin',
-        id: Date.now().toString()
-      };
-      
-      console.log('Setting user data:', userData);
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      console.log('User set in context and localStorage');
-      return { success: true };
+      if (response.access_token) {
+        const userData = {
+          email: response.user.email,
+          name: response.user.name,
+          role: response.user.role,
+          id: response.user.id,
+          token: response.access_token,
+          campus: response.user.campus,
+          department: response.user.department,
+          username: response.user.username,
+          students: response.user.students
+        };
+        
+        console.log('Setting user data:', userData);
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('authToken', response.access_token);
+        console.log('User set in context and localStorage');
+        return { success: true, user: userData };
+      } else {
+        return { success: false, error: response.detail || 'Login failed' };
+      }
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error.message || 'Login failed. Please try again.' };
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      const { default: apiService } = await import('../services/api');
+      await apiService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('authToken');
+    }
   };
 
   const updateUser = (userData) => {
@@ -70,6 +88,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: !!user
   };
+
+  console.log('AuthProvider rendering with value:', value);
 
   return (
     <AuthContext.Provider value={value}>

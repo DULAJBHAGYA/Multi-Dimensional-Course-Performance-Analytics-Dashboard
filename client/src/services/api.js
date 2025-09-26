@@ -1,9 +1,7 @@
 // API service for communicating with FastAPI backend
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api';
   }
 
   // Generic request method
@@ -65,16 +63,41 @@ class ApiService {
     return this.request(endpoint, { method: 'DELETE' });
   }
 
-  // Authentication endpoints
+  // Firebase Authentication endpoints
   async login(email, password) {
-    return this.post('/auth/login', { email, password });
+    return this.post('/firebase/auth/v2/login', { email, password });
   }
 
   async logout() {
-    return this.post('/auth/logout');
+    return this.post('/firebase/auth/v2/logout');
   }
 
-  // Course analytics endpoints
+  // Firebase Dashboard endpoints
+  async getInstructorDashboard() {
+    return this.get('/firebase/dashboard/instructor');
+  }
+
+  async getAdminDashboard() {
+    return this.get('/firebase/dashboard/admin');
+  }
+
+  async getInstructorCourses() {
+    return this.get('/firebase/dashboard/instructor/courses');
+  }
+
+  async getInstructorStudents() {
+    return this.get('/firebase/dashboard/instructor/students');
+  }
+
+  async getInstructorAssignments() {
+    return this.get('/firebase/dashboard/instructor/assignments');
+  }
+
+  async getInstructorAnnouncements() {
+    return this.get('/firebase/dashboard/instructor/announcements');
+  }
+
+  // Legacy endpoints (keeping for backward compatibility)
   async getCourseAnalytics(filters = {}) {
     return this.get('/analytics/courses', filters);
   }
@@ -83,7 +106,6 @@ class ApiService {
     return this.get(`/analytics/courses/${courseId}/performance`);
   }
 
-  // Student analytics endpoints
   async getStudentAnalytics(filters = {}) {
     return this.get('/analytics/students', filters);
   }
@@ -92,7 +114,6 @@ class ApiService {
     return this.get(`/analytics/students/${studentId}/performance`);
   }
 
-  // Predictive analytics endpoints
   async getPredictiveInsights(filters = {}) {
     return this.get('/analytics/predictive', filters);
   }
@@ -101,7 +122,6 @@ class ApiService {
     return this.get(`/analytics/predictive/risk/${studentId}`);
   }
 
-  // Report generation endpoints
   async generateReport(reportType, filters = {}) {
     return this.post('/reports/generate', { reportType, filters });
   }
@@ -110,7 +130,6 @@ class ApiService {
     return this.get('/reports/history');
   }
 
-  // Admin endpoints
   async getUsers() {
     return this.get('/admin/users');
   }

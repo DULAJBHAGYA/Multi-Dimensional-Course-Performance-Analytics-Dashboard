@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.firebase_config import get_firestore_client
-from app.routes.auth import verify_token
+from app.routes.firebase_auth_updated import verify_token
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
@@ -147,7 +147,7 @@ async def get_instructor_dashboard_firestore(
             ),
             RecentActivityData(
                 type="submission", 
-                course=courses_data[1].get('courseName', 'Biology 201') if len(courses_data) > 1 else "Biology 201", 
+                course=courses_data[0].get('courseName', 'Biology 201') if courses_data else "Biology 201", 
                 student="Mike Johnson", 
                 time="1 day ago",
                 details="Lab report submitted",
@@ -270,14 +270,27 @@ async def get_admin_dashboard_firestore(
         for course in all_courses:
             # This is simplified - in reality you'd need to join with sections to get campus info
             campus_name = "Dubai"  # Default campus
+            if campus_name not in campus_breakdown:
+                campus_breakdown[campus_name] = {
+                    "total_courses": 0,
+                    "total_students": 0,
+                    "average_performance": 0,
+                    "total_instructors": 0
+                }
             campus_breakdown[campus_name]["total_courses"] += 1
             campus_breakdown[campus_name]["total_students"] += course.get('students', 0)
             campus_breakdown[campus_name]["average_performance"] += course.get('completion_rate', 0)
         
         for instructor in all_instructors:
             campus_name = instructor.get('campus', 'Dubai')
-            if campus_name in campus_breakdown:
-                campus_breakdown[campus_name]["total_instructors"] += 1
+            if campus_name not in campus_breakdown:
+                campus_breakdown[campus_name] = {
+                    "total_courses": 0,
+                    "total_students": 0,
+                    "average_performance": 0,
+                    "total_instructors": 0
+                }
+            campus_breakdown[campus_name]["total_instructors"] += 1
         
         # Calculate average performance per campus
         for campus in campus_breakdown:

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
-import { processedData } from '../../data/mockData';
+import apiService from '../../services/api';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { generateBarChartData, generateLineChartData, generatePieChartData, getChartOptions } from '../../utils/chartUtils';
 
@@ -11,16 +11,67 @@ const AdminDashboard = () => {
   const [selectedSemester, setSelectedSemester] = useState('all');
   const [selectedCourseType, setSelectedCourseType] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Real data for admin dashboard KPIs
-  const adminKPIs = {
-    totalStudents: processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0),
-    totalCourses: processedData.courses.length,
-    totalInstructors: processedData.roles.instructor,
-    overallPassRate: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
-    atRiskStudents: Math.round(processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0) * 0.12), // 12% at risk
-    totalCampuses: processedData.campuses.length,
-    activeSemesters: processedData.semesters.length
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const data = await apiService.getAdminDashboard();
+        setDashboardData(data);
+      } catch (err) {
+        console.error('Error fetching admin dashboard data:', err);
+        setError('Failed to load admin dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#6e63e5]"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-500 text-xl mb-4">⚠️</div>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Use real data from Firebase or fallback to mock data
+  const adminKPIs = dashboardData ? {
+    totalStudents: dashboardData.total_students || 0,
+    totalCourses: dashboardData.total_courses || 0,
+    totalInstructors: dashboardData.total_instructors || 0,
+    overallPassRate: dashboardData.overall_pass_rate || 0,
+    atRiskStudents: dashboardData.at_risk_students || 0,
+    totalCampuses: dashboardData.total_campuses || 0,
+    activeSemesters: dashboardData.active_semesters || 0
+  } : {
+    totalStudents: 0,
+    totalCourses: 0,
+    totalInstructors: 0,
+    overallPassRate: 0,
+    atRiskStudents: 0,
+    totalCampuses: 0,
+    activeSemesters: 0
   };
 
   // Performance over time data
@@ -31,22 +82,22 @@ const AdminDashboard = () => {
     { semester: 'Spring 2024', passRate: 78.5, gpa: 3.5, students: 1247 }
   ];
 
-  // Course distribution data from real courses
-  const courseDistribution = processedData.courses.map(course => ({
-    courseType: course.name,
-    averagePerformance: course.completionRate,
+  // Course distribution data from Firebase
+  const courseDistribution = dashboardData?.courses?.map(course => ({
+    courseType: course.courseName || course.name,
+    averagePerformance: course.average_performance || 0,
     totalCourses: 1,
-    students: course.totalEnrollments
-  }));
+    students: course.total_students || 0
+  })) || [];
 
-  // Campus performance comparison from real data
-  const campusPerformance = processedData.campuses.map(campus => ({
-    campus: campus.name,
-    passRate: campus.averagePerformance,
-    students: campus.totalStudents,
-    courses: campus.totalCourses,
-    instructors: Math.round(campus.totalStudents / 20) // Estimated instructors per campus
-  }));
+  // Campus performance comparison from Firebase
+  const campusPerformance = dashboardData?.campuses?.map(campus => ({
+    campus: campus.campusName || campus.name,
+    passRate: campus.average_performance || 0,
+    students: campus.total_students || 0,
+    courses: campus.total_courses || 0,
+    instructors: campus.total_instructors || 0
+  })) || [];
 
   // Student grade distribution
   const gradeDistribution = [
@@ -121,9 +172,9 @@ const AdminDashboard = () => {
                   className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                 >
                   <option value="all">All Semesters</option>
-                  {processedData.semesters.map(semester => (
-                    <option key={semester.name} value={semester.name.toLowerCase().replace(/\s+/g, '')}>
-                      {semester.name}
+                  {dashboardData?.semesters?.map(semester => (
+                    <option key={semester.semesterCode || semester.name} value={semester.semesterCode || semester.name}>
+                      {semester.semesterCode || semester.name}
                     </option>
                   ))}
                 </select>
@@ -136,9 +187,9 @@ const AdminDashboard = () => {
                   className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                 >
                   <option value="all">All Course Types</option>
-                  {processedData.courses.map(course => (
-                    <option key={course.code} value={course.code.toLowerCase()}>
-                      {course.name}
+                  {dashboardData?.courses?.map(course => (
+                    <option key={course.courseCode || course.code} value={course.courseCode || course.code}>
+                      {course.courseName || course.name}
                     </option>
                   ))}
                 </select>
@@ -151,9 +202,9 @@ const AdminDashboard = () => {
                   className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                 >
                   <option value="all">All Campuses</option>
-                  {processedData.campuses.map(campus => (
-                    <option key={campus.name} value={campus.name.toLowerCase().replace(/\s+/g, '')}>
-                      {campus.name}
+                  {dashboardData?.campuses?.map(campus => (
+                    <option key={campus.campusName || campus.name} value={campus.campusName || campus.name}>
+                      {campus.campusName || campus.name}
                     </option>
                   ))}
                 </select>
