@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 from app.routes import auth, dashboard, analytics, admin
-from app.routes import firebase_auth, firebase_dashboard
+from app.routes import firebase_auth, firebase_dashboard, firebase_auth_updated
 from app.database import engine, Base
 from app.models import user, course, analytics as analytics_models
 
@@ -35,6 +35,7 @@ app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 # Include Firebase routes
 app.include_router(firebase_auth.router, prefix="/api/firebase/auth", tags=["Firebase Authentication"])
+app.include_router(firebase_auth_updated.router, prefix="/api/firebase/auth/v2", tags=["Firebase Authentication V2"])
 app.include_router(firebase_dashboard.router, prefix="/api/firebase/dashboard", tags=["Firebase Dashboard"])
 
 @app.get("/")

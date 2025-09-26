@@ -1,20 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
-import { processedData } from '../../data/mockData';
+import apiService from '../../services/api';
 import { Bar, Line } from 'react-chartjs-2';
 import { generateBarChartData, generateLineChartData, getChartOptions } from '../../utils/chartUtils';
 
 const HomeDashboard = () => {
   const { user } = useAuth();
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Real data from dataset
-  const kpiData = {
-    totalStudents: processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0),
-    activeCourses: processedData.courses.length,
-    avgPerformance: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
-    completionRate: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length)
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const data = await apiService.getInstructorDashboard();
+        setDashboardData(data);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#6e63e5]"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-500 text-xl mb-4">⚠️</div>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Use real data from Firebase or fallback to mock data
+  const kpiData = dashboardData ? {
+    totalStudents: dashboardData.total_students || 0,
+    activeCourses: dashboardData.total_courses || 0,
+    avgPerformance: dashboardData.average_performance || 0,
+    completionRate: dashboardData.completion_rate || 0
+  } : {
+    totalStudents: 0,
+    activeCourses: 0,
+    avgPerformance: 0,
+    completionRate: 0
   };
 
   const performanceData = [
@@ -26,12 +74,12 @@ const HomeDashboard = () => {
     { month: 'Jun', performance: 87 }
   ];
 
-  const courseData = processedData.courses.map(course => ({
-    name: course.name,
-    students: course.totalEnrollments,
-    performance: course.completionRate,
+  const courseData = dashboardData?.courses?.map(course => ({
+    name: course.courseName || course.name,
+    students: course.total_students || 0,
+    performance: course.average_performance || 0,
     status: 'active'
-  }));
+  })) || [];
 
   // Chart data using Chart.js format
   const performanceChartData = generateBarChartData(performanceData, 'month', 'performance', 'Performance');

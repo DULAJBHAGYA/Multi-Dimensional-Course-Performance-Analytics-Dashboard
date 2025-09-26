@@ -32,8 +32,14 @@ const Login = () => {
       const result = await login(formData.email, formData.password);
       
       if (result.success) {
-        // Redirect to dashboard
-        navigate('/dashboard');
+        // Redirect based on user role
+        if (result.user.role === 'admin') {
+          navigate('/admin-dashboard');
+        } else if (result.user.role === 'instructor') {
+          navigate('/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         setError(result.error || 'Login failed. Please try again.');
       }
@@ -46,49 +52,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-white flex relative">
-      {/* Development Navigation */}
-      <div className="fixed top-4 right-4 z-50 bg-gray-800 text-white p-2 rounded-lg shadow-lg">
-        <div className="text-xs font-mono">
-          <div className="mb-1">Dev Navigation:</div>
-          <div className="space-y-1">
-            <Link to="/" className="block text-blue-300 hover:text-blue-100">Landing</Link>
-            <Link to="/login" className="block text-green-300 hover:text-green-100">Login</Link>
-            <button 
-              onClick={() => {
-                localStorage.setItem('user', JSON.stringify({
-                  email: 'instructor@example.com',
-                  name: 'Instructor User',
-                  role: 'instructor',
-                  id: 'instructor-user'
-                }));
-                window.location.href = '/dashboard';
-              }}
-              className="block text-yellow-300 hover:text-yellow-100 w-full text-left"
-            >
-              Login as Instructor
-            </button>
-            <button 
-              onClick={() => {
-                localStorage.setItem('user', JSON.stringify({
-                  email: 'admin@example.com',
-                  name: 'Admin User',
-                  role: 'admin',
-                  id: 'admin-user'
-                }));
-                window.location.href = '/dashboard';
-              }}
-              className="block text-red-300 hover:text-red-100 w-full text-left"
-            >
-              Login as Admin
-            </button>
-            <Link to="/dashboard" className="block text-yellow-300 hover:text-yellow-100">Dashboard</Link>
-            <Link to="/course-analytics" className="block text-purple-300 hover:text-purple-100">Course Analytics</Link>
-            <Link to="/predictive-analytics" className="block text-pink-300 hover:text-pink-100">Predictive</Link>
-            <Link to="/report-generation" className="block text-orange-300 hover:text-orange-100">Reports</Link>
-            <Link to="/admin" className="block text-red-300 hover:text-red-100">Admin</Link>
-          </div>
-        </div>
-      </div>
 
       {/* Vertical Divider Line */}
       <div className="hidden lg:block absolute left-1/2 top-1/4 bottom-1/4 w-px bg-gray-300 transform -translate-x-1/2"></div>
