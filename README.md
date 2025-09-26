@@ -2,7 +2,7 @@
 
 A comprehensive analytics dashboard for tracking course performance across multiple dimensions including students, instructors, courses, and campuses. Built with React.js frontend and FastAPI backend with Firebase integration.
 
-## 🚀 Features
+## Features
 
 ### Frontend (React.js)
 - **Interactive Dashboards**: Real-time analytics with Chart.js visualizations
@@ -28,7 +28,7 @@ Before setting up this project, ensure you have the following installed:
 - **Git** - [Download here](https://git-scm.com/)
 - **Firebase Account** - [Sign up here](https://firebase.google.com/)
 
-## 🛠️ Installation & Setup
+## Installation & Setup
 
 ### 1. Clone the Repository
 
@@ -199,7 +199,7 @@ Multi-Dimensional-Course-Performance-Analytics-Dashboard/
 └── FIREBASE_SETUP.md              # Detailed Firebase setup guide
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Frontend Configuration
 - **Port**: 5173 (Vite default)
@@ -213,7 +213,7 @@ Multi-Dimensional-Course-Performance-Analytics-Dashboard/
 - **Authentication**: JWT tokens
 - **CORS**: Enabled for frontend communication
 
-## 🎨 Customization
+## Customization
 
 ### Color Scheme
 The project uses a custom purple color scheme:
@@ -229,7 +229,7 @@ All charts use Chart.js with custom styling:
 - Custom tooltips and legends
 - Responsive design
 
-## 🚀 Deployment
+## Deployment
 
 ### Frontend Deployment (Vercel/Netlify)
 ```bash
@@ -250,7 +250,7 @@ cd server
 2. Enable Firebase Authentication if needed
 3. Set up proper user roles and permissions
 
-## 📊 Data Structure
+## Data Structure
 
 The dashboard works with the following data entities:
 - **Users**: Instructors and Admins with roles and permissions
@@ -258,7 +258,7 @@ The dashboard works with the following data entities:
 - **Campuses**: Multiple campus locations
 - **Analytics**: Performance data and insights
 
-## 🔐 Security
+## Security
 
 - JWT-based authentication
 - Role-based access control
@@ -266,7 +266,7 @@ The dashboard works with the following data entities:
 - CORS configuration
 - Environment variable protection
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -289,7 +289,7 @@ The dashboard works with the following data entities:
    - Delete `node_modules` and `package-lock.json`
    - Run `npm install` again
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
