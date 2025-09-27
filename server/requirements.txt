@@ -7,3 +7,5 @@ passlib[bcrypt]
 python-multipart
 python-dotenv
 alembic
+firebase-admin
+google-cloud-firestore

@@ -1,13 +1,14 @@
 // API service for communicating with FastAPI backend
 class ApiService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api';
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    this.refreshPromise = null;
   }
 
-  // Generic request method
+  // Generic request method with enhanced error handling and token refresh
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    const config = {
+    let config = {
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -16,7 +17,7 @@ class ApiService {
     };
 
     // Add auth token if available
-    const token = localStorage.getItem('authToken');
+    const token = this.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -24,8 +25,27 @@ class ApiService {
     try {
       const response = await fetch(url, config);
       
+      // Handle token expiration
+      if (response.status === 401 && token) {
+        const refreshed = await this.refreshToken();
+        if (refreshed) {
+          // Retry the request with new token
+          config.headers.Authorization = `Bearer ${this.getToken()}`;
+          const retryResponse = await fetch(url, config);
+          if (!retryResponse.ok) {
+            throw new Error(`HTTP error! status: ${retryResponse.status}`);
+          }
+          return await retryResponse.json();
+        } else {
+          // Refresh failed, redirect to login
+          this.handleAuthFailure();
+          throw new Error('Authentication failed');
+        }
+      }
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
 
       return await response.json();
@@ -65,11 +85,34 @@ class ApiService {
 
   // Firebase Authentication endpoints
   async login(email, password) {
-    return this.post('/firebase/auth/v2/login', { email, password });
+    const response = await this.post('/firebase/auth/v2/login', { email, password });
+    if (response.access_token) {
+      this.setToken(response.access_token);
+      this.setUser(response.user);
+    }
+    return response;
   }
 
   async logout() {
-    return this.post('/firebase/auth/v2/logout');
+    try {
+      await this.post('/firebase/auth/v2/logout');
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+    } finally {
+      this.clearAuth();
+    }
+  }
+
+  async getCurrentUser() {
+    return this.get('/firebase/auth/v2/me');
+  }
+
+  async getAllUsers() {
+    return this.get('/firebase/auth/v2/users');
+  }
+
+  async getTestCredentials() {
+    return this.get('/firebase/auth/v2/test-login');
   }
 
   // Firebase Dashboard endpoints
@@ -144,6 +187,74 @@ class ApiService {
 
   async deleteUser(userId) {
     return this.delete(`/admin/users/${userId}`);
+  }
+
+  // Token and authentication management
+  getToken() {
+    return localStorage.getItem('authToken');
+  }
+
+  setToken(token) {
+    localStorage.setItem('authToken', token);
+  }
+
+  getUser() {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+  }
+
+  setUser(user) {
+    localStorage.setItem('user', JSON.stringify(user));
+  }
+
+  clearAuth() {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+  }
+
+  isAuthenticated() {
+    const token = this.getToken();
+    const user = this.getUser();
+    return !!(token && user);
+  }
+
+  async refreshToken() {
+    // Prevent multiple simultaneous refresh attempts
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this._performTokenRefresh();
+    const result = await this.refreshPromise;
+    this.refreshPromise = null;
+    return result;
+  }
+
+  async _performTokenRefresh() {
+    try {
+      // For Firebase Auth, we would typically use the refresh token
+      // For now, we'll check if the current user is still valid
+      const user = this.getUser();
+      if (!user) return false;
+
+      // Try to get current user info to validate token
+      const currentUser = await this.getCurrentUser();
+      if (currentUser) {
+        return true; // Token is still valid
+      }
+      return false;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    }
+  }
+
+  handleAuthFailure() {
+    this.clearAuth();
+    // Redirect to login page
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   }
 }
 

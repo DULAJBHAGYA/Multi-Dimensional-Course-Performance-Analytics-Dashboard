@@ -2,7 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { FilterProvider } from './context/FilterContext';
+import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import SessionManager from './components/common/SessionManager';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -17,10 +19,12 @@ import AdminReports from './pages/admin/AdminReports';
 
 function App() {
   return (
-    <AuthProvider>
-      <FilterProvider>
-        <Router>
+    <NotificationProvider>
+      <AuthProvider>
+        <FilterProvider>
+          <Router>
           <div className="App">
+            <SessionManager />
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
@@ -91,6 +95,7 @@ function App() {
         </Router>
       </FilterProvider>
     </AuthProvider>
+  </NotificationProvider>
   );
 }
 

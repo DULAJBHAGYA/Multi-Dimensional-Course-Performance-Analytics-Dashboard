@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
@@ -11,8 +11,57 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [testCredentials, setTestCredentials] = useState(null);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { login, isAuthenticated, error: authError, clearError } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
+
+  // Load test credentials on component mount
+  useEffect(() => {
+    loadTestCredentials();
+  }, []);
+
+  // Clear errors when component mounts or form data changes
+  useEffect(() => {
+    if (authError) {
+      clearError();
+    }
+    setError('');
+  }, [formData.email, formData.password, authError, clearError]);
+
+  const loadTestCredentials = async () => {
+    try {
+      const { default: apiService } = await import('../../services/api');
+      const response = await apiService.getTestCredentials();
+      setTestCredentials(response);
+    } catch (error) {
+      console.error('Failed to load test credentials:', error);
+    }
+  };
+
+  const fillTestCredentials = (type) => {
+    if (testCredentials) {
+      const credentials = type === 'instructor' 
+        ? testCredentials.sample_instructor 
+        : testCredentials.sample_admin;
+      
+      if (credentials) {
+        setFormData({
+          email: credentials.email,
+          password: credentials.password,
+          rememberMe: formData.rememberMe
+        });
+      }
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -27,13 +76,32 @@ const Login = () => {
     setIsLoading(true);
     setError('');
 
+    // Basic validation
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Use the AuthContext login function
       const result = await login(formData.email, formData.password);
       
       if (result.success) {
+        // Remember me functionality
+        if (formData.rememberMe) {
+          localStorage.setItem('rememberMe', 'true');
+          localStorage.setItem('rememberedEmail', formData.email);
+        } else {
+          localStorage.removeItem('rememberMe');
+          localStorage.removeItem('rememberedEmail');
+        }
+
         // Redirect based on user role
-        if (result.user.role === 'admin') {
+        const from = location.state?.from?.pathname;
+        if (from) {
+          navigate(from, { replace: true });
+        } else if (result.user.role === 'admin') {
           navigate('/admin-dashboard');
         } else if (result.user.role === 'instructor') {
           navigate('/dashboard');
@@ -44,7 +112,8 @@ const Login = () => {
         setError(result.error || 'Login failed. Please try again.');
       }
     } catch (err) {
-      setError('Login failed. Please try again.');
+      console.error('Login error:', err);
+      setError('Login failed. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -127,6 +196,29 @@ const Login = () => {
 
         {/* Login Form */}
         <div className="bg-white py-8 px-6 shadow-xl rounded-3xl">
+          {/* Test Credentials Helper */}
+          {testCredentials && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">Test Credentials</h4>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => fillTestCredentials('instructor')}
+                  className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                >
+                  Use Instructor Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillTestCredentials('admin')}
+                  className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                >
+                  Use Admin Login
+                </button>
+              </div>
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-400 px-4 py-3 rounded-md text-sm">
