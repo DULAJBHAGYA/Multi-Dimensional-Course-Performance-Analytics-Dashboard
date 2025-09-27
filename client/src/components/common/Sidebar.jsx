@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import UserProfile from './UserProfile';
 
 const Sidebar = ({ onClose, onLogoutClick }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [showProfile, setShowProfile] = useState(false);
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -103,16 +105,22 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
 
       {/* User Info */}
       <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
+        <div 
+          className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
+          onClick={() => setShowProfile(true)}
+        >
           <div className="w-10 h-10 bg-[#D3CEFC] rounded-full flex items-center justify-center">
             <span className="text-[#6e63e5] font-semibold text-sm">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </span>
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
             <p className="text-xs text-gray-500">{user?.email || 'user@example.com'}</p>
           </div>
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </div>
       </div>
 
@@ -150,6 +158,12 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
           <span>Logout</span>
         </button>
       </div>
+
+      {/* User Profile Modal */}
+      <UserProfile 
+        isOpen={showProfile} 
+        onClose={() => setShowProfile(false)} 
+      />
     </div>
   );
 };

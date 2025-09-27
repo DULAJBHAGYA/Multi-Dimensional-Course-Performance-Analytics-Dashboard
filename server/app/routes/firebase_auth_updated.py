@@ -3,15 +3,19 @@ Updated Firebase-based authentication routes that work with Firestore collection
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.firebase_config import get_firestore_client
+from app.firebase_config import get_firestore_client, test_firestore_connection
 from pydantic import BaseModel
 from typing import Optional
 import jwt
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 security = HTTPBearer()
@@ -134,12 +138,17 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
 async def login(login_data: LoginRequest):
     """Login with Firestore authentication"""
     try:
+        logger.info(f"Login attempt for email: {login_data.email}")
+        
         db = get_firestore_client()
         if not db:
+            logger.error("Database connection failed during login")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database connection failed"
+                detail="Database connection failed. Please check server configuration."
             )
+        
+        logger.info("Database connection successful")
         
         # Search for user in instructors collection
         instructors_query = db.collection('instructors').where('email', '==', login_data.email).stream()
@@ -354,3 +363,34 @@ async def test_login():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get sample credentials: {str(e)}"
         )
+
+@router.get("/test-connection")
+async def test_firebase_connection():
+    """Test Firebase/Firestore connection"""
+    try:
+        # Test the connection
+        success, message = test_firestore_connection()
+        
+        if success:
+            return {
+                "status": "success",
+                "message": message,
+                "firebase_initialized": True,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        else:
+            return {
+                "status": "error",
+                "message": message,
+                "firebase_initialized": False,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        
+    except Exception as e:
+        logger.error(f"Connection test failed: {e}")
+        return {
+            "status": "error",
+            "message": f"Connection test failed: {str(e)}",
+            "firebase_initialized": False,
+            "timestamp": datetime.utcnow().isoformat()
+        }
