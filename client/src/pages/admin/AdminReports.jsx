@@ -20,27 +20,27 @@ const AdminReports = () => {
   ];
 
   const courseAnalytics = [
-    { subject: 'Mathematics', courses: 45, students: 2340, revenue: 23400, completion: 78.5 },
-    { subject: 'Science', courses: 38, students: 1890, revenue: 18900, completion: 82.3 },
-    { subject: 'Technology', courses: 52, students: 3120, revenue: 31200, completion: 75.2 },
-    { subject: 'Business', courses: 21, students: 1050, revenue: 10500, completion: 85.7 }
+    { subject: 'Mathematics', courses: 45, students: 2340, completion: 78.5 },
+    { subject: 'Science', courses: 38, students: 1890, completion: 82.3 },
+    { subject: 'Technology', courses: 52, students: 3120, completion: 75.2 },
+    { subject: 'Business', courses: 21, students: 1050, completion: 85.7 }
   ];
 
-  const revenueData = [
-    { month: 'Jan', revenue: 12500, courses: 12, students: 234 },
-    { month: 'Feb', revenue: 15200, courses: 15, students: 289 },
-    { month: 'Mar', revenue: 13800, courses: 14, students: 267 },
-    { month: 'Apr', revenue: 18900, courses: 18, students: 345 },
-    { month: 'May', revenue: 22100, courses: 22, students: 412 },
-    { month: 'Jun', revenue: 25600, courses: 25, students: 478 }
+  const enrollmentData = [
+    { month: 'Jan', courses: 12, students: 234 },
+    { month: 'Feb', courses: 15, students: 289 },
+    { month: 'Mar', courses: 14, students: 267 },
+    { month: 'Apr', courses: 18, students: 345 },
+    { month: 'May', courses: 22, students: 412 },
+    { month: 'Jun', courses: 25, students: 478 }
   ];
 
   const instructorPerformance = [
-    { name: 'Dr. Sarah Johnson', courses: 12, students: 456, revenue: 12400, rating: 4.9, status: 'Excellent' },
-    { name: 'Prof. Michael Chen', courses: 8, students: 389, revenue: 9800, rating: 4.8, status: 'Excellent' },
-    { name: 'Dr. Emily Rodriguez', courses: 15, students: 523, revenue: 15600, rating: 4.7, status: 'Good' },
-    { name: 'Prof. David Kim', courses: 6, students: 234, revenue: 7200, rating: 4.9, status: 'Excellent' },
-    { name: 'Dr. Lisa Thompson', courses: 10, students: 312, revenue: 8900, rating: 4.6, status: 'Good' }
+    { name: 'Dr. Sarah Johnson', courses: 12, students: 456, rating: 4.9, status: 'Excellent' },
+    { name: 'Prof. Michael Chen', courses: 8, students: 389, rating: 4.8, status: 'Excellent' },
+    { name: 'Dr. Emily Rodriguez', courses: 15, students: 523, rating: 4.7, status: 'Good' },
+    { name: 'Prof. David Kim', courses: 6, students: 234, rating: 4.9, status: 'Excellent' },
+    { name: 'Dr. Lisa Thompson', courses: 10, students: 312, rating: 4.6, status: 'Good' }
   ];
 
   const systemMetrics = [
@@ -55,7 +55,7 @@ const AdminReports = () => {
   const supportTickets = [
     { id: 'TKT-001', subject: 'Login Issues', priority: 'High', status: 'Open', created: '2 hours ago', assigned: 'Admin Team' },
     { id: 'TKT-002', subject: 'Course Upload Problem', priority: 'Medium', status: 'In Progress', created: '4 hours ago', assigned: 'Tech Support' },
-    { id: 'TKT-003', subject: 'Payment Processing Error', priority: 'High', status: 'Resolved', created: '6 hours ago', assigned: 'Finance Team' },
+    { id: 'TKT-003', subject: 'System Access Issue', priority: 'High', status: 'Resolved', created: '6 hours ago', assigned: 'Tech Support' },
     { id: 'TKT-004', subject: 'Feature Request', priority: 'Low', status: 'Open', created: '1 day ago', assigned: 'Product Team' },
     { id: 'TKT-005', subject: 'System Performance', priority: 'Medium', status: 'In Progress', created: '2 days ago', assigned: 'DevOps Team' }
   ];
@@ -74,7 +74,7 @@ const AdminReports = () => {
         data: {
           userAnalytics,
           courseAnalytics,
-          revenueData,
+          enrollmentData,
           instructorPerformance,
           supportTickets
         }
@@ -141,7 +141,7 @@ const AdminReports = () => {
                 <option value="system">System Overview</option>
                 <option value="users">User Analytics</option>
                 <option value="courses">Course Analytics</option>
-                <option value="revenue">Revenue Report</option>
+                <option value="enrollment">Enrollment Report</option>
                 <option value="instructors">Instructor Performance</option>
                 <option value="support">Support Tickets</option>
               </select>
@@ -287,7 +287,6 @@ const AdminReports = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.subject}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courses}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.students.toLocaleString()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${course.revenue.toLocaleString()}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.completion}%</td>
                         </tr>
                       ))}
@@ -297,17 +296,17 @@ const AdminReports = () => {
               </div>
             )}
 
-            {/* Revenue Chart */}
-            {selectedReport === 'revenue' && (
+            {/* Enrollment Chart */}
+            {selectedReport === 'enrollment' && (
               <div className="mb-6">
-                <h3 className="text-md font-medium text-gray-900 mb-3">Revenue Trends</h3>
+                <h3 className="text-md font-medium text-gray-900 mb-3">Enrollment Trends</h3>
                 <div className="h-64 flex items-end justify-between space-x-2">
-                  {revenueData.map((data, index) => (
+                  {enrollmentData.map((data, index) => (
                     <div key={index} className="flex flex-col items-center flex-1">
                       <div 
-                        className="bg-red-400 rounded-t-2xl w-full mb-2"
-                        style={{ height: `${(data.revenue / 30000) * 150}px` }}
-                        title={`$${data.revenue.toLocaleString()}`}
+                        className="bg-blue-500 rounded-t-2xl w-full mb-2"
+                        style={{ height: `${(data.students / 500) * 150}px` }}
+                        title={`${data.students} students`}
                       ></div>
                       <span className="text-xs text-gray-600">{data.month}</span>
                     </div>
@@ -327,7 +326,6 @@ const AdminReports = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instructor</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       </tr>
@@ -338,7 +336,6 @@ const AdminReports = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{instructor.name}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.courses}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.students.toLocaleString()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${instructor.revenue.toLocaleString()}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <div className="flex items-center">
                               <svg className="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">

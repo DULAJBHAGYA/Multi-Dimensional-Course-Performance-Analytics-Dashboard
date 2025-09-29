@@ -1,7 +1,7 @@
 // API service for communicating with FastAPI backend
 class ApiService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api';
     this.refreshPromise = null;
   }
 

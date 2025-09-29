@@ -76,7 +76,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         if user_type == "instructor":
             instructor_doc = db.collection('instructors').document(user_id).get()
             if instructor_doc.exists:
-                instructor_data = instructor_doc.to_dict()
+                instructor_data = instructor_doc.to_dict() or {}
                 user = {
                     "id": user_id,
                     "instructorId": user_id,
@@ -92,7 +92,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         elif user_type == "admin":
             admin_doc = db.collection('admins').document(user_id).get()
             if admin_doc.exists:
-                admin_data = admin_doc.to_dict()
+                admin_data = admin_doc.to_dict() or {}
                 user = {
                     "id": user_id,
                     "adminId": user_id,
@@ -108,7 +108,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         elif user_type == "student":
             student_doc = db.collection('students').document(user_id).get()
             if student_doc.exists:
-                student_data = student_doc.to_dict()
+                student_data = student_doc.to_dict() or {}
                 user = {
                     "id": user_id,
                     "studentId": user_id,
@@ -154,7 +154,7 @@ async def login(login_data: LoginRequest):
         instructors_query = db.collection('instructors').where('email', '==', login_data.email).stream()
         instructor = None
         for doc in instructors_query:
-            instructor_data = doc.to_dict()
+            instructor_data = doc.to_dict() or {}
             if instructor_data.get('password') == login_data.password:
                 instructor = {
                     "id": doc.id,
@@ -174,7 +174,7 @@ async def login(login_data: LoginRequest):
         if not instructor:
             admins_query = db.collection('admins').where('email', '==', login_data.email).stream()
             for doc in admins_query:
-                admin_data = doc.to_dict()
+                admin_data = doc.to_dict() or {}
                 if admin_data.get('password') == login_data.password:
                     instructor = {
                         "id": doc.id,
@@ -194,7 +194,7 @@ async def login(login_data: LoginRequest):
         if not instructor:
             students_query = db.collection('students').where('studentId', '==', login_data.email.split('@')[0]).stream()
             for doc in students_query:
-                student_data = doc.to_dict()
+                student_data = doc.to_dict() or {}
                 instructor = {
                     "id": doc.id,
                     "studentId": doc.id,

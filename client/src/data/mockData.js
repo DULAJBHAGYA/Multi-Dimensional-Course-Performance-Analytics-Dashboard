@@ -56,11 +56,11 @@ export const processedData = {
 
   // Unique courses with details
   courses: [
-    { code: "CIA4303", name: "Application Development", credits: 3, totalEnrollments: 6, activeStudents: 5, completionRate: 85, averageRating: 4.2, revenue: 1800 },
-    { code: "CIA3305", name: "AI & Machine Learning", credits: 3, totalEnrollments: 6, activeStudents: 5, completionRate: 78, averageRating: 4.5, revenue: 1800 },
-    { code: "CIA2102", name: "Computer Science I", credits: 3, totalEnrollments: 5, activeStudents: 4, completionRate: 82, averageRating: 4.1, revenue: 1500 },
-    { code: "CIA1101", name: "Introduction to Programming", credits: 3, totalEnrollments: 5, activeStudents: 4, completionRate: 88, averageRating: 4.3, revenue: 1500 },
-    { code: "CIA3201", name: "Database Systems", credits: 3, totalEnrollments: 5, activeStudents: 4, completionRate: 80, averageRating: 4.0, revenue: 1500 }
+    { code: "CIA4303", name: "Application Development", credits: 3, totalEnrollments: 6, activeStudents: 5, completionRate: 85, averageRating: 4.2 },
+    { code: "CIA3305", name: "AI & Machine Learning", credits: 3, totalEnrollments: 6, activeStudents: 5, completionRate: 78, averageRating: 4.5 },
+    { code: "CIA2102", name: "Computer Science I", credits: 3, totalEnrollments: 5, activeStudents: 4, completionRate: 82, averageRating: 4.1 },
+    { code: "CIA1101", name: "Introduction to Programming", credits: 3, totalEnrollments: 5, activeStudents: 4, completionRate: 88, averageRating: 4.3 },
+    { code: "CIA3201", name: "Database Systems", credits: 3, totalEnrollments: 5, activeStudents: 4, completionRate: 80, averageRating: 4.0 }
   ],
 
   // Campus data
