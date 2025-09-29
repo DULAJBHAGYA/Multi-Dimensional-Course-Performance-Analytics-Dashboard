@@ -11,7 +11,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [testCredentials, setTestCredentials] = useState(null);
+
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated, error: authError, clearError } = useAuth();
@@ -24,10 +24,7 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate, location]);
 
-  // Load test credentials on component mount
-  useEffect(() => {
-    loadTestCredentials();
-  }, []);
+
 
   // Clear errors when component mounts or form data changes
   useEffect(() => {
@@ -37,31 +34,7 @@ const Login = () => {
     setError('');
   }, [formData.email, formData.password, authError, clearError]);
 
-  const loadTestCredentials = async () => {
-    try {
-      const { default: apiService } = await import('../../services/api');
-      const response = await apiService.getTestCredentials();
-      setTestCredentials(response);
-    } catch (error) {
-      console.error('Failed to load test credentials:', error);
-    }
-  };
 
-  const fillTestCredentials = (type) => {
-    if (testCredentials) {
-      const credentials = type === 'instructor' 
-        ? testCredentials.sample_instructor 
-        : testCredentials.sample_admin;
-      
-      if (credentials) {
-        setFormData({
-          email: credentials.email,
-          password: credentials.password,
-          rememberMe: formData.rememberMe
-        });
-      }
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -196,28 +169,7 @@ const Login = () => {
 
         {/* Login Form */}
         <div className="bg-white py-8 px-6 shadow-xl rounded-3xl">
-          {/* Test Credentials Helper */}
-          {testCredentials && (
-            <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-              <h4 className="text-sm font-medium text-blue-900 mb-2">Test Credentials</h4>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  type="button"
-                  onClick={() => fillTestCredentials('instructor')}
-                  className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                >
-                  Use Instructor Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillTestCredentials('admin')}
-                  className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                >
-                  Use Admin Login
-                </button>
-              </div>
-            </div>
-          )}
+
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (

@@ -12,7 +12,7 @@ class KPIData(BaseModel):
     active_courses: int
     avg_performance: float
     completion_rate: float
-    total_revenue: float
+    total_enrollments: int
     monthly_growth: float
     at_risk_students: int
     pending_assignments: int
@@ -26,6 +26,11 @@ class CourseData(BaseModel):
     last_activity: str
     upcoming_deadlines: int
     average_rating: float
+    courseName: Optional[str] = None
+    semesterName: Optional[str] = None
+    department: Optional[str] = None
+    campusName: Optional[str] = None
+    crnCode: Optional[str] = None
 
 class PerformanceTrendData(BaseModel):
     month: str
@@ -82,7 +87,7 @@ async def get_instructor_dashboard_firestore(
             if course_id:
                 course_doc = db.collection('courses').document(course_id).get()
                 if course_doc.exists:
-                    course_data = course_doc.to_dict()
+                    course_data = course_doc.to_dict() or {}
                     course_data['id'] = course_id
                     courses_data.append(course_data)
         
@@ -91,12 +96,12 @@ async def get_instructor_dashboard_firestore(
         active_courses = len(courses_data)
         avg_performance = sum(course.get('completion_rate', 0) for course in courses_data) / len(courses_data) if courses_data else 0
         completion_rate = avg_performance
-        total_revenue = sum(course.get('revenue', 0) for course in courses_data)
+        total_enrollments = total_students
         monthly_growth = 12.5  # Mock growth percentage
         at_risk_students = int(total_students * 0.15)  # 15% at risk
         pending_assignments = len(courses_data) * 3  # Mock pending assignments
         
-        # Prepare detailed course data
+        # Prepare detailed course data with additional filter fields
         courses_response = [
             CourseData(
                 id=course.get('id', ''),
@@ -106,7 +111,12 @@ async def get_instructor_dashboard_firestore(
                 status="active",
                 last_activity="2 hours ago",
                 upcoming_deadlines=2,
-                average_rating=course.get('average_rating', 0)
+                average_rating=course.get('average_rating', 0),
+                courseName=course.get('courseName', 'Unknown Course'),
+                semesterName=course.get('semesterName', 'Unknown Semester'),
+                department=course.get('department', 'Unknown Department'),
+                campusName=course.get('campusName', 'Unknown Campus'),
+                crnCode=course.get('crnCode', 'N/A')
             ) for course in courses_data
         ]
         
@@ -124,7 +134,7 @@ async def get_instructor_dashboard_firestore(
         recent_activity = [
             RecentActivityData(
                 type="submission", 
-                course=courses_data[0].get('courseName', 'Mathematics 101') if courses_data else "Mathematics 101", 
+                course=courses_data[0].get('courseName', 'Mathematics 101') if len(courses_data) > 0 else "Mathematics 101", 
                 student="John Doe", 
                 time="2 hours ago",
                 details="Assignment 3 submitted",
@@ -140,14 +150,14 @@ async def get_instructor_dashboard_firestore(
             ),
             RecentActivityData(
                 type="announcement", 
-                course=courses_data[0].get('courseName', 'Chemistry 101') if courses_data else "Chemistry 101", 
+                course=courses_data[0].get('courseName', 'Chemistry 101') if len(courses_data) > 0 else "Chemistry 101", 
                 student="", 
                 time="6 hours ago",
                 details="Midterm exam scheduled for next week"
             ),
             RecentActivityData(
                 type="submission", 
-                course=courses_data[0].get('courseName', 'Biology 201') if courses_data else "Biology 201", 
+                course=courses_data[0].get('courseName', 'Biology 201') if len(courses_data) > 0 else "Biology 201", 
                 student="Mike Johnson", 
                 time="1 day ago",
                 details="Lab report submitted",
@@ -158,25 +168,25 @@ async def get_instructor_dashboard_firestore(
         # Upcoming events
         upcoming_events = [
             {
-                "title": f"{courses_data[0].get('courseName', 'Mathematics 101')} - Midterm Exam",
+                "title": f"{courses_data[0].get('courseName', 'Mathematics 101') if len(courses_data) > 0 else 'Mathematics 101'} - Midterm Exam",
                 "date": "2024-01-15",
                 "time": "10:00 AM",
                 "type": "exam",
-                "course": courses_data[0].get('courseName', 'Mathematics 101') if courses_data else "Mathematics 101"
+                "course": courses_data[0].get('courseName', 'Mathematics 101') if len(courses_data) > 0 else "Mathematics 101"
             },
             {
-                "title": f"{courses_data[1].get('courseName', 'Physics 201')} - Assignment Due",
+                "title": f"{courses_data[1].get('courseName', 'Physics 201') if len(courses_data) > 1 else 'Physics 201'} - Assignment Due",
                 "date": "2024-01-18",
                 "time": "11:59 PM",
                 "type": "assignment",
                 "course": courses_data[1].get('courseName', 'Physics 201') if len(courses_data) > 1 else "Physics 201"
             },
             {
-                "title": f"{courses_data[0].get('courseName', 'Chemistry 101')} - Lab Report",
+                "title": f"{courses_data[0].get('courseName', 'Chemistry 101') if len(courses_data) > 0 else 'Chemistry 101'} - Lab Report",
                 "date": "2024-01-20",
                 "time": "5:00 PM",
                 "type": "assignment",
-                "course": courses_data[0].get('courseName', 'Chemistry 101') if courses_data else "Chemistry 101"
+                "course": courses_data[0].get('courseName', 'Chemistry 101') if len(courses_data) > 0 else "Chemistry 101"
             }
         ]
         
@@ -196,7 +206,7 @@ async def get_instructor_dashboard_firestore(
                 active_courses=active_courses,
                 avg_performance=round(avg_performance, 1),
                 completion_rate=round(completion_rate, 1),
-                total_revenue=round(total_revenue, 2),
+                total_enrollments=total_enrollments,
                 monthly_growth=monthly_growth,
                 at_risk_students=at_risk_students,
                 pending_assignments=pending_assignments
@@ -358,7 +368,7 @@ async def get_instructor_courses_firestore(
             if course_id:
                 course_doc = db.collection('courses').document(course_id).get()
                 if course_doc.exists:
-                    course_data = course_doc.to_dict()
+                    course_data = course_doc.to_dict() or {}
                     course_data['id'] = course_id
                     courses_data.append(course_data)
         

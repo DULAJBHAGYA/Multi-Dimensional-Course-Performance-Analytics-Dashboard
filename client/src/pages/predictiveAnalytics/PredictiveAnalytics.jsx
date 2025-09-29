@@ -22,7 +22,7 @@ const PredictiveAnalytics = () => {
     predictedCompletionRate: 82.3,
     predictedDropoutRate: 17.7,
     futureEnrollments: 156,
-    revenueProjection: 23400
+    predictedCertifications: 134
   };
 
   const atRiskStudents = [
@@ -94,8 +94,8 @@ const PredictiveAnalytics = () => {
       return `Your enrollment forecast shows ${predictiveKPIs.futureEnrollments} new students expected in the next 30 days. This represents a 12% increase from last month. The trend suggests strong course appeal, especially during peak enrollment periods.`;
     }
     
-    if (message.includes('revenue') || message.includes('money') || message.includes('earnings')) {
-      return `Based on current trends, your projected revenue for the next quarter is $${predictiveKPIs.revenueProjection.toLocaleString()}. This represents an 18% increase from the previous quarter. The growth is primarily driven by increased enrollment and higher completion rates.`;
+    if (message.includes('certification') || message.includes('certificate') || message.includes('completion')) {
+      return `Based on current trends, I predict ${predictiveKPIs.predictedCertifications} students will complete their certifications in the next quarter. This represents an 18% increase from the previous quarter. The growth is primarily driven by increased engagement and better completion rates.`;
     }
     
     if (message.includes('content') || message.includes('lesson') || message.includes('engagement')) {
@@ -107,7 +107,7 @@ const PredictiveAnalytics = () => {
       • Analyzing completion and dropout predictions
       • Identifying at-risk students and their specific issues
       • Providing content optimization suggestions
-      • Explaining enrollment and revenue forecasts
+      • Explaining enrollment and certification forecasts
       • Generating personalized intervention strategies
       
       Just ask me about any aspect of your course analytics!`;
@@ -250,12 +250,12 @@ const PredictiveAnalytics = () => {
             <div className="flex items-center">
               <div className="p-3 bg-[#D3CEFC] rounded-2xl">
                 <svg className="w-6 h-6 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Revenue Projection</p>
-                <p className="text-2xl font-bold text-gray-900">${predictiveKPIs.revenueProjection.toLocaleString()}</p>
+                <p className="text-sm font-medium text-gray-600">Predicted Certifications</p>
+                <p className="text-2xl font-bold text-gray-900">{predictiveKPIs.predictedCertifications}</p>
                 <p className="text-xs text-[#48A860] mt-1">Next quarter</p>
               </div>
             </div>

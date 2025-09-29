@@ -1,11 +1,8 @@
 fastapi
 uvicorn[standard]
-sqlalchemy
 pydantic
 python-jose[cryptography]
-passlib[bcrypt]
 python-multipart
 python-dotenv
-alembic
 firebase-admin
 google-cloud-firestore

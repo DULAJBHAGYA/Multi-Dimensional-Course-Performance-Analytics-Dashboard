@@ -11,7 +11,7 @@ const ReportGeneration = () => {
     studentPerformance: false,
     engagement: false,
     completion: false,
-    revenue: false
+    analytics: false
   });
   const [exportFormat, setExportFormat] = useState('pdf');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -32,7 +32,7 @@ const ReportGeneration = () => {
     dropoutRate: 12.1,
     avgQuizScore: 76.4,
     activeStudents: 45,
-    totalRevenue: 18750,
+    totalCourses: 12,
     avgEngagement: 78.9
   };
 
@@ -52,13 +52,13 @@ const ReportGeneration = () => {
     { date: '2024-01-05', logins: 47, watchTime: 134, quizAttempts: 25 }
   ];
 
-  const revenueData = [
-    { month: 'Jan', revenue: 4500, enrollments: 23 },
-    { month: 'Feb', revenue: 5200, enrollments: 28 },
-    { month: 'Mar', revenue: 4800, enrollments: 26 },
-    { month: 'Apr', revenue: 6100, enrollments: 32 },
-    { month: 'May', revenue: 5700, enrollments: 30 },
-    { month: 'Jun', revenue: 6800, enrollments: 35 }
+  const analyticsData = [
+    { month: 'Jan', completions: 23, enrollments: 28 },
+    { month: 'Feb', completions: 28, enrollments: 32 },
+    { month: 'Mar', completions: 26, enrollments: 30 },
+    { month: 'Apr', completions: 32, enrollments: 38 },
+    { month: 'May', completions: 30, enrollments: 35 },
+    { month: 'Jun', completions: 35, enrollments: 42 }
   ];
 
   const handleReportTypeChange = (type) => {
@@ -84,7 +84,7 @@ const ReportGeneration = () => {
           preview: previewData,
           studentPerformance: reportTypes.studentPerformance ? studentPerformanceData : null,
           engagement: reportTypes.engagement ? engagementData : null,
-          revenue: reportTypes.revenue ? revenueData : null
+          analytics: reportTypes.analytics ? analyticsData : null
         }
       };
       
@@ -233,11 +233,11 @@ const ReportGeneration = () => {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={reportTypes.revenue}
-                  onChange={() => handleReportTypeChange('revenue')}
+                  checked={reportTypes.analytics}
+                  onChange={() => handleReportTypeChange('analytics')}
                   className="h-4 w-4 text-yellow-600 focus:ring-[#6e63e5] border-gray-300 rounded"
                 />
-                <span className="ml-2 text-sm text-gray-700">Revenue Report</span>
+                <span className="ml-2 text-sm text-gray-700">Analytics Report</span>
               </label>
             </div>
           </div>
@@ -269,11 +269,11 @@ const ReportGeneration = () => {
             </div>
           </div>
 
-          {reportTypes.revenue && (
+          {reportTypes.analytics && (
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="text-center p-4 bg-orange-100 rounded-3xl">
-                <div className="text-2xl font-bold text-orange-400">${previewData.totalRevenue.toLocaleString()}</div>
-                <div className="text-sm text-gray-600">Total Revenue</div>
+                <div className="text-2xl font-bold text-orange-400">{previewData.totalCourses}</div>
+                <div className="text-sm text-gray-600">Total Courses</div>
               </div>
               
               <div className="text-center p-4 bg-green-100 rounded-3xl">
@@ -343,17 +343,17 @@ const ReportGeneration = () => {
               </div>
             )}
 
-            {/* Revenue Report */}
-            {generatedReport.data.revenue && (
+            {/* Analytics Report */}
+            {generatedReport.data.analytics && (
               <div className="mb-6">
-                <h3 className="text-md font-medium text-gray-900 mb-3">Revenue Report</h3>
+                <h3 className="text-md font-medium text-gray-900 mb-3">Analytics Report</h3>
                 <div className="h-64 flex items-end justify-between space-x-2">
-                  {generatedReport.data.revenue.map((data, index) => (
+                  {generatedReport.data.analytics.map((data, index) => (
                     <div key={index} className="flex flex-col items-center flex-1">
                       <div 
                         className="bg-green-400 rounded-t-2xl w-full mb-2"
-                        style={{ height: `${(data.revenue / 7000) * 150}px` }}
-                        title={`$${data.revenue}`}
+                        style={{ height: `${(data.completions / 50) * 150}px` }}
+                        title={`${data.completions} completions`}
                       ></div>
                       <span className="text-xs text-gray-600">{data.month}</span>
                     </div>
