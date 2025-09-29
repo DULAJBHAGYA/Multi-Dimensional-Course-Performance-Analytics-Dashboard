@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
-import { processedData } from '../../data/mockData';
+import apiService from '../../services/api';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { generateBarChartData, generateLineChartData, generatePieChartData, getChartOptions } from '../../utils/chartUtils';
 
@@ -10,73 +10,78 @@ const CourseAnalytics = () => {
   const [selectedCourse, setSelectedCourse] = useState('all');
   const [dateRange, setDateRange] = useState('30d');
   const [cohort, setCohort] = useState('all');
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Real course data from dataset
-  const courses = [
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      try {
+        setLoading(true);
+        const filters = {
+          course_id: selectedCourse,
+          date_range: dateRange
+        };
+        const data = await apiService.getInstructorCourseAnalytics(filters);
+        setAnalyticsData(data);
+      } catch (err) {
+        console.error('Error fetching analytics data:', err);
+        setError('Failed to load course analytics data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalyticsData();
+  }, [selectedCourse, dateRange]);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#6e63e5]"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-500 text-xl mb-4">⚠️</div>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Use real data from API or fallback to empty data
+  const courses = analyticsData ? [
     { id: 'all', name: 'All Courses' },
-    ...processedData.courses.map(course => ({
-      id: course.code.toLowerCase(),
+    ...analyticsData.courses.map(course => ({
+      id: course.id,
       name: course.name
     }))
-  ];
+  ] : [{ id: 'all', name: 'All Courses' }];
 
-  const kpiData = {
-    totalEnrollments: processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0),
-    activeStudents: processedData.courses.reduce((sum, course) => sum + course.activeStudents, 0),
-    completionRate: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
-    averageProgress: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
-    averageRating: Math.round(processedData.courses.reduce((sum, course) => sum + course.averageRating, 0) / processedData.courses.length * 10) / 10,
-    totalCourses: processedData.courses.length
+  const kpiData = analyticsData ? analyticsData.kpis : {
+    totalEnrollments: 0,
+    activeStudents: 0,
+    completionRate: 0,
+    averageProgress: 0,
+    averageRating: 0,
+    totalCourses: 0
   };
 
-  const enrollmentTrend = [
-    { month: 'Jan', enrollments: 45 },
-    { month: 'Feb', enrollments: 67 },
-    { month: 'Mar', enrollments: 89 },
-    { month: 'Apr', enrollments: 123 },
-    { month: 'May', enrollments: 156 },
-    { month: 'Jun', enrollments: 134 }
-  ];
-
-  const progressDistribution = [
-    { range: '0-20%', students: 45 },
-    { range: '21-40%', students: 78 },
-    { range: '41-60%', students: 156 },
-    { range: '61-80%', students: 234 },
-    { range: '81-100%', students: 189 }
-  ];
-
-  const dropOffPoints = [
-    { lesson: 'Introduction', dropOff: 12 },
-    { lesson: 'Chapter 1: Basics', dropOff: 8 },
-    { lesson: 'Chapter 2: Intermediate', dropOff: 15 },
-    { lesson: 'Chapter 3: Advanced', dropOff: 22 },
-    { lesson: 'Final Project', dropOff: 18 }
-  ];
-
-  const ratingsBreakdown = [
-    { stars: 5, count: 234, percentage: 45.2 },
-    { stars: 4, count: 156, percentage: 30.1 },
-    { stars: 3, count: 78, percentage: 15.1 },
-    { stars: 2, count: 34, percentage: 6.6 },
-    { stars: 1, count: 16, percentage: 3.1 }
-  ];
-
-  const mostViewedLessons = [
-    { title: 'Introduction to Variables', views: 1156, completion: 89 },
-    { title: 'Data Types and Structures', views: 1089, completion: 85 },
-    { title: 'Control Flow and Loops', views: 1023, completion: 78 },
-    { title: 'Functions and Methods', views: 987, completion: 82 },
-    { title: 'Object-Oriented Programming', views: 945, completion: 76 }
-  ];
-
-  const leastViewedLessons = [
-    { title: 'Advanced Algorithms', views: 234, completion: 45 },
-    { title: 'Memory Management', views: 267, completion: 52 },
-    { title: 'Error Handling', views: 298, completion: 48 },
-    { title: 'Testing Strategies', views: 312, completion: 55 },
-    { title: 'Performance Optimization', views: 345, completion: 61 }
-  ];
+  const enrollmentTrend = analyticsData ? analyticsData.enrollmentTrend : [];
+  const progressDistribution = analyticsData ? analyticsData.progressDistribution : [];
+  const dropOffPoints = analyticsData ? analyticsData.dropOffPoints : [];
+  const ratingsBreakdown = analyticsData ? analyticsData.ratingsBreakdown : [];
+  const mostViewedLessons = analyticsData ? analyticsData.mostViewedLessons : [];
+  const leastViewedLessons = analyticsData ? analyticsData.leastViewedLessons : [];
 
   // Chart data using Chart.js format
   const enrollmentTrendChartData = generateBarChartData(enrollmentTrend, 'month', 'enrollments', 'Enrollments');
@@ -141,7 +146,6 @@ const CourseAnalytics = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Enrollments</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.totalEnrollments.toLocaleString()}</p>
-                <p className="text-xs text-green-600 mt-1">+12% from last month</p>
               </div>
             </div>
           </div>
@@ -156,7 +160,6 @@ const CourseAnalytics = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Students</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.activeStudents.toLocaleString()}</p>
-                <p className="text-xs text-green-600 mt-1">71.5% of total</p>
               </div>
             </div>
           </div>
@@ -171,7 +174,6 @@ const CourseAnalytics = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Completion Rate</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.completionRate}%</p>
-                <p className="text-xs text-green-600 mt-1">+5.2% from last month</p>
               </div>
             </div>
           </div>
@@ -186,7 +188,6 @@ const CourseAnalytics = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Avg Progress</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.averageProgress}%</p>
-                <p className="text-xs text-green-600 mt-1">Course completion</p>
               </div>
             </div>
           </div>
@@ -201,7 +202,6 @@ const CourseAnalytics = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Avg Rating</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.averageRating}/5</p>
-                <p className="text-xs text-green-600 mt-1">Based on 518 reviews</p>
               </div>
             </div>
           </div>
@@ -216,7 +216,6 @@ const CourseAnalytics = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Courses</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.totalCourses}</p>
-                <p className="text-xs text-green-600 mt-1">Active offerings</p>
               </div>
             </div>
           </div>

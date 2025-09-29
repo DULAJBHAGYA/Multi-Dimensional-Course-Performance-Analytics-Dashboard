@@ -140,6 +140,11 @@ class ApiService {
     return this.get('/firebase/dashboard/instructor/announcements');
   }
 
+  // Firebase Course Analytics endpoint
+  async getInstructorCourseAnalytics(filters = {}) {
+    return this.get('/firebase/dashboard/instructor/analytics', filters);
+  }
+
   // Legacy endpoints (keeping for backward compatibility)
   async getCourseAnalytics(filters = {}) {
     return this.get('/analytics/courses', filters);
