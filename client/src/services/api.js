@@ -145,6 +145,83 @@ class ApiService {
     return this.get('/firebase/dashboard/instructor/analytics', filters);
   }
 
+  // Firebase Instructor Reports endpoints
+  async getInstructorCoursePerformanceReport() {
+    return this.get('/firebase/dashboard/instructor/reports/course-performance');
+  }
+
+  async getInstructorStudentAnalyticsReport(courseId) {
+    const params = courseId ? { course_id: courseId } : {};
+    return this.get('/firebase/dashboard/instructor/reports/student-analytics', params);
+  }
+
+  async getInstructorPredictiveRiskReport() {
+    return this.get('/firebase/dashboard/instructor/reports/predictive-risk');
+  }
+
+  async getInstructorSemesterComparisonReport() {
+    return this.get('/firebase/dashboard/instructor/reports/semester-comparison');
+  }
+
+  async getInstructorDetailedAssessmentReport(courseId) {
+    const params = courseId ? { course_id: courseId } : {};
+    return this.get('/firebase/dashboard/instructor/reports/detailed-assessment', params);
+  }
+
+  // Firebase Instructor Report Download endpoints
+  async downloadInstructorReport(reportType, format = 'pdf', courseId = null) {
+    let endpoint = '';
+    const params = { format };
+    
+    switch (reportType) {
+      case 'course-performance':
+        endpoint = '/firebase/dashboard/instructor/reports/course-performance/download';
+        break;
+      case 'student-analytics':
+        endpoint = '/firebase/dashboard/instructor/reports/student-analytics/download';
+        if (courseId) params.course_id = courseId;
+        break;
+      case 'predictive-risk':
+        endpoint = '/firebase/dashboard/instructor/reports/predictive-risk/download';
+        break;
+      case 'semester-comparison':
+        endpoint = '/firebase/dashboard/instructor/reports/semester-comparison/download';
+        break;
+      case 'detailed-assessment':
+        endpoint = '/firebase/dashboard/instructor/reports/detailed-assessment/download';
+        if (courseId) params.course_id = courseId;
+        break;
+      default:
+        throw new Error('Unknown report type');
+    }
+    
+    return this.download(endpoint, params);
+  }
+
+  // Download method that returns blob
+  async download(endpoint, params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `${this.baseURL}${endpoint}?${queryString}` : `${this.baseURL}${endpoint}`;
+    
+    const token = this.getToken();
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(url, { headers });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+    
+    return response;
+  }
+
   // Legacy endpoints (keeping for backward compatibility)
   async getCourseAnalytics(filters = {}) {
     return this.get('/analytics/courses', filters);

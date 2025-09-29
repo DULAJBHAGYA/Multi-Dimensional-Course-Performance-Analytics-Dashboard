@@ -7,9 +7,6 @@ import { generateBarChartData, generateLineChartData, generatePieChartData, getC
 
 const CourseAnalytics = () => {
   const { user } = useAuth();
-  const [selectedCourse, setSelectedCourse] = useState('all');
-  const [dateRange, setDateRange] = useState('30d');
-  const [cohort, setCohort] = useState('all');
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,11 +15,8 @@ const CourseAnalytics = () => {
     const fetchAnalyticsData = async () => {
       try {
         setLoading(true);
-        const filters = {
-          course_id: selectedCourse,
-          date_range: dateRange
-        };
-        const data = await apiService.getInstructorCourseAnalytics(filters);
+        // Fetch data without filters
+        const data = await apiService.getInstructorCourseAnalytics();
         setAnalyticsData(data);
       } catch (err) {
         console.error('Error fetching analytics data:', err);
@@ -33,7 +27,7 @@ const CourseAnalytics = () => {
     };
 
     fetchAnalyticsData();
-  }, [selectedCourse, dateRange]);
+  }, []);
 
   if (loading) {
     return (
@@ -100,36 +94,6 @@ const CourseAnalytics = () => {
             <div>
               <h1 className="text-3xl font-semibold text-gray-900">Course Analytics</h1>
               <p className="text-gray-600 mt-2">Detailed insights into your course performance and student engagement</p>
-            </div>
-            <div className="mt-4 sm:mt-0 flex flex-wrap gap-4">
-              <select 
-                value={selectedCourse} 
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-              >
-                {courses.map(course => (
-                  <option key={course.id} value={course.id}>{course.name}</option>
-                ))}
-              </select>
-              <select 
-                value={dateRange} 
-                onChange={(e) => setDateRange(e.target.value)}
-                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-              >
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-                <option value="90d">Last 90 days</option>
-                <option value="1y">Last year</option>
-              </select>
-              <select 
-                value={cohort} 
-                onChange={(e) => setCohort(e.target.value)}
-                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-              >
-                <option value="all">All Students</option>
-                <option value="first-time">First-time Learners</option>
-                <option value="repeat">Repeat Learners</option>
-              </select>
             </div>
           </div>
         </div>

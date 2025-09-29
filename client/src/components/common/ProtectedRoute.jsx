@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import SessionManager from './SessionManager';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -18,7 +19,12 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  return isAuthenticated ? (
+    <>
+      <SessionManager />
+      {children}
+    </>
+  ) : <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;

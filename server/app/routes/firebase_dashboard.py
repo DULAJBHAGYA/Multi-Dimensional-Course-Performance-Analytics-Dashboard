@@ -1,9 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import StreamingResponse
 from app.firebase_config import get_firestore_client
 from app.routes.firebase_auth_updated import verify_token
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+import pandas as pd
 
 router = APIRouter()
 
@@ -728,3 +735,654 @@ async def get_instructor_announcements_firestore(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching instructor announcements: {str(e)}")
+
+@router.get("/instructor/reports/course-performance")
+async def get_instructor_course_performance_report(
+    current_user: dict = Depends(verify_token)
+):
+    """Get course performance report for all courses taught by instructor"""
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get instructor's sections and courses
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Get courses for these sections
+        course_ids = list(set([section.get('courseId') for section in instructor_sections if section.get('courseId')]))
+        
+        courses_data = []
+        for course_id in course_ids:
+            if course_id:
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict() or {}
+                    course_data['id'] = course_id
+                    
+                    # Find related section for additional data
+                    related_section = next((s for s in instructor_sections if s.get('courseId') == course_id), {})
+                    
+                    # Get campus information
+                    campus_id = related_section.get('campusId')
+                    campus_name = 'Unknown Campus'
+                    if campus_id:
+                        campus_doc = db.collection('campuses').document(campus_id).get()
+                        if campus_doc.exists:
+                            campus_data = campus_doc.to_dict() or {}
+                            campus_name = campus_data.get('campusName', 'Unknown Campus')
+                    
+                    course_data.update({
+                        'semesterName': related_section.get('semesterName', 'Unknown Semester'),
+                        'campusName': campus_name,
+                        'crnCode': related_section.get('crnCode', 'N/A'),
+                        'department': course_data.get('department') or related_section.get('department', 'Unknown Department')
+                    })
+                    
+                    courses_data.append(course_data)
+        
+        # Generate report data
+        report_data = []
+        for course in courses_data:
+            report_data.append({
+                'courseId': course.get('id'),
+                'courseName': course.get('courseName', 'Unknown Course'),
+                'courseCode': course.get('courseCode', 'N/A'),
+                'semester': course.get('semesterName', 'Unknown'),
+                'campus': course.get('campusName', 'Unknown'),
+                'department': course.get('department', 'Unknown'),
+                'totalStudents': course.get('totalEnrollments', 0),
+                'activeStudents': course.get('activeStudents', 0),
+                'completionRate': course.get('completionRate', 0),
+                'averageGrade': course.get('averageRating', 0),
+                'atRiskStudents': max(0, int(course.get('totalEnrollments', 0) * 0.15)),  # Mock at-risk calculation
+                'topPerformers': max(0, int(course.get('totalEnrollments', 0) * 0.20))   # Mock top performers
+            })
+        
+        return {
+            "reportType": "course-performance",
+            "generatedAt": datetime.utcnow().isoformat(),
+            "instructorId": instructor_id,
+            "courses": report_data,
+            "summary": {
+                "totalCourses": len(report_data),
+                "totalStudents": sum(course['totalStudents'] for course in report_data),
+                "avgCompletionRate": round(sum(course['completionRate'] for course in report_data) / len(report_data), 1) if report_data else 0,
+                "avgGrade": round(sum(course['averageGrade'] for course in report_data) / len(report_data), 1) if report_data else 0
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating course performance report: {str(e)}")
+
+
+@router.get("/instructor/reports/student-analytics")
+async def get_instructor_student_analytics_report(
+    course_id: Optional[str] = Query(None),
+    current_user: dict = Depends(verify_token)
+):
+    """Get student analytics report for individual student progress"""
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get instructor's sections
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Filter by course if specified
+        if course_id:
+            instructor_sections = [s for s in instructor_sections if s.get('courseId') == course_id]
+        
+        # Get course IDs
+        course_ids = list(set([section.get('courseId') for section in instructor_sections if section.get('courseId')]))
+        
+        # Get students from performance data (mocked for now)
+        students_data = []
+        for i in range(50):  # Mock 50 students
+            students_data.append({
+                'studentId': f'S{i+1:03d}',
+                'studentName': f'Student {i+1}',
+                'email': f'student{i+1}@example.com',
+                'progress': 75 + (i % 25),  # Mock progress between 75-99
+                'grade': 80 + (i % 20),     # Mock grade between 80-99
+                'lastActive': f'{i % 10 + 1} days ago',
+                'status': 'active' if i % 5 != 0 else 'at_risk',
+                'assignmentsCompleted': 8 + (i % 5),
+                'quizzesTaken': 3 + (i % 3),
+                'averageQuizScore': 85 + (i % 15)
+            })
+        
+        # Categorize students
+        active_students = [s for s in students_data if s['status'] == 'active']
+        at_risk_students = [s for s in students_data if s['status'] == 'at_risk']
+        
+        return {
+            "reportType": "student-analytics",
+            "generatedAt": datetime.utcnow().isoformat(),
+            "instructorId": instructor_id,
+            "courseId": course_id,
+            "students": students_data,
+            "summary": {
+                "totalStudents": len(students_data),
+                "activeStudents": len(active_students),
+                "atRiskStudents": len(at_risk_students),
+                "avgProgress": round(sum(s['progress'] for s in students_data) / len(students_data), 1) if students_data else 0,
+                "avgGrade": round(sum(s['grade'] for s in students_data) / len(students_data), 1) if students_data else 0
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating student analytics report: {str(e)}")
+
+
+@router.get("/instructor/reports/predictive-risk")
+async def get_instructor_predictive_risk_report(
+    current_user: dict = Depends(verify_token)
+):
+    """Get predictive risk report for at-risk student identification"""
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get instructor's sections
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Get course IDs
+        course_ids = list(set([section.get('courseId') for section in instructor_sections if section.get('courseId')]))
+        
+        # Mock at-risk students data
+        at_risk_students = []
+        risk_factors = ['Low Engagement', 'Missed Assignments', 'Poor Quiz Scores', 'Infrequent Logins']
+        
+        for i in range(15):  # Mock 15 at-risk students
+            at_risk_students.append({
+                'studentId': f'AR{i+1:03d}',
+                'studentName': f'At-Risk Student {i+1}',
+                'email': f'atrisk{i+1}@example.com',
+                'courseId': course_ids[i % len(course_ids)] if course_ids else 'Unknown',
+                'riskLevel': 'High' if i % 3 == 0 else 'Medium' if i % 3 == 1 else 'Low',
+                'riskFactors': [risk_factors[i % len(risk_factors)], risk_factors[(i+1) % len(risk_factors)]],
+                'lastActive': f'{i % 14 + 1} days ago',
+                'predictedDropoutProbability': 70 + (i % 30),  # 70-99%
+                'recommendedInterventions': [
+                    'Schedule one-on-one meeting',
+                    'Provide additional resources',
+                    'Connect with academic advisor'
+                ]
+            })
+        
+        # Categorize by risk level
+        high_risk = [s for s in at_risk_students if s['riskLevel'] == 'High']
+        medium_risk = [s for s in at_risk_students if s['riskLevel'] == 'Medium']
+        low_risk = [s for s in at_risk_students if s['riskLevel'] == 'Low']
+        
+        return {
+            "reportType": "predictive-risk",
+            "generatedAt": datetime.utcnow().isoformat(),
+            "instructorId": instructor_id,
+            "atRiskStudents": at_risk_students,
+            "summary": {
+                "totalAtRiskStudents": len(at_risk_students),
+                "highRisk": len(high_risk),
+                "mediumRisk": len(medium_risk),
+                "lowRisk": len(low_risk),
+                "avgDropoutProbability": round(sum(s['predictedDropoutProbability'] for s in at_risk_students) / len(at_risk_students), 1) if at_risk_students else 0
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating predictive risk report: {str(e)}")
+
+
+@router.get("/instructor/reports/semester-comparison")
+async def get_instructor_semester_comparison_report(
+    current_user: dict = Depends(verify_token)
+):
+    """Get semester comparison report for performance across semesters"""
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get instructor's sections
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Group by semester
+        semesters_data = {}
+        for section in instructor_sections:
+            semester = section.get('semesterName', 'Unknown')
+            if semester not in semesters_data:
+                semesters_data[semester] = {
+                    'courses': 0,
+                    'totalStudents': 0,
+                    'totalCompletionRate': 0,
+                    'totalGrades': 0,
+                    'courseIds': set()
+                }
+            
+            course_id = section.get('courseId')
+            if course_id:
+                semesters_data[semester]['courseIds'].add(course_id)
+                
+                # Get course data
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict() or {}
+                    semesters_data[semester]['totalStudents'] += course_data.get('totalEnrollments', 0)
+                    semesters_data[semester]['totalCompletionRate'] += course_data.get('completionRate', 0)
+                    semesters_data[semester]['totalGrades'] += course_data.get('averageRating', 0)
+        
+        # Calculate averages
+        semester_comparison = []
+        for semester, data in semesters_data.items():
+            course_count = len(data['courseIds'])
+            semester_comparison.append({
+                'semester': semester,
+                'courses': course_count,
+                'totalStudents': data['totalStudents'],
+                'avgCompletionRate': round(data['totalCompletionRate'] / course_count, 1) if course_count > 0 else 0,
+                'avgGrade': round(data['totalGrades'] / course_count, 1) if course_count > 0 else 0,
+                'studentToCourseRatio': round(data['totalStudents'] / course_count, 1) if course_count > 0 else 0
+            })
+        
+        return {
+            "reportType": "semester-comparison",
+            "generatedAt": datetime.utcnow().isoformat(),
+            "instructorId": instructor_id,
+            "semesters": semester_comparison,
+            "summary": {
+                "totalSemesters": len(semester_comparison),
+                "bestPerformingSemester": max(semester_comparison, key=lambda x: x['avgGrade'])['semester'] if semester_comparison else 'N/A',
+                "worstPerformingSemester": min(semester_comparison, key=lambda x: x['avgGrade'])['semester'] if semester_comparison else 'N/A'
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating semester comparison report: {str(e)}")
+
+
+@router.get("/instructor/reports/detailed-assessment")
+async def get_instructor_detailed_assessment_report(
+    course_id: Optional[str] = Query(None),
+    current_user: dict = Depends(verify_token)
+):
+    """Get detailed assessment report for assignment/exam analysis"""
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get instructor's sections
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Filter by course if specified
+        if course_id:
+            instructor_sections = [s for s in instructor_sections if s.get('courseId') == course_id]
+        
+        # Mock assessment data
+        assessments = []
+        assessment_types = ['Quiz', 'Assignment', 'Exam', 'Project']
+        
+        for i in range(20):  # Mock 20 assessments
+            assessments.append({
+                'assessmentId': f'A{i+1:03d}',
+                'assessmentName': f'{assessment_types[i % len(assessment_types)]} {i+1}',
+                'courseId': course_id or 'Unknown',
+                'type': assessment_types[i % len(assessment_types)],
+                'dueDate': f'2024-0{i % 9 + 1}-{i % 28 + 1:02d}',
+                'totalPoints': 100,
+                'avgScore': 75 + (i % 25),  # 75-99
+                'highestScore': 95 + (i % 5),  # 95-99
+                'lowestScore': 50 + (i % 25),  # 50-74
+                'submissions': 40 + (i % 10),  # 40-49
+                'passRate': 85 + (i % 15),  # 85-99%
+                'feedbackProvided': i % 3 != 0  # 2/3 have feedback
+            })
+        
+        # Categorize by type
+        quizzes = [a for a in assessments if a['type'] == 'Quiz']
+        assignments = [a for a in assessments if a['type'] == 'Assignment']
+        exams = [a for a in assessments if a['type'] == 'Exam']
+        projects = [a for a in assessments if a['type'] == 'Project']
+        
+        return {
+            "reportType": "detailed-assessment",
+            "generatedAt": datetime.utcnow().isoformat(),
+            "instructorId": instructor_id,
+            "courseId": course_id,
+            "assessments": assessments,
+            "summary": {
+                "totalAssessments": len(assessments),
+                "quizzes": len(quizzes),
+                "assignments": len(assignments),
+                "exams": len(exams),
+                "projects": len(projects),
+                "avgScore": round(sum(a['avgScore'] for a in assessments) / len(assessments), 1) if assessments else 0,
+                "overallPassRate": round(sum(a['passRate'] for a in assessments) / len(assessments), 1) if assessments else 0
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating detailed assessment report: {str(e)}")
+
+# Helper function to create PDF report
+def create_pdf_report(report_data, report_type):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Add title
+    title = f"{report_type.replace('-', ' ').title()} Report"
+    story.append(Paragraph(title, styles['Title']))
+    story.append(Spacer(1, 12))
+    
+    # Add generated date
+    generated_at = report_data.get('generatedAt', datetime.now().isoformat())
+    story.append(Paragraph(f"Generated: {generated_at}", styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Add summary data if available
+    if 'summary' in report_data:
+        story.append(Paragraph("Summary", styles['Heading2']))
+        summary_data = report_data['summary']
+        summary_table_data = [[key.replace('_', ' ').title(), str(value)] for key, value in summary_data.items()]
+        summary_table = Table(summary_table_data)
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(summary_table)
+        story.append(Spacer(1, 12))
+    
+    # Add detailed data if available
+    for key, value in report_data.items():
+        if key not in ['summary', 'generatedAt'] and isinstance(value, list):
+            story.append(Paragraph(key.replace('_', ' ').title(), styles['Heading2']))
+            if value and isinstance(value[0], dict):
+                # Create table from list of dictionaries
+                headers = list(value[0].keys())
+                table_data = [headers]
+                for item in value:
+                    table_data.append([str(item.get(header, '')) for header in headers])
+                
+                table = Table(table_data)
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 12),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                story.append(table)
+                story.append(Spacer(1, 12))
+    
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+# Helper function to create Excel report
+def create_excel_report(report_data, report_type):
+    import tempfile
+    import os
+    
+    # Create a temporary file
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+    temp_file.close()
+    
+    try:
+        # Create Excel writer with temporary file path
+        writer = pd.ExcelWriter(temp_file.name, engine='openpyxl')
+        
+        # Add summary sheet if available
+        if 'summary' in report_data:
+            summary_items = list(report_data['summary'].items())
+            summary_df = pd.DataFrame(data=summary_items)
+            summary_df.columns = ['Metric', 'Value']
+            summary_df.to_excel(writer, sheet_name='Summary', index=False)
+        
+        # Add detailed data sheets
+        for key, value in report_data.items():
+            if key not in ['summary', 'generatedAt'] and isinstance(value, list):
+                if value and isinstance(value[0], dict):
+                    df = pd.DataFrame(data=value)
+                    # Limit sheet name to 31 characters
+                    sheet_name = key.replace('_', ' ').title()[:31]
+                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+        
+        writer.close()
+        
+        # Read the file content into a BytesIO buffer
+        with open(temp_file.name, 'rb') as f:
+            buffer = io.BytesIO(f.read())
+        
+        return buffer
+    finally:
+        # Clean up temporary file
+        if os.path.exists(temp_file.name):
+            os.unlink(temp_file.name)
+
+# Download endpoints for reports
+@router.get("/instructor/reports/course-performance/download")
+async def download_course_performance_report(
+    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
+    current_user: dict = Depends(verify_token)
+):
+    """Download course performance report in specified format"""
+    # Get the report data first
+    report_data = await get_instructor_course_performance_report(current_user)
+    
+    if format.lower() == "pdf":
+        pdf_buffer = create_pdf_report(report_data, "course-performance")
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=course-performance-report.pdf"}
+        )
+    elif format.lower() in ["xlsx", "excel"]:
+        excel_buffer = create_excel_report(report_data, "course-performance")
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=course-performance-report.xlsx"}
+        )
+    elif format.lower() == "csv":
+        # For CSV, we'll create one with the main data
+        buffer = io.StringIO()
+        if 'courses' in report_data and report_data['courses']:
+            df = pd.DataFrame(report_data['courses'])
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return Response(
+                content=buffer.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=course-performance-report.csv"}
+            )
+    
+    raise HTTPException(status_code=400, detail="Invalid format specified")
+
+@router.get("/instructor/reports/student-analytics/download")
+async def download_student_analytics_report(
+    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
+    course_id: Optional[str] = Query(None, description="Course ID to filter by"),
+    current_user: dict = Depends(verify_token)
+):
+    """Download student analytics report in specified format"""
+    # Get the report data first
+    report_data = await get_instructor_student_analytics_report(course_id, current_user)
+    
+    if format.lower() == "pdf":
+        pdf_buffer = create_pdf_report(report_data, "student-analytics")
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=student-analytics-report.pdf"}
+        )
+    elif format.lower() in ["xlsx", "excel"]:
+        excel_buffer = create_excel_report(report_data, "student-analytics")
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=student-analytics-report.xlsx"}
+        )
+    elif format.lower() == "csv":
+        buffer = io.StringIO()
+        if 'students' in report_data and report_data['students']:
+            df = pd.DataFrame(report_data['students'])
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return Response(
+                content=buffer.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=student-analytics-report.csv"}
+            )
+    
+    raise HTTPException(status_code=400, detail="Invalid format specified")
+
+@router.get("/instructor/reports/predictive-risk/download")
+async def download_predictive_risk_report(
+    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
+    current_user: dict = Depends(verify_token)
+):
+    """Download predictive risk report in specified format"""
+    # Get the report data first
+    report_data = await get_instructor_predictive_risk_report(current_user)
+    
+    if format.lower() == "pdf":
+        pdf_buffer = create_pdf_report(report_data, "predictive-risk")
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=predictive-risk-report.pdf"}
+        )
+    elif format.lower() in ["xlsx", "excel"]:
+        excel_buffer = create_excel_report(report_data, "predictive-risk")
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=predictive-risk-report.xlsx"}
+        )
+    elif format.lower() == "csv":
+        buffer = io.StringIO()
+        if 'atRiskStudents' in report_data and report_data['atRiskStudents']:
+            df = pd.DataFrame(report_data['atRiskStudents'])
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return Response(
+                content=buffer.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=predictive-risk-report.csv"}
+            )
+    
+    raise HTTPException(status_code=400, detail="Invalid format specified")
+
+@router.get("/instructor/reports/semester-comparison/download")
+async def download_semester_comparison_report(
+    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
+    current_user: dict = Depends(verify_token)
+):
+    """Download semester comparison report in specified format"""
+    # Get the report data first
+    report_data = await get_instructor_semester_comparison_report(current_user)
+    
+    if format.lower() == "pdf":
+        pdf_buffer = create_pdf_report(report_data, "semester-comparison")
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=semester-comparison-report.pdf"}
+        )
+    elif format.lower() in ["xlsx", "excel"]:
+        excel_buffer = create_excel_report(report_data, "semester-comparison")
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=semester-comparison-report.xlsx"}
+        )
+    elif format.lower() == "csv":
+        buffer = io.StringIO()
+        if 'semesters' in report_data and report_data['semesters']:
+            df = pd.DataFrame(report_data['semesters'])
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return Response(
+                content=buffer.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=semester-comparison-report.csv"}
+            )
+    
+    raise HTTPException(status_code=400, detail="Invalid format specified")
+
+@router.get("/instructor/reports/detailed-assessment/download")
+async def download_detailed_assessment_report(
+    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
+    course_id: Optional[str] = Query(None, description="Course ID to filter by"),
+    current_user: dict = Depends(verify_token)
+):
+    """Download detailed assessment report in specified format"""
+    # Get the report data first
+    report_data = await get_instructor_detailed_assessment_report(course_id, current_user)
+    
+    if format.lower() == "pdf":
+        pdf_buffer = create_pdf_report(report_data, "detailed-assessment")
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=detailed-assessment-report.pdf"}
+        )
+    elif format.lower() in ["xlsx", "excel"]:
+        excel_buffer = create_excel_report(report_data, "detailed-assessment")
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=detailed-assessment-report.xlsx"}
+        )
+    elif format.lower() == "csv":
+        buffer = io.StringIO()
+        if 'assessments' in report_data and report_data['assessments']:
+            df = pd.DataFrame(report_data['assessments'])
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return Response(
+                content=buffer.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=detailed-assessment-report.csv"}
+            )
+    
+    raise HTTPException(status_code=400, detail="Invalid format specified")
