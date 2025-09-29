@@ -356,7 +356,7 @@ addNotification({
 
 4. **Session warnings not appearing**
    - Check user.loginTime is being set correctly
-   - Verify SessionManager is included in App.jsx
+   - Verify SessionManager is included in ProtectedRoute.jsx
    - Check localStorage for user data persistence
 
 ### Debug Mode

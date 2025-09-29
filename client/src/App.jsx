@@ -4,7 +4,6 @@ import { AuthProvider } from './context/AuthContext';
 import { FilterProvider } from './context/FilterContext';
 import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
-import SessionManager from './components/common/SessionManager';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -24,7 +23,6 @@ function App() {
         <FilterProvider>
           <Router>
           <div className="App">
-            <SessionManager />
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
