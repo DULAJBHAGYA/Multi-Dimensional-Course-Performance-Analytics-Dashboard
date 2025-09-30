@@ -53,15 +53,26 @@ const CourseAnalytics = () => {
   }
 
   // Use real data from API or fallback to empty data
-  const courses = analyticsData ? [
+  const courses = analyticsData && Array.isArray(analyticsData) ? [
     { id: 'all', name: 'All Courses' },
-    ...analyticsData.courses.map(course => ({
+    ...analyticsData.map(course => ({
       id: course.id,
-      name: course.name
+      name: course.name || course.courseName || 'Unknown Course'
     }))
   ] : [{ id: 'all', name: 'All Courses' }];
 
-  const kpiData = analyticsData ? analyticsData.kpis : {
+  // If analyticsData is an array (from the current backend), we need to compute the KPIs
+  const kpiData = analyticsData && Array.isArray(analyticsData) ? {
+    totalEnrollments: analyticsData.reduce((sum, course) => sum + (course.totalEnrollments || course.enrollments || 0), 0),
+    activeStudents: analyticsData.reduce((sum, course) => sum + (course.activeStudents || 0), 0),
+    completionRate: analyticsData.length > 0 ? 
+      Math.round(analyticsData.reduce((sum, course) => sum + (course.completionRate || 0), 0) / analyticsData.length * 10) / 10 : 0,
+    averageProgress: analyticsData.length > 0 ? 
+      Math.round(analyticsData.reduce((sum, course) => sum + (course.completionRate || 0), 0) / analyticsData.length * 10) / 10 : 0,
+    averageRating: analyticsData.length > 0 ? 
+      Math.round(analyticsData.reduce((sum, course) => sum + (course.averageRating || 0), 0) / analyticsData.length * 10) / 10 : 0,
+    totalCourses: analyticsData.length
+  } : {
     totalEnrollments: 0,
     activeStudents: 0,
     completionRate: 0,
@@ -70,12 +81,13 @@ const CourseAnalytics = () => {
     totalCourses: 0
   };
 
-  const enrollmentTrend = analyticsData ? analyticsData.enrollmentTrend : [];
-  const progressDistribution = analyticsData ? analyticsData.progressDistribution : [];
-  const dropOffPoints = analyticsData ? analyticsData.dropOffPoints : [];
-  const ratingsBreakdown = analyticsData ? analyticsData.ratingsBreakdown : [];
-  const mostViewedLessons = analyticsData ? analyticsData.mostViewedLessons : [];
-  const leastViewedLessons = analyticsData ? analyticsData.leastViewedLessons : [];
+  // For other data, we'll use empty arrays since the current backend doesn't provide them
+  const enrollmentTrend = [];
+  const progressDistribution = [];
+  const dropOffPoints = [];
+  const ratingsBreakdown = [];
+  const mostViewedLessons = [];
+  const leastViewedLessons = [];
 
   // Chart data using Chart.js format
   const enrollmentTrendChartData = generateBarChartData(enrollmentTrend, 'month', 'enrollments', 'Enrollments');
@@ -160,7 +172,7 @@ const CourseAnalytics = () => {
             <div className="flex items-center">
               <div className="p-3 bg-orange-100 rounded-2xl">
                 <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                 </svg>
               </div>
               <div className="ml-4">
@@ -241,23 +253,27 @@ const CourseAnalytics = () => {
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Viewed Lessons</h3>
             <div className="space-y-4">
-              {mostViewedLessons.map((lesson, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-100 rounded-3xl">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{lesson.title}</p>
-                    <p className="text-xs text-gray-500">{lesson.views} views • {lesson.completion}% completion</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-16 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-[#6e63e5] h-2 rounded-full"
-                        style={{ width: `${lesson.completion}%` }}
-                      ></div>
+              {mostViewedLessons && mostViewedLessons.length > 0 ? (
+                mostViewedLessons.map((lesson, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-100 rounded-3xl">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{lesson.title}</p>
+                      <p className="text-xs text-gray-500">{lesson.views} views • {lesson.completion}% completion</p>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{lesson.completion}%</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-[#6e63e5] h-2 rounded-full"
+                          style={{ width: `${lesson.completion}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{lesson.completion}%</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No lesson data available</p>
+              )}
             </div>
           </div>
 
@@ -265,23 +281,27 @@ const CourseAnalytics = () => {
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Least Viewed Lessons</h3>
             <div className="space-y-4">
-              {leastViewedLessons.map((lesson, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-100 rounded-3xl">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{lesson.title}</p>
-                    <p className="text-xs text-gray-500">{lesson.views} views • {lesson.completion}% completion</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-16 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-[#6e63e5] h-2 rounded-full"
-                        style={{ width: `${lesson.completion}%` }}
-                      ></div>
+              {leastViewedLessons && leastViewedLessons.length > 0 ? (
+                leastViewedLessons.map((lesson, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-100 rounded-3xl">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{lesson.title}</p>
+                      <p className="text-xs text-gray-500">{lesson.views} views • {lesson.completion}% completion</p>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{lesson.completion}%</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-[#6e63e5] h-2 rounded-full"
+                          style={{ width: `${lesson.completion}%` }}
+                      ></div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{lesson.completion}%</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No lesson data available</p>
+              )}
             </div>
           </div>
         </div>

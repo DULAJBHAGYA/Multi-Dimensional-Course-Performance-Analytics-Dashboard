@@ -681,7 +681,46 @@ async def get_instructor_course_analytics(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching course analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching instructor analytics: {str(e)}")
+
+@router.get("/instructor/reports/detailed-assessment/download")
+async def download_detailed_assessment_report(
+    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
+    course_id: Optional[str] = Query(None, description="Course ID to filter by"),
+    current_user: dict = Depends(verify_token)
+):
+    """Download detailed assessment report in specified format"""
+    # Get the report data first
+    report_data = await get_instructor_detailed_assessment_report(course_id, current_user)
+    
+    if format.lower() == "pdf":
+        pdf_buffer = create_pdf_report(report_data, "detailed-assessment")
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=detailed-assessment-report.pdf"}
+        )
+    elif format.lower() in ["xlsx", "excel"]:
+        excel_buffer = create_excel_report(report_data, "detailed-assessment")
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=detailed-assessment-report.xlsx"}
+        )
+    elif format.lower() == "csv":
+        buffer = io.StringIO()
+        if 'assessments' in report_data and report_data['assessments']:
+            df = pd.DataFrame(report_data['assessments'])
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return Response(
+                content=buffer.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=detailed-assessment-report.csv"}
+            )
+    
+    raise HTTPException(status_code=400, detail="Invalid format specified")
+
 
 @router.get("/instructor/announcements")
 async def get_instructor_announcements_firestore(
@@ -1349,40 +1388,229 @@ async def download_semester_comparison_report(
     
     raise HTTPException(status_code=400, detail="Invalid format specified")
 
-@router.get("/instructor/reports/detailed-assessment/download")
-async def download_detailed_assessment_report(
-    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
-    course_id: Optional[str] = Query(None, description="Course ID to filter by"),
+
+# New endpoints for CRN comparison and semester performance
+@router.get("/instructor/crn-comparison")
+async def get_instructor_crn_comparison(
+    crn1: str = Query(..., description="First CRN to compare"),
+    crn2: str = Query(..., description="Second CRN to compare"),
     current_user: dict = Depends(verify_token)
 ):
-    """Download detailed assessment report in specified format"""
-    # Get the report data first
-    report_data = await get_instructor_detailed_assessment_report(course_id, current_user)
-    
-    if format.lower() == "pdf":
-        pdf_buffer = create_pdf_report(report_data, "detailed-assessment")
-        return StreamingResponse(
-            pdf_buffer,
-            media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=detailed-assessment-report.pdf"}
-        )
-    elif format.lower() in ["xlsx", "excel"]:
-        excel_buffer = create_excel_report(report_data, "detailed-assessment")
-        return StreamingResponse(
-            excel_buffer,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=detailed-assessment-report.xlsx"}
-        )
-    elif format.lower() == "csv":
-        buffer = io.StringIO()
-        if 'assessments' in report_data and report_data['assessments']:
-            df = pd.DataFrame(report_data['assessments'])
-            df.to_csv(buffer, index=False)
-            buffer.seek(0)
-            return Response(
-                content=buffer.getvalue(),
-                media_type="text/csv",
-                headers={"Content-Disposition": "attachment; filename=detailed-assessment-report.csv"}
-            )
-    
-    raise HTTPException(status_code=400, detail="Invalid format specified")
+    """Get performance comparison data for two CRNs"""
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get sections assigned to this instructor
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Find sections for the two CRNs
+        section1 = next((s for s in instructor_sections if s.get('crnCode') == crn1), None)
+        section2 = next((s for s in instructor_sections if s.get('crnCode') == crn2), None)
+        
+        if not section1 or not section2:
+            raise HTTPException(status_code=404, detail="One or both CRNs not found for this instructor")
+        
+        # Get course data for both sections
+        course1_id = section1.get('courseId')
+        course2_id = section2.get('courseId')
+        
+        course1_doc = db.collection('courses').document(course1_id).get()
+        course2_doc = db.collection('courses').document(course2_id).get()
+        
+        if not course1_doc.exists or not course2_doc.exists:
+            raise HTTPException(status_code=404, detail="Course data not found")
+        
+        course1_data = course1_doc.to_dict() or {}
+        course2_data = course2_doc.to_dict() or {}
+        
+        # Prepare comparison data
+        comparison_data = {
+            "crn1": {
+                "crn": crn1,
+                "courseName": course1_data.get('courseName', 'Unknown Course'),
+                "semester": section1.get('semesterName', 'Unknown Semester'),
+                "students": course1_data.get('totalEnrollments', 0),
+                "completionRate": course1_data.get('completionRate', 0),
+                "averageGrade": course1_data.get('averageRating', 0),
+                "activeStudents": course1_data.get('activeStudents', 0),
+                "atRiskStudents": max(0, int(course1_data.get('totalEnrollments', 0) * 0.15))
+            },
+            "crn2": {
+                "crn": crn2,
+                "courseName": course2_data.get('courseName', 'Unknown Course'),
+                "semester": section2.get('semesterName', 'Unknown Semester'),
+                "students": course2_data.get('totalEnrollments', 0),
+                "completionRate": course2_data.get('completionRate', 0),
+                "averageGrade": course2_data.get('averageRating', 0),
+                "activeStudents": course2_data.get('activeStudents', 0),
+                "atRiskStudents": max(0, int(course2_data.get('totalEnrollments', 0) * 0.15))
+            },
+            "comparison": {
+                "studentsDifference": course1_data.get('totalEnrollments', 0) - course2_data.get('totalEnrollments', 0),
+                "completionRateDifference": round(course1_data.get('completionRate', 0) - course2_data.get('completionRate', 0), 2),
+                "averageGradeDifference": round(course1_data.get('averageRating', 0) - course2_data.get('averageRating', 0), 2),
+                "betterCompletionRate": crn1 if course1_data.get('completionRate', 0) > course2_data.get('completionRate', 0) else crn2,
+                "betterAverageGrade": crn1 if course1_data.get('averageRating', 0) > course2_data.get('averageRating', 0) else crn2
+            }
+        }
+        
+        return comparison_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching CRN comparison data: {str(e)}")
+
+@router.get("/instructor/semester-performance")
+async def get_instructor_semester_performance(
+    current_user: dict = Depends(verify_token)
+):
+    """Get semester performance trend data for line chart"""
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get instructor's sections
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Group by semester
+        semester_data = {}
+        for section in instructor_sections:
+            semester = section.get('semesterName', 'Unknown')
+            course_id = section.get('courseId')
+            
+            if course_id and semester != 'Unknown':
+                if semester not in semester_data:
+                    semester_data[semester] = {
+                        "courses": 0,
+                        "totalStudents": 0,
+                        "totalCompletionRate": 0,
+                        "totalGrades": 0
+                    }
+                
+                # Get course data
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict() or {}
+                    semester_data[semester]["courses"] += 1
+                    semester_data[semester]["totalStudents"] += course_data.get('totalEnrollments', 0)
+                    semester_data[semester]["totalCompletionRate"] += course_data.get('completionRate', 0)
+                    semester_data[semester]["totalGrades"] += course_data.get('averageRating', 0)
+        
+        # Calculate averages and prepare trend data
+        trend_data = []
+        for semester, data in semester_data.items():
+            if data["courses"] > 0:
+                trend_data.append({
+                    "semester": semester,
+                    "courses": data["courses"],
+                    "totalStudents": data["totalStudents"],
+                    "avgCompletionRate": round(data["totalCompletionRate"] / data["courses"], 2),
+                    "avgGrade": round(data["totalGrades"] / data["courses"], 2),
+                    "studentToCourseRatio": round(data["totalStudents"] / data["courses"], 2) if data["courses"] > 0 else 0
+                })
+        
+        # Sort by semester (assuming format like "Fall 2023", "Spring 2024", etc.)
+        trend_data.sort(key=lambda x: x["semester"])
+        
+        return trend_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching semester performance data: {str(e)}")
+
+@router.get("/admin/metrics")
+async def get_admin_platform_metrics(
+    current_user: dict = Depends(verify_token)
+):
+    """Get platform metrics for admin dashboard from Firestore"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get counts from different collections
+        instructors_count = len([doc for doc in db.collection('instructors').stream()])
+        students_count = len([doc for doc in db.collection('students').stream()])
+        courses_count = len([doc for doc in db.collection('courses').stream()])
+        admins_count = len([doc for doc in db.collection('admins').stream()])
+        
+        # Get role distribution data for pie chart
+        role_distribution = [
+            {"role": "Instructors", "count": instructors_count},
+            {"role": "Admins", "count": admins_count}
+        ]
+        
+        return {
+            "totalInstructors": instructors_count,
+            "totalStudents": students_count,
+            "totalCourses": courses_count,
+            "totalAdmins": admins_count,
+            "roleDistribution": role_distribution
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching admin platform metrics: {str(e)}")
+
+@router.get("/admin/course-popularity")
+async def get_admin_course_popularity(
+    current_user: dict = Depends(verify_token)
+):
+    """Get course distribution by course type for bar chart from Firestore"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get all courses
+        courses_query = db.collection('courses').stream()
+        
+        # Group courses by course type
+        course_distribution = {}
+        for course_doc in courses_query:
+            course_data = course_doc.to_dict() or {}
+            # Use courseType field as it exists in the database
+            course_type = course_data.get('courseType', 'Unknown')
+            
+            if course_type not in course_distribution:
+                course_distribution[course_type] = {
+                    "course_type": course_type,
+                    "total_courses": 0
+                }
+            
+            course_distribution[course_type]["total_courses"] += 1
+        
+        # Convert to list
+        course_distribution_list = list(course_distribution.values())
+        
+        # Sort alphabetically by course type for consistent display
+        course_distribution_list.sort(key=lambda x: x["course_type"])
+        
+        return course_distribution_list
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching course distribution data: {str(e)}")

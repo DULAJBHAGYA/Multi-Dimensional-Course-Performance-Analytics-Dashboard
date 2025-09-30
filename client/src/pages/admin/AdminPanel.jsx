@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
-import { processedData } from '../../data/mockData';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { generateBarChartData, generateLineChartData, generatePieChartData, getChartOptions } from '../../utils/chartUtils';
+import apiService from '../../services/api';
 
 const AdminPanel = () => {
   const { user } = useAuth();
@@ -12,31 +12,116 @@ const AdminPanel = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [campuses, setCampuses] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [platformMetrics, setPlatformMetrics] = useState({
+    totalInstructors: 0,
+    totalCourses: 0,
+    totalStudents: 0,
+    totalAdmins: 0
+  });
+  const [roleDistribution, setRoleDistribution] = useState([
+    { role: 'Instructors', count: 0, percentage: 0 },
+    { role: 'Admins', count: 0, percentage: 0 }
+  ]);
+  const [coursePopularityData, setCoursePopularityData] = useState([]);
 
-  // Real user data from dataset
-  const [users, setUsers] = useState(processedData.users);
+  // Fetch users from API
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const usersData = await apiService.getAllUsers();
+        setUsers(usersData);
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
+        setError('Failed to load users');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Real platform metrics from dataset
-  const platformMetrics = {
-    totalInstructors: processedData.roles.instructor,
-    totalCourses: processedData.courses.length,
-    totalStudents: processedData.courses.reduce((sum, course) => sum + course.totalEnrollments, 0),
-    overallCompletionRate: Math.round(processedData.courses.reduce((sum, course) => sum + course.completionRate, 0) / processedData.courses.length),
-    dropoutRate: 12.3, // Calculated from completion rates
-    activeUsers: processedData.users.filter(user => user.status === 'active').length,
-    inactiveUsers: processedData.users.filter(user => user.status === 'inactive').length,
-    dailyLogins: 234,
-    weeklyLogins: 1647
-  };
+    if (activeTab === 'users') {
+      fetchUsers();
+    }
+  }, [activeTab]);
 
-  const coursesPerInstructor = processedData.users
-    .filter(user => user.role === 'instructor')
-    .map(user => ({
-      instructor: user.name,
-      courses: user.courses
-    }))
-    .sort((a, b) => b.courses - a.courses);
+  // Fetch platform metrics and role distribution
+  useEffect(() => {
+    const fetchPlatformMetrics = async () => {
+      try {
+        const metricsData = await apiService.getAdminPlatformMetrics();
+        setPlatformMetrics(metricsData);
+        
+        // Calculate percentages for role distribution
+        const totalUsers = metricsData.totalInstructors + metricsData.totalAdmins;
+        const roleDistributionData = [
+          { 
+            role: 'Instructors', 
+            count: metricsData.totalInstructors,
+            percentage: totalUsers > 0 ? Math.round((metricsData.totalInstructors / totalUsers) * 100) : 0
+          },
+          { 
+            role: 'Admins', 
+            count: metricsData.totalAdmins,
+            percentage: totalUsers > 0 ? Math.round((metricsData.totalAdmins / totalUsers) * 100) : 0
+          }
+        ];
+        setRoleDistribution(roleDistributionData);
+      } catch (err) {
+        console.error('Failed to fetch platform metrics:', err);
+      }
+    };
 
+    const fetchCoursePopularity = async () => {
+      try {
+        const popularityData = await apiService.getAdminCoursePopularity();
+        setCoursePopularityData(popularityData);
+      } catch (err) {
+        console.error('Failed to fetch course popularity data:', err);
+      }
+    };
+
+    if (activeTab === 'metrics') {
+      fetchPlatformMetrics();
+      fetchCoursePopularity();
+    }
+  }, [activeTab]);
+
+  // Fetch campuses and departments
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      try {
+        const [campusesData, departmentsData] = await Promise.all([
+          apiService.getCampuses(),
+          apiService.getDepartments()
+        ]);
+        setCampuses(campusesData);
+        setDepartments(departmentsData);
+      } catch (err) {
+        console.error('Failed to fetch dropdown data:', err);
+        // Fallback to default values if API fails
+        setCampuses([
+          "Abu Dhabi", "Al Ain", "Dubai", "Fujairah", 
+          "Sharjah", "Ajman", "Ras Al Khaimah", "Umm Al Quwain"
+        ]);
+        setDepartments([
+          "Mathematics", "Computer Science", "Physics", "Chemistry",
+          "Biology", "Engineering", "Psychology", "Administration",
+          "Computer Information Science", "Applied Media", 
+          "Engineering Technology & Science"
+        ]);
+      }
+    };
+
+    fetchDropdownData();
+  }, []);
+
+  // Chart data using Chart.js format
+  const coursesPerInstructor = []; // This would need to be fetched from API in a real implementation
   const studentGrowthData = [
     { month: 'Jan', students: 1200 },
     { month: 'Feb', students: 1250 },
@@ -46,12 +131,6 @@ const AdminPanel = () => {
     { month: 'Jun', students: 1450 }
   ];
 
-  const roleDistribution = [
-    { role: 'Instructors', count: processedData.roles.instructor, percentage: Math.round((processedData.roles.instructor / (processedData.roles.instructor + processedData.roles.admin)) * 100) },
-    { role: 'Admins', count: processedData.roles.admin, percentage: Math.round((processedData.roles.admin / (processedData.roles.instructor + processedData.roles.admin)) * 100) }
-  ];
-
-  // Chart data using Chart.js format
   const coursesPerInstructorChartData = generateBarChartData(coursesPerInstructor, 'instructor', 'courses', 'Courses');
   const studentGrowthChartData = generateLineChartData(studentGrowthData, 'month', 'students', 'Students');
   
@@ -75,13 +154,34 @@ const AdminPanel = () => {
     }]
   };
 
+  // Course distribution chart data
+  const courseDistributionChartData = {
+    labels: coursePopularityData.map(course => course.course_type),
+    datasets: [
+      {
+        label: '',
+        data: coursePopularityData.map(course => course.total_courses),
+        backgroundColor: coursePopularityData.map((_, index) => 
+          index % 2 === 0 ? '#6e63e5' : '#D3CEFC'  // Alternate between purple and light purple
+        ),
+        borderWidth: 0,  // Remove border by setting width to 0
+        hoverBackgroundColor: coursePopularityData.map((_, index) => 
+          index % 2 === 0 ? '#7C3AED' : '#d3cefc'  // Hover colors
+        ),
+        borderRadius: 20,
+        borderSkipped: false
+      }
+    ]
+  };
+
   // New user form state
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
     role: 'instructor',
     password: '',
-    department: ''
+    department: '',
+    campus: ''
   });
 
   const filteredUsers = users.filter(user => {
@@ -91,20 +191,44 @@ const AdminPanel = () => {
     return matchesSearch && matchesRole;
   });
 
-  const handleAddUser = (e) => {
+  const renderDepartmentOptions = () => {
+    return departments.map((department) => (
+      <option key={department} value={department}>{department}</option>
+    ));
+  };
+
+  const renderCampusOptions = () => {
+    return campuses.map((campus) => (
+      <option key={campus} value={campus}>{campus}</option>
+    ));
+  };
+
+  const handleAddUser = async (e) => {
     e.preventDefault();
-    const user = {
-      id: Date.now(),
-      ...newUser,
-      status: 'active',
-      dateCreated: new Date().toISOString().split('T')[0],
-      lastLogin: 'Never',
-      courses: 0,
-      students: 0
-    };
-    setUsers([...users, user]);
-    setNewUser({ name: '', email: '', role: 'instructor', password: '', department: '' });
-    setShowAddUserForm(false);
+    try {
+      // Call API to create user
+      const userData = {
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        password: newUser.password,
+        department: newUser.department,
+        campus: newUser.campus,
+        username: newUser.email.split('@')[0]
+      };
+      
+      const createdUser = await apiService.createUser(userData);
+      
+      // Add the created user to the state
+      setUsers([...users, createdUser]);
+      
+      // Reset form and close modal
+      setNewUser({ name: '', email: '', role: 'instructor', password: '', department: '', campus: '' });
+      setShowAddUserForm(false);
+    } catch (err) {
+      console.error('Failed to create user:', err);
+      alert('Failed to create user: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleEditUser = (userId) => {
@@ -112,23 +236,44 @@ const AdminPanel = () => {
     setEditingUser(user);
   };
 
-  const handleUpdateUser = (e) => {
+  const handleUpdateUser = async (e) => {
     e.preventDefault();
-    setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...editingUser } : u));
-    setEditingUser(null);
-  };
-
-  const handleDeleteUser = (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter(u => u.id !== userId));
+    try {
+      // Call API to update user
+      const userData = {
+        name: editingUser.name,
+        email: editingUser.email,
+        role: editingUser.role,
+        department: editingUser.department,
+        campus: editingUser.campus
+      };
+      
+      const updatedUser = await apiService.updateUser(editingUser.id, userData);
+      
+      // Update the user in the state
+      setUsers(users.map(u => u.id === editingUser.id ? updatedUser : u));
+      
+      // Close modal
+      setEditingUser(null);
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      alert('Failed to update user: ' + (err.message || 'Unknown error'));
     }
   };
 
-
-  const getStatusColor = (status) => {
-    return status === 'active' 
-      ? 'text-green-600 bg-green-100' 
-      : 'text-red-400 bg-red-100';
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      try {
+        // Call API to delete user
+        await apiService.deleteUser(userId);
+        
+        // Remove the user from the state
+        setUsers(users.filter(u => u.id !== userId));
+      } catch (err) {
+        console.error('Failed to delete user:', err);
+        alert('Failed to delete user: ' + (err.message || 'Unknown error'));
+      }
+    }
   };
 
   const getRoleColor = (role) => {
@@ -136,6 +281,27 @@ const AdminPanel = () => {
       ? 'text-[#6e63e5] bg-[#D3CEFC]' 
       : 'text-blue-400 bg-blue-100';
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6e63e5]"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -271,14 +437,18 @@ const AdminPanel = () => {
                           className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                         >
                           <option value="">Select Department</option>
-                          <option value="Mathematics">Mathematics</option>
-                          <option value="Computer Science">Computer Science</option>
-                          <option value="Physics">Physics</option>
-                          <option value="Chemistry">Chemistry</option>
-                          <option value="Biology">Biology</option>
-                          <option value="Engineering">Engineering</option>
-                          <option value="Psychology">Psychology</option>
-                          <option value="Administration">Administration</option>
+                          {renderDepartmentOptions()}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Campus</label>
+                        <select
+                          value={newUser.campus}
+                          onChange={(e) => setNewUser({ ...newUser, campus: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                        >
+                          <option value="">Select Campus</option>
+                          {renderCampusOptions()}
                         </select>
                       </div>
                       <div>
@@ -358,14 +528,18 @@ const AdminPanel = () => {
                           className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                         >
                           <option value="">Select Department</option>
-                          <option value="Mathematics">Mathematics</option>
-                          <option value="Computer Science">Computer Science</option>
-                          <option value="Physics">Physics</option>
-                          <option value="Chemistry">Chemistry</option>
-                          <option value="Biology">Biology</option>
-                          <option value="Engineering">Engineering</option>
-                          <option value="Psychology">Psychology</option>
-                          <option value="Administration">Administration</option>
+                          {renderDepartmentOptions()}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Campus</label>
+                        <select
+                          value={editingUser.campus}
+                          onChange={(e) => setEditingUser({ ...editingUser, campus: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                        >
+                          <option value="">Select Campus</option>
+                          {renderCampusOptions()}
                         </select>
                       </div>
                       <div className="flex justify-end space-x-3">
@@ -398,10 +572,7 @@ const AdminPanel = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campus</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -420,14 +591,7 @@ const AdminPanel = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.department}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(user.status)}`}>
-                            {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.courses}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.students}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.lastLogin}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.campus || 'Not assigned'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             {/* Edit Button */}
@@ -491,65 +655,64 @@ const AdminPanel = () => {
               
               <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.overallCompletionRate}%</div>
-                  <div className="text-sm text-gray-600">Completion Rate</div>
+                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.totalAdmins}</div>
+                  <div className="text-sm text-gray-600">Total Admins</div>
                 </div>
               </div>
             </div>
 
-            {/* Additional Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-3xl shadow-sm">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.dropoutRate}%</div>
-                  <div className="text-sm text-gray-600">Dropout Rate</div>
-                </div>
-              </div>
-              
-              <div className="bg-white p-6 rounded-3xl shadow-sm">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.activeUsers}</div>
-                  <div className="text-sm text-gray-600">Active Users</div>
-                </div>
-              </div>
-              
-              <div className="bg-white p-6 rounded-3xl shadow-sm">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.inactiveUsers}</div>
-                  <div className="text-sm text-gray-600">Inactive Users</div>
-                </div>
-              </div>
-              
-              <div className="bg-white p-6 rounded-3xl shadow-sm">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.dailyLogins}</div>
-                  <div className="text-sm text-gray-600">Daily Logins</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Courses per Instructor Bar Chart */}
-              <div className="bg-white p-6 rounded-3xl shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Courses per Instructor</h3>
-                <div className="h-64">
-                  <Bar 
-                    data={coursesPerInstructorChartData} 
-                    options={getChartOptions('bar', '')}
-                  />
-                </div>
-              </div>
-
-              {/* Student Growth Line Chart */}
-              <div className="bg-white p-6 rounded-3xl shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Growth Trend</h3>
-                <div className="h-64">
-                  <Line 
-                    data={studentGrowthChartData} 
-                    options={getChartOptions('line', '')}
-                  />
-                </div>
+            {/* Course Distribution Bar Chart */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Distribution by Course Type</h3>
+              <div className="h-64">
+                <Bar 
+                  data={courseDistributionChartData} 
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: false
+                      },
+                      tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: '#6e63e5',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        displayColors: true,
+                      }
+                    },
+                    scales: {
+                      x: {
+                        display: true,
+                        grid: {
+                          display: false,
+                        },
+                        ticks: {
+                          color: '#6B7280',
+                          font: {
+                            size: 12
+                          }
+                        }
+                      },
+                      y: {
+                        display: true,
+                        grid: {
+                          color: '#F3F4F6',
+                        },
+                        ticks: {
+                          color: '#6B7280',
+                          font: {
+                            size: 12
+                          }
+                        },
+                        beginAtZero: true
+                      }
+                    }
+                  }}
+                />
               </div>
             </div>
 
@@ -561,6 +724,22 @@ const AdminPanel = () => {
                   data={roleDistributionChartData} 
                   options={getChartOptions('pie', '')}
                 />
+              </div>
+              {/* Role Distribution Legend */}
+              <div className="flex justify-center mt-4 space-x-8">
+                {roleDistribution.map((item, index) => (
+                  <div key={item.role} className="flex items-center">
+                    <div 
+                      className="w-4 h-4 rounded-full mr-2" 
+                      style={{ 
+                        backgroundColor: index === 0 ? '#6e63e5' : '#d3cefc' 
+                      }}
+                    ></div>
+                    <span className="text-sm text-gray-600">
+                      {item.role}: {item.count} ({item.percentage}%)
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

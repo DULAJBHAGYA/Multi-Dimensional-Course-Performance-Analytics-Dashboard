@@ -14,6 +14,10 @@ const HomeDashboard = () => {
   const [selectedCampus, setSelectedCampus] = useState('all');
   const [selectedCRN, setSelectedCRN] = useState('all');
   const [dashboardData, setDashboardData] = useState(null);
+  const [crnComparisonData, setCrnComparisonData] = useState(null);
+  const [semesterPerformanceData, setSemesterPerformanceData] = useState(null);
+  const [selectedCrn1, setSelectedCrn1] = useState('');
+  const [selectedCrn2, setSelectedCrn2] = useState('');
   const [filterOptions, setFilterOptions] = useState({
     semesters: [],
     courses: [],
@@ -30,6 +34,10 @@ const HomeDashboard = () => {
         setLoading(true);
         const data = await apiService.getInstructorDashboard();
         setDashboardData(data);
+        
+        // Fetch semester performance data
+        const semesterData = await apiService.getInstructorSemesterPerformance();
+        setSemesterPerformanceData(semesterData);
         
         // Extract filter options from the data
         if (data && data.courses) {
@@ -58,7 +66,26 @@ const HomeDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  if (loading) {
+  const handleCrnComparison = async () => {
+    if (!selectedCrn1 || !selectedCrn2) {
+      setError('Please select two CRNs to compare');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const comparisonData = await apiService.getInstructorCrnComparison(selectedCrn1, selectedCrn2);
+      setCrnComparisonData(comparisonData);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching CRN comparison data:', err);
+      setError('Failed to load CRN comparison data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && !crnComparisonData) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
@@ -68,7 +95,7 @@ const HomeDashboard = () => {
     );
   }
 
-  if (error) {
+  if (error && !crnComparisonData) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
@@ -114,6 +141,16 @@ const HomeDashboard = () => {
     completionRate: 0
   };
 
+  // Prepare semester performance chart data
+  const semesterPerformanceChartData = semesterPerformanceData ? 
+    generateLineChartData(semesterPerformanceData, 'semester', 'avgCompletionRate', 'Semester Performance') : 
+    generateLineChartData([
+      { semester: 'Fall 2023', avgCompletionRate: 85 },
+      { semester: 'Spring 2024', avgCompletionRate: 87 },
+      { semester: 'Summer 2024', avgCompletionRate: 89 }
+    ], 'semester', 'avgCompletionRate', 'Semester Performance');
+
+  // Prepare performance trend data
   const performanceData = [
     { month: 'Jan', performance: 85 },
     { month: 'Feb', performance: 87 },
@@ -126,6 +163,43 @@ const HomeDashboard = () => {
   // Chart data using Chart.js format
   const performanceChartData = generateBarChartData(performanceData, 'month', 'performance', 'Performance');
   const coursePerformanceChartData = generateBarChartData(courseData, 'name', 'performance', 'Course Performance');
+
+  // Prepare CRN comparison chart data if available
+  let crnComparisonChartData = null;
+  if (crnComparisonData) {
+    crnComparisonChartData = {
+      labels: [crnComparisonData.crn1.crn, crnComparisonData.crn2.crn],
+      datasets: [
+        {
+          label: 'Students',
+          data: [crnComparisonData.crn1.students, crnComparisonData.crn2.students],
+          backgroundColor: ['#6e63e5', '#D3CEFC'],
+          borderColor: ['#6e63e5', '#D3CEFC'],
+          borderWidth: 0,
+          borderRadius: 12,
+          borderSkipped: false,
+        },
+        {
+          label: 'Completion Rate',
+          data: [crnComparisonData.crn1.completionRate, crnComparisonData.crn2.completionRate],
+          backgroundColor: ['#10B981', '#6EE7B7'],
+          borderColor: ['#10B981', '#6EE7B7'],
+          borderWidth: 0,
+          borderRadius: 12,
+          borderSkipped: false,
+        },
+        {
+          label: 'Average Grade',
+          data: [crnComparisonData.crn1.averageGrade, crnComparisonData.crn2.averageGrade],
+          backgroundColor: ['#F59E0B', '#FDE68A'],
+          borderColor: ['#F59E0B', '#FDE68A'],
+          borderWidth: 0,
+          borderRadius: 12,
+          borderSkipped: false,
+        }
+      ]
+    };
+  }
 
   return (
     <DashboardLayout>
@@ -273,6 +347,140 @@ const HomeDashboard = () => {
           </div>
         </div>
 
+        {/* CRN Comparison Section */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">CRN Performance Comparison</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select First CRN</label>
+              <select 
+                value={selectedCrn1} 
+                onChange={(e) => setSelectedCrn1(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+              >
+                <option value="">Select CRN</option>
+                {filterOptions.crns.map(crn => (
+                  <option key={crn} value={crn}>{crn}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Second CRN</label>
+              <select 
+                value={selectedCrn2} 
+                onChange={(e) => setSelectedCrn2(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+              >
+                <option value="">Select CRN</option>
+                {filterOptions.crns.map(crn => (
+                  <option key={crn} value={crn}>{crn}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-end">
+              <button 
+                onClick={handleCrnComparison}
+                disabled={!selectedCrn1 || !selectedCrn2 || loading}
+                className="w-full px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] disabled:bg-gray-400 text-white rounded-xl transition-colors"
+              >
+                Compare CRNs
+              </button>
+            </div>
+          </div>
+          
+          {error && (
+            <div className="text-red-500 text-sm mb-4">{error}</div>
+          )}
+          
+          {crnComparisonData && (
+            <div className="mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Comparison Chart */}
+                <div className="h-64">
+                  <Bar 
+                    data={crnComparisonChartData} 
+                    options={getChartOptions('bar', 'CRN Comparison')}
+                  />
+                </div>
+                
+                {/* Comparison Results */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Comparison Results</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                      <span className="text-sm text-gray-600">Better Completion Rate</span>
+                      <span className="font-medium">
+                        {crnComparisonData.comparison.betterCompletionRate}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                      <span className="text-sm text-gray-600">Completion Rate Difference</span>
+                      <span className={`font-medium ${crnComparisonData.comparison.completionRateDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {crnComparisonData.comparison.completionRateDifference}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                      <span className="text-sm text-gray-600">Average Grade Difference</span>
+                      <span className={`font-medium ${crnComparisonData.comparison.averageGradeDifference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {crnComparisonData.comparison.averageGradeDifference}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Detailed CRN Data */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div className="border border-gray-200 rounded-2xl p-4">
+                  <h5 className="font-medium text-gray-900 mb-3">{crnComparisonData.crn1.crn} - {crnComparisonData.crn1.courseName}</h5>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Students:</span>
+                      <span className="font-medium">{crnComparisonData.crn1.students}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Completion Rate:</span>
+                      <span className="font-medium">{crnComparisonData.crn1.completionRate}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Average Grade:</span>
+                      <span className="font-medium">{crnComparisonData.crn1.averageGrade}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">At-Risk Students:</span>
+                      <span className="font-medium">{crnComparisonData.crn1.atRiskStudents}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border border-gray-200 rounded-2xl p-4">
+                  <h5 className="font-medium text-gray-900 mb-3">{crnComparisonData.crn2.crn} - {crnComparisonData.crn2.courseName}</h5>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Students:</span>
+                      <span className="font-medium">{crnComparisonData.crn2.students}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Completion Rate:</span>
+                      <span className="font-medium">{crnComparisonData.crn2.completionRate}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Average Grade:</span>
+                      <span className="font-medium">{crnComparisonData.crn2.averageGrade}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">At-Risk Students:</span>
+                      <span className="font-medium">{crnComparisonData.crn2.atRiskStudents}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white p-6 rounded-3xl shadow-sm">
@@ -285,7 +493,6 @@ const HomeDashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Students</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.totalStudents.toLocaleString()}</p>
-
               </div>
             </div>
           </div>
@@ -315,12 +522,11 @@ const HomeDashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Avg Performance</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.avgPerformance}%</p>
-
               </div>
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-3xl shadow-sm ">
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="flex items-center">
               <div className="p-3 bg-[#D3CEFC] rounded-2xl">
                 <svg className="w-6 h-6 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -330,7 +536,6 @@ const HomeDashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Completion Rate</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.completionRate}%</p>
-
               </div>
             </div>
           </div>
@@ -349,15 +554,26 @@ const HomeDashboard = () => {
             </div>
           </div>
 
-          {/* Course Performance Chart */}
+          {/* Semester Performance Chart */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Performance</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Semester Performance</h3>
             <div className="h-64">
-              <Bar 
-                data={coursePerformanceChartData} 
-                options={getChartOptions('bar', '')}
+              <Line 
+                data={semesterPerformanceChartData} 
+                options={getChartOptions('line', '')}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Course Performance Chart */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Performance</h3>
+          <div className="h-64">
+            <Bar 
+              data={coursePerformanceChartData} 
+              options={getChartOptions('bar', '')}
+            />
           </div>
         </div>
 
@@ -387,6 +603,9 @@ const HomeDashboard = () => {
                       className="bg-[#6e63e5] h-2 rounded-xl"
                       style={{ width: `${course.performance}%` }}
                     ></div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    CRN: {course.crnCode} | {course.semesterName}
                   </div>
                 </div>
               ))}
