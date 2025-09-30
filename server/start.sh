@@ -30,14 +30,12 @@ source venv/bin/activate
 echo "📚 Installing dependencies..."
 pip install -r requirements.txt
 
-# Seed database
-echo "🌱 Seeding database with sample data..."
-python seed_data.py
+# Skip seeding database as seed_data.py is not available
 
 # Start the server
 echo "🎯 Starting FastAPI server..."
-echo "📍 API will be available at: http://localhost:8000"
-echo "📖 API Documentation: http://localhost:8000/docs"
+echo "📍 API will be available at: http://localhost:8001"
+echo "📖 API Documentation: http://localhost:8001/docs"
 echo "🔄 Press Ctrl+C to stop the server"
 echo ""
 

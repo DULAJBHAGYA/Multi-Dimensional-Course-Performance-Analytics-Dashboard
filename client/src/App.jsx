@@ -8,7 +8,9 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 // Pages
 import LandingPage from './pages/LandingPage';
 import Login from './pages/auth/Login';
+import RoleRedirect from './pages/auth/RoleRedirect';
 import HomeDashboard from './pages/dashboard/HomeDashboard';
+import InstructorDashboard from './pages/instructor/InstructorDashboard';
 import CourseAnalytics from './pages/courseAnalytics/CourseAnalytics';
 import PredictiveAnalytics from './pages/predictiveAnalytics/PredictiveAnalytics';
 import ReportGeneration from './pages/reportGeneration/ReportGeneration';
@@ -28,12 +30,30 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
               
+              {/* Role-based redirect route */}
+              <Route 
+                path="/redirect" 
+                element={
+                  <ProtectedRoute>
+                    <RoleRedirect />
+                  </ProtectedRoute>
+                } 
+              />
+              
               {/* Protected Routes */}
               <Route 
                 path="/dashboard" 
                 element={
                   <ProtectedRoute>
                     <HomeDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/instructor-dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <InstructorDashboard />
                   </ProtectedRoute>
                 } 
               />

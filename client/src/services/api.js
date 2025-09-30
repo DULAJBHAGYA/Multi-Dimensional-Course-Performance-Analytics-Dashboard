@@ -2,12 +2,15 @@
 class ApiService {
   constructor() {
     this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api';
+    console.log('ApiService initialized with baseURL:', this.baseURL);
+    console.log('VITE_API_URL from env:', import.meta.env.VITE_API_URL);
     this.refreshPromise = null;
   }
 
   // Generic request method with enhanced error handling and token refresh
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    console.log(`API Request to ${url}`, options);
     let config = {
       headers: {
         'Content-Type': 'application/json',
@@ -25,6 +28,8 @@ class ApiService {
     try {
       const response = await fetch(url, config);
       
+      console.log(`API Response for ${url}:`, response.status, response.statusText);
+      
       // Handle token expiration
       if (response.status === 401 && token) {
         const refreshed = await this.refreshToken();
@@ -32,6 +37,7 @@ class ApiService {
           // Retry the request with new token
           config.headers.Authorization = `Bearer ${this.getToken()}`;
           const retryResponse = await fetch(url, config);
+          console.log(`API Retry Response for ${url}:`, retryResponse.status, retryResponse.statusText);
           if (!retryResponse.ok) {
             throw new Error(`HTTP error! status: ${retryResponse.status}`);
           }
@@ -57,6 +63,7 @@ class ApiService {
 
   // GET request
   async get(endpoint, params = {}) {
+    console.log(`GET request to ${endpoint} with params:`, params);
     const queryString = new URLSearchParams(params).toString();
     const url = queryString ? `${endpoint}?${queryString}` : endpoint;
     return this.request(url, { method: 'GET' });
@@ -111,6 +118,26 @@ class ApiService {
     return this.get('/firebase/auth/v2/users');
   }
 
+  async getCampuses() {
+    return this.get('/firebase/auth/v2/campuses');
+  }
+
+  async getDepartments() {
+    return this.get('/firebase/auth/v2/departments');
+  }
+
+  async createUser(userData) {
+    return this.post('/firebase/auth/v2/users', userData);
+  }
+
+  async updateUser(userId, userData) {
+    return this.put(`/firebase/auth/v2/users/${userId}`, userData);
+  }
+
+  async deleteUser(userId) {
+    return this.delete(`/firebase/auth/v2/users/${userId}`);
+  }
+
   async getTestCredentials() {
     return this.get('/firebase/auth/v2/test-login');
   }
@@ -122,6 +149,14 @@ class ApiService {
 
   async getAdminDashboard() {
     return this.get('/firebase/dashboard/admin');
+  }
+
+  async getAdminPlatformMetrics() {
+    return this.get('/firebase/dashboard/admin/metrics');
+  }
+
+  async getAdminCoursePopularity() {
+    return this.get('/firebase/dashboard/admin/course-popularity');
   }
 
   async getInstructorCourses() {
@@ -143,6 +178,43 @@ class ApiService {
   // Firebase Course Analytics endpoint
   async getInstructorCourseAnalytics(filters = {}) {
     return this.get('/firebase/dashboard/instructor/analytics', filters);
+  }
+
+  // New endpoints for CRN comparison and semester performance
+  async getInstructorCrnComparison(crn1, crn2) {
+    return this.get('/firebase/dashboard/instructor/crn-comparison', { crn1, crn2 });
+  }
+
+  async getInstructorSemesterPerformance() {
+    return this.get('/firebase/dashboard/instructor/semester-performance');
+  }
+
+  // New instructor dashboard endpoints
+  async getInstructorKPIs() {
+    return this.get('/instructor/dashboard/instructor/kpis');
+  }
+
+  async getInstructorFilters() {
+    return this.get('/instructor/dashboard/instructor/filters');
+  }
+
+  async getInstructorCRNComparison(crn1, crn2) {
+    return this.get('/instructor/dashboard/instructor/crn-comparison', { crn1, crn2 });
+  }
+
+  async getInstructorPerformanceTrend() {
+    return this.get('/instructor/dashboard/instructor/performance-trend');
+  }
+
+  async getInstructorCourseOverviews() {
+    return this.get('/instructor/dashboard/instructor/course-overviews');
+  }
+
+  async getInstructorStudentCount() {
+    console.log('Calling getInstructorStudentCount API...');
+    const result = await this.get('/instructor/dashboard/instructor/student-count');
+    console.log('getInstructorStudentCount API result:', result);
+    return result;
   }
 
   // Firebase Instructor Reports endpoints
@@ -253,22 +325,6 @@ class ApiService {
 
   async getReportHistory() {
     return this.get('/reports/history');
-  }
-
-  async getUsers() {
-    return this.get('/admin/users');
-  }
-
-  async createUser(userData) {
-    return this.post('/admin/users', userData);
-  }
-
-  async updateUser(userId, userData) {
-    return this.put(`/admin/users/${userId}`, userData);
-  }
-
-  async deleteUser(userId) {
-    return this.delete(`/admin/users/${userId}`);
   }
 
   // Token and authentication management
