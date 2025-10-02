@@ -46,11 +46,13 @@ const ReportGeneration = () => {
     try {
       switch (reportType) {
         case 'course-performance':
-          const coursePerformanceData = await apiService.getInstructorCoursePerformanceReport();
+          // Use the new course performance analysis API
+          const coursePerformanceData = await apiService.getInstructorCoursePerformanceAnalysis();
           setCoursePerformanceReport(coursePerformanceData);
           break;
         case 'student-analytics':
-          const studentAnalyticsData = await apiService.getInstructorStudentAnalyticsReport(selectedCourse || undefined);
+          // Use the new student analysis API
+          const studentAnalyticsData = await apiService.getInstructorStudentAnalysisReport(selectedCourse || undefined);
           setStudentAnalyticsReport(studentAnalyticsData);
           break;
         case 'predictive-risk':
@@ -218,65 +220,30 @@ const ReportGeneration = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <div className="font-medium">Assessment Analysis</div>
-              <div className="text-sm mt-1">Assignment/exam data</div>
+              <div className="font-medium">Detailed Assessment</div>
+              <div className="text-sm mt-1">Assignment breakdown</div>
             </button>
-          </div>
-        </div>
-
-        {/* Report Configuration */}
-        <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Report Configuration</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Course Selector (for relevant reports) */}
-            {(activeReport === 'student-analytics' || activeReport === 'detailed-assessment') && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Course</label>
-                <select 
-                  value={selectedCourse} 
-                  onChange={(e) => setSelectedCourse(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                >
-                  {courses.map(course => (
-                    <option key={course.id} value={course.id}>{course.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Export Format */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
-              <select 
-                value={exportFormat} 
-                onChange={(e) => setExportFormat(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-              >
-                <option value="pdf">PDF</option>
-                <option value="xlsx">Excel (XLSX)</option>
-                <option value="csv">CSV</option>
-              </select>
-            </div>
           </div>
         </div>
 
         {/* Loading State */}
         {loading && (
-          <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6e63e5]"></div>
-            </div>
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#6e63e5]"></div>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
-            <div className="flex items-center justify-center h-32">
-              <div className="text-center">
-                <div className="text-red-500 text-xl mb-2">⚠️</div>
-                <p className="text-gray-600">{error}</p>
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">{error}</h3>
               </div>
             </div>
           </div>
@@ -286,7 +253,7 @@ const ReportGeneration = () => {
         {activeReport === 'course-performance' && coursePerformanceReport && (
           <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Course Performance Report</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Course Performance Analysis Report</h2>
               <div className="text-sm text-gray-500">
                 Generated: {new Date(coursePerformanceReport.generatedAt).toLocaleDateString()}
               </div>
@@ -315,6 +282,41 @@ const ReportGeneration = () => {
               </div>
             </div>
             
+            {/* Additional Summary Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-gray-50 p-4 rounded-2xl">
+                <h3 className="font-medium text-gray-900 mb-2">Performance Highlights</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Best Performing Course:</span>
+                    <span className="font-medium">{coursePerformanceReport.summary.bestPerformingCourse}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Lowest Performing Course:</span>
+                    <span className="font-medium">{coursePerformanceReport.summary.lowestPerformingCourse}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Assessments:</span>
+                    <span className="font-medium">{coursePerformanceReport.summary.totalAssessments}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-2xl">
+                <h3 className="font-medium text-gray-900 mb-2">Student Overview</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">At-Risk Students:</span>
+                    <span className="font-medium text-red-600">{coursePerformanceReport.summary.atRiskStudents}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Active Students:</span>
+                    <span className="font-medium">{coursePerformanceReport.summary.activeStudents}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             {/* Course Data Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -326,11 +328,12 @@ const ReportGeneration = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completion</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Grade</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">At-Risk</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CRNs</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {coursePerformanceReport.courses.map((course, index) => (
-                    <tr key={index}>
+                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
                         <div className="text-sm text-gray-500">{course.courseCode}</div>
@@ -338,17 +341,57 @@ const ReportGeneration = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.semester}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.totalStudents}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.completionRate}%</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.averageGrade}</td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                        course.averageGrade >= 90 ? 'text-green-600' : 
+                        course.averageGrade >= 80 ? 'text-blue-600' : 
+                        course.averageGrade >= 70 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {course.averageGrade}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          course.atRiskStudents > 5 ? 'bg-red-100 text-red-800' : 
+                          course.atRiskStudents > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                        }`}>
                           {course.atRiskStudents}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {course.crnCodes && course.crnCodes.length > 0 ? 
+                          course.crnCodes.map((crn, crnIndex) => (
+                            <span key={crnIndex}>{crn}{crnIndex < course.crnCodes.length - 1 ? ', ' : ''}</span>
+                          )) : 'N/A'}
+                      </td>
+
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            
+            {/* Performance Legend */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Grade Color Coding</h3>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div key="excellent" className="flex items-center">
+                  <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+                  <span>90-100 (Excellent)</span>
+                </div>
+                <div key="good" className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
+                  <span>80-89 (Good)</span>
+                </div>
+                <div key="fair" className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-600 rounded-full mr-2"></div>
+                  <span>70-79 (Fair)</span>
+                </div>
+                <div key="needs-improvement" className="flex items-center">
+                  <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <span>Below 70 (Needs Improvement)</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -356,7 +399,7 @@ const ReportGeneration = () => {
         {activeReport === 'student-analytics' && studentAnalyticsReport && (
           <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Student Analytics Report</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Student Analysis Report</h2>
               <div className="text-sm text-gray-500">
                 Generated: {new Date(studentAnalyticsReport.generatedAt).toLocaleDateString()}
               </div>
@@ -385,6 +428,33 @@ const ReportGeneration = () => {
               </div>
             </div>
             
+            {/* Additional Summary Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-gray-50 p-4 rounded-2xl">
+                <h3 className="font-medium text-gray-900 mb-2">Performance Highlights</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Top Performing Student:</span>
+                    <span className="font-medium">{studentAnalyticsReport.summary.topPerformingStudent}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Lowest Performing Student:</span>
+                    <span className="font-medium">{studentAnalyticsReport.summary.lowestPerformingStudent}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-2xl">
+                <h3 className="font-medium text-gray-900 mb-2">Student Overview</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Average Progress:</span>
+                    <span className="font-medium">{studentAnalyticsReport.summary.avgProgress}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             {/* Student Data Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -396,6 +466,7 @@ const ReportGeneration = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assignments</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -416,20 +487,58 @@ const ReportGeneration = () => {
                           <span className="text-sm text-gray-500">{student.progress}%</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.grade}</td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                        student.grade >= 90 ? 'text-green-600' : 
+                        student.grade >= 80 ? 'text-blue-600' : 
+                        student.grade >= 70 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {student.grade}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.lastActive}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(student.status)}`}>
-                          {student.status}
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          student.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {student.status === 'active' ? 'Active' : 'At Risk'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {student.assignmentsCompleted} completed
+                        {student.assignmentsCompleted} / {student.totalAssessments}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {student.courses && student.courses.length > 0 ? 
+                          student.courses.map((course, courseIndex) => (
+                            <span key={courseIndex}>{course.courseCode}{courseIndex < student.courses.length - 1 ? ', ' : ''}</span>
+                          )) : 'N/A'}
+                      </td>
+
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+            
+            {/* Performance Legend */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Grade Color Coding</h3>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div key="excellent" className="flex items-center">
+                  <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+                  <span>90-100 (Excellent)</span>
+                </div>
+                <div key="good" className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
+                  <span>80-89 (Good)</span>
+                </div>
+                <div key="fair" className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-600 rounded-full mr-2"></div>
+                  <span>70-79 (Fair)</span>
+                </div>
+                <div key="needs-improvement" className="flex items-center">
+                  <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <span>Below 70 (Needs Improvement)</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -529,7 +638,7 @@ const ReportGeneration = () => {
             </div>
             
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <div className="text-center p-4 bg-blue-100 rounded-3xl">
                 <div className="text-2xl font-bold text-blue-400">{semesterComparisonReport.summary.totalSemesters}</div>
                 <div className="text-sm text-gray-600">Total Semesters</div>
@@ -544,6 +653,38 @@ const ReportGeneration = () => {
                 <div className="text-2xl font-bold text-yellow-400">{semesterComparisonReport.summary.worstPerformingSemester}</div>
                 <div className="text-sm text-gray-600">Worst Semester</div>
               </div>
+              
+              <div className="text-center p-4 bg-purple-100 rounded-3xl">
+                <div className="text-2xl font-bold text-purple-400">{semesterComparisonReport.summary.totalStudents}</div>
+                <div className="text-sm text-gray-600">Total Students</div>
+              </div>
+            </div>
+            
+            {/* Additional Summary Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-gray-50 p-4 rounded-2xl">
+                <h3 className="font-medium text-gray-900 mb-2">Performance Overview</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Courses:</span>
+                    <span className="font-medium">{semesterComparisonReport.summary.totalCourses}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-2xl">
+                <h3 className="font-medium text-gray-900 mb-2">Semester Trends</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Performance Variance:</span>
+                    <span className="font-medium">
+                      {semesterComparisonReport.semesters && semesterComparisonReport.semesters.length > 1 ? 
+                        Math.max(...semesterComparisonReport.semesters.map(s => s.avgGrade)) - 
+                        Math.min(...semesterComparisonReport.semesters.map(s => s.avgGrade)) : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
             
             {/* Semester Data Table */}
@@ -556,23 +697,55 @@ const ReportGeneration = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Completion</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Grade</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessments</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student/Course Ratio</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {semesterComparisonReport.semesters.map((semester, index) => (
-                    <tr key={index}>
+                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{semester.semester}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{semester.courses}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{semester.totalStudents}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{semester.avgCompletionRate}%</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{semester.avgGrade}</td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                        semester.avgGrade >= 90 ? 'text-green-600' : 
+                        semester.avgGrade >= 80 ? 'text-blue-600' : 
+                        semester.avgGrade >= 70 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {semester.avgGrade}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{semester.totalAssessments}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{semester.studentToCourseRatio}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            
+            {/* Performance Legend */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Grade Color Coding</h3>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div key="excellent" className="flex items-center">
+                  <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+                  <span>90-100 (Excellent)</span>
+                </div>
+                <div key="good" className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
+                  <span>80-89 (Good)</span>
+                </div>
+                <div key="fair" className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-600 rounded-full mr-2"></div>
+                  <span>70-79 (Fair)</span>
+                </div>
+                <div key="needs-improvement" className="flex items-center">
+                  <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <span>Below 70 (Needs Improvement)</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -653,34 +826,88 @@ const ReportGeneration = () => {
                 </tbody>
               </table>
             </div>
+            
+            {/* Performance Legend */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Grade Color Coding</h3>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div key="excellent" className="flex items-center">
+                  <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+                  <span>90-100 (Excellent)</span>
+                </div>
+                <div key="good" className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
+                  <span>80-89 (Good)</span>
+                </div>
+                <div key="fair" className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-600 rounded-full mr-2"></div>
+                  <span>70-79 (Fair)</span>
+                </div>
+                <div key="needs-improvement" className="flex items-center">
+                  <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <span>Below 70 (Needs Improvement)</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
         {/* Export Controls */}
         <div className="bg-white p-6 rounded-3xl shadow-sm">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <button
-              onClick={handleGenerateReport}
-              disabled={loading}
-              className="flex items-center px-6 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] disabled:bg-gray-400 text-white rounded-2xl transition-colors"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Refresh Report
-                </>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={handleGenerateReport}
+                disabled={loading}
+                className="flex items-center px-6 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] disabled:bg-gray-400 text-white rounded-2xl transition-colors"
+              >
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Refresh Report
+                  </>
+                )}
+              </button>
+
+              {(activeReport === 'student-analytics' || activeReport === 'detailed-assessment') && (
+                <div className="flex items-center gap-2">
+                  <label className="text-gray-700 font-medium">Course:</label>
+                  <select
+                    value={selectedCourse}
+                    onChange={(e) => setSelectedCourse(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#6e63e5] focus:border-transparent"
+                  >
+                    {courses.map(course => (
+                      <option key={course.id} value={course.id}>{course.name}</option>
+                    ))}
+                  </select>
+                </div>
               )}
-            </button>
+
+              <div className="flex items-center gap-2">
+                <label className="text-gray-700 font-medium">Format:</label>
+                <select
+                  value={exportFormat}
+                  onChange={(e) => setExportFormat(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#6e63e5] focus:border-transparent"
+                >
+                  <option value="pdf">PDF</option>
+                  <option value="xlsx">Excel</option>
+                  <option value="csv">CSV</option>
+                </select>
+              </div>
+            </div>
 
             <button
               onClick={handleDownloadReport}

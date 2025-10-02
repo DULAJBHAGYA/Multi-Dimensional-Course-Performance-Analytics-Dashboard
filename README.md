@@ -2,12 +2,13 @@
 
 A comprehensive analytics dashboard for tracking course performance across multiple dimensions including students, instructors, courses, and campuses. Built with React.js frontend and FastAPI backend with Firebase integration.
 
-## Features
+## 🚀 Features
 
 ### Frontend (React.js)
 - **Interactive Dashboards**: Real-time analytics with Chart.js visualizations
 - **User Management**: Admin panel for managing users, roles, and permissions
 - **Course Analytics**: Detailed course performance tracking and insights
+- **Admin Reports**: Generate and download detailed reports in PDF or Excel format
 - **Responsive Design**: Mobile-friendly interface with Tailwind CSS
 - **Authentication**: Secure login system with role-based access control
 - **Data Visualization**: Bar charts, line charts, pie charts with custom styling
@@ -18,6 +19,8 @@ A comprehensive analytics dashboard for tracking course performance across multi
 - **Authentication**: JWT-based authentication system
 - **Real-time Data**: Firebase real-time database capabilities
 - **Analytics Processing**: Advanced data processing and aggregation
+- **Report Generation**: PDF and Excel report generation capabilities
+- **Admin Endpoints**: Dedicated API routes for admin reporting functionality
 
 ## 📋 Prerequisites
 
@@ -28,7 +31,7 @@ Before setting up this project, ensure you have the following installed:
 - **Git** - [Download here](https://git-scm.com/)
 - **Firebase Account** - [Sign up here](https://firebase.google.com/)
 
-## Installation & Setup
+## 🛠️ Installation & Setup
 
 ### 1. Clone the Repository
 
@@ -189,6 +192,11 @@ Multi-Dimensional-Course-Performance-Analytics-Dashboard/
 │   ├── app/
 │   │   ├── models/                 # Database models
 │   │   ├── routes/                 # API routes
+│   │   │   ├── admin_report.py     # Admin report generation endpoints
+│   │   │   ├── course_analytics.py # Course analytics endpoints
+│   │   │   ├── firebase_auth.py    # Authentication endpoints
+│   │   │   ├── instructor_dashboard.py # Instructor dashboard endpoints
+│   │   │   └── user_management.py  # User management endpoints
 │   │   ├── services/               # Business logic
 │   │   └── firebase_config.py      # Firebase configuration
 │   ├── main.py                     # FastAPI application entry point
@@ -199,7 +207,7 @@ Multi-Dimensional-Course-Performance-Analytics-Dashboard/
 └── FIREBASE_SETUP.md              # Detailed Firebase setup guide
 ```
 
-## Configuration
+## 🔧 Configuration
 
 ### Frontend Configuration
 - **Port**: 5173 (Vite default)
@@ -212,8 +220,9 @@ Multi-Dimensional-Course-Performance-Analytics-Dashboard/
 - **Database**: Firebase Firestore
 - **Authentication**: JWT tokens
 - **CORS**: Enabled for frontend communication
+- **Report Generation**: Uses reportlab for PDF and pandas for Excel
 
-## Customization
+## 🎨 Customization
 
 ### Color Scheme
 The project uses a custom purple color scheme:
@@ -224,12 +233,30 @@ The project uses a custom purple color scheme:
 
 ### Chart Styling
 All charts use Chart.js with custom styling:
-- Rounded corners (`borderRadius: 12`)
+- Rounded corners (`borderRadius: 5`)
 - Alternating colors for bar charts
 - Custom tooltips and legends
 - Responsive design
 
-## Deployment
+## 📊 Admin Reports
+
+The dashboard includes comprehensive admin reporting capabilities:
+
+### Report Types
+- **User Analytics**: Detailed user activity and engagement metrics
+- **Course Analytics**: Course performance and completion statistics
+- **Instructor Performance**: Instructor effectiveness and course ratings
+
+### Export Formats
+- **PDF Reports**: Professional quality PDF documents with charts and data
+- **Excel Spreadsheets**: Data-rich Excel files for further analysis
+
+### Features
+- One-click download of reports in preferred format
+- No date range restrictions for comprehensive data analysis
+- Role-based access control ensuring only admins can generate reports
+
+## 🚀 Deployment
 
 ### Frontend Deployment (Vercel/Netlify)
 ```bash
@@ -250,7 +277,7 @@ cd server
 2. Enable Firebase Authentication if needed
 3. Set up proper user roles and permissions
 
-## Data Structure
+## 📊 Data Structure
 
 The dashboard works with the following data entities:
 - **Users**: Instructors and Admins with roles and permissions
@@ -258,7 +285,7 @@ The dashboard works with the following data entities:
 - **Campuses**: Multiple campus locations
 - **Analytics**: Performance data and insights
 
-## Security
+## 🔐 Security
 
 - JWT-based authentication
 - Role-based access control
@@ -266,7 +293,7 @@ The dashboard works with the following data entities:
 - CORS configuration
 - Environment variable protection
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Common Issues
 
@@ -289,7 +316,14 @@ The dashboard works with the following data entities:
    - Delete `node_modules` and `package-lock.json`
    - Run `npm install` again
 
-## License
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -m 'Add feature'`
+4. Push to branch: `git push origin feature-name`
+5. Submit a pull request
+
+## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-

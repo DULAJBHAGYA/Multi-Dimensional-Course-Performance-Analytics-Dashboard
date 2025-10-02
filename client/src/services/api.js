@@ -5,6 +5,9 @@ class ApiService {
     console.log('ApiService initialized with baseURL:', this.baseURL);
     console.log('VITE_API_URL from env:', import.meta.env.VITE_API_URL);
     this.refreshPromise = null;
+    // Add caching for filter options
+    this.cache = new Map();
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
   }
 
   // Generic request method with enhanced error handling and token refresh
@@ -37,7 +40,7 @@ class ApiService {
           // Retry the request with new token
           config.headers.Authorization = `Bearer ${this.getToken()}`;
           const retryResponse = await fetch(url, config);
-          console.log(`API Retry Response for ${url}:`, retryResponse.status, retryResponse.statusText);
+          console.log(`API Retry Response for ${url}:`, retryResponse.status, retryRetryResponse.statusText);
           if (!retryResponse.ok) {
             throw new Error(`HTTP error! status: ${retryResponse.status}`);
           }
@@ -61,12 +64,36 @@ class ApiService {
     }
   }
 
-  // GET request
+  // GET request with caching support
   async get(endpoint, params = {}) {
     console.log(`GET request to ${endpoint} with params:`, params);
     const queryString = new URLSearchParams(params).toString();
     const url = queryString ? `${endpoint}?${queryString}` : endpoint;
-    return this.request(url, { method: 'GET' });
+    const cacheKey = `${url}_${JSON.stringify(params)}`;
+    
+    // Check cache for filter options
+    if (endpoint.includes('filter-options') && this.cache.has(cacheKey)) {
+      const { data, timestamp } = this.cache.get(cacheKey);
+      if (Date.now() - timestamp < this.cacheTimeout) {
+        console.log('Returning cached data for', cacheKey);
+        return data;
+      } else {
+        // Remove expired cache
+        this.cache.delete(cacheKey);
+      }
+    }
+    
+    const result = await this.request(url, { method: 'GET' });
+    
+    // Cache filter options
+    if (endpoint.includes('filter-options')) {
+      this.cache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+      });
+    }
+    
+    return result;
   }
 
   // POST request
@@ -107,6 +134,8 @@ class ApiService {
       console.error('Logout API call failed:', error);
     } finally {
       this.clearAuth();
+      // Clear cache on logout
+      this.cache.clear();
     }
   }
 
@@ -157,6 +186,22 @@ class ApiService {
 
   async getAdminCoursePopularity() {
     return this.get('/firebase/dashboard/admin/course-popularity');
+  }
+
+  async getAdminFilterOptions() {
+    return this.get('/firebase/dashboard/admin/filter-options');
+  }
+
+  async getAdminCoursePerformance() {
+    return this.get('/firebase/dashboard/admin/course-performance');
+  }
+
+  async getAdminDepartmentMetrics() {
+    return this.get('/firebase/dashboard/admin/department-metrics');
+  }
+
+  async getAdminDepartmentInstructors() {
+    return this.get('/firebase/dashboard/admin/department-instructors');
   }
 
   async getInstructorCourses() {
@@ -217,27 +262,142 @@ class ApiService {
     return result;
   }
 
+  async getInstructorCourseCount() {
+    return this.get('/instructor/dashboard/instructor/course-count');
+  }
+
+  async getInstructorUniqueStudentCount() {
+    return this.get('/instructor/dashboard/instructor/unique-student-count');
+  }
+
+  async getInstructorTotalAssessments() {
+    return this.get('/instructor/dashboard/instructor/total-assessments');
+  }
+
+  async getInstructorAssignmentPassRate() {
+    return this.get('/instructor/dashboard/instructor/assignment-pass-rate');
+  }
+
+  async getInstructorHighPerformanceRate() {
+    return this.get('/instructor/dashboard/instructor/high-performance-rate');
+  }
+
+  async getInstructorGradeDistribution() {
+    return this.get('/instructor/dashboard/instructor/grade-distribution');
+  }
+
+  async getInstructorCoursePerformanceComparison() {
+    return this.get('/instructor/dashboard/instructor/course-performance-comparison');
+  }
+
+  async getInstructorSemesterComparison() {
+    return this.get('/instructor/dashboard/instructor/semester-comparison');
+  }
+
+  async getInstructorPassRateComparison() {
+    return this.get('/instructor/dashboard/instructor/pass-rate-comparison');
+  }
+
+  // New endpoint to get instructor courses
+  async getInstructorCourses() {
+    return this.get('/instructor/dashboard/instructor/courses');
+  }
+
+  // New endpoint to get instructor students by performance data
+  async getInstructorStudentsByPerformance() {
+    return this.get('/instructor/dashboard/instructor/students-by-performance');
+  }
+
+  // New endpoint to get instructor performance average
+  async getInstructorPerformanceAverage() {
+    return this.get('/instructor/dashboard/instructor/performance-average');
+  }
+
+  // New endpoint to get instructor grade improvement percentage
+  async getInstructorGradeImprovement() {
+    return this.get('/instructor/dashboard/instructor/grade-improvement');
+  }
+
+  // New endpoint to get instructor grade improvement percentage
+  async getInstructorGradeImprovement() {
+    return this.get('/instructor/dashboard/instructor/grade-improvement');
+  }
+
+  // New endpoint to get instructor course performance analysis
+  async getInstructorCoursePerformanceAnalysis() {
+    return this.get('/instructor/dashboard/instructor/course-performance-analysis');
+  }
+
+  // New endpoint to get instructor student analysis
+  async getInstructorStudentAnalysis(courseId) {
+    const params = courseId ? { course_id: courseId } : {};
+    return this.get('/instructor/dashboard/instructor/student-analysis', params);
+  }
+
+  // New endpoint to get instructor semester comparison
+  async getInstructorSemesterComparison() {
+    return this.get('/instructor/dashboard/instructor/semester-comparison');
+  }
+
   // Firebase Instructor Reports endpoints
   async getInstructorCoursePerformanceReport() {
     return this.get('/firebase/dashboard/instructor/reports/course-performance');
   }
 
-  async getInstructorStudentAnalyticsReport(courseId) {
-    const params = courseId ? { course_id: courseId } : {};
-    return this.get('/firebase/dashboard/instructor/reports/student-analytics', params);
+  async getInstructorCoursePerformanceAnalysis() {
+    return this.get('/firebase/dashboard/instructor/reports/course-performance-analysis');
   }
 
-  async getInstructorPredictiveRiskReport() {
-    return this.get('/firebase/dashboard/instructor/reports/predictive-risk');
+  async getInstructorStudentAnalysisReport(courseId) {
+    const params = courseId ? { course_id: courseId } : {};
+    return this.get('/firebase/dashboard/instructor/reports/student-analysis', params);
   }
 
   async getInstructorSemesterComparisonReport() {
     return this.get('/firebase/dashboard/instructor/reports/semester-comparison');
   }
 
+  // New endpoint to get instructor detailed assessment report
   async getInstructorDetailedAssessmentReport(courseId) {
     const params = courseId ? { course_id: courseId } : {};
     return this.get('/firebase/dashboard/instructor/reports/detailed-assessment', params);
+  }
+
+  // Firebase Admin Reports endpoints
+  async getAdminUserAnalytics() {
+    return this.get('/admin/report/user-analytics');
+  }
+
+  async getAdminCourseAnalytics() {
+    return this.get('/admin/report/course-analytics');
+  }
+
+  async getAdminInstructorPerformance() {
+    return this.get('/admin/report/instructor-performance');
+  }
+
+  async generateAdminReport(reportType, format = 'json') {
+    return this.get('/admin/report/generate-report', { 
+      report_type: reportType, 
+      format: format 
+    });
+  }
+
+  // New function for downloading admin reports
+  async downloadAdminReport(reportType, format = 'pdf') {
+    // Map report types to match backend expectations
+    const reportTypeMap = {
+      'users': 'user-analytics',
+      'courses': 'course-analytics',
+      'instructors': 'instructor-performance'
+    };
+    
+    const mappedReportType = reportTypeMap[reportType] || reportType;
+    
+    return this.download('/admin/report/download-report', { 
+      report_type: mappedReportType, 
+      format: format 
+    });
   }
 
   // Firebase Instructor Report Download endpoints
@@ -248,6 +408,13 @@ class ApiService {
     switch (reportType) {
       case 'course-performance':
         endpoint = '/firebase/dashboard/instructor/reports/course-performance/download';
+        break;
+      case 'course-performance-analysis':
+        endpoint = '/firebase/dashboard/instructor/reports/course-performance-analysis/download';
+        break;
+      case 'student-analysis':
+        endpoint = '/firebase/dashboard/instructor/reports/student-analysis/download';
+        if (courseId) params.course_id = courseId;
         break;
       case 'student-analytics':
         endpoint = '/firebase/dashboard/instructor/reports/student-analytics/download';
