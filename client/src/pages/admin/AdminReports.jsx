@@ -1,96 +1,96 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import apiService from '../../services/api';
 
 const AdminReports = () => {
   const { user } = useAuth();
-  const [selectedReport, setSelectedReport] = useState('system');
-  const [dateRange, setDateRange] = useState('30d');
-  const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
+  const [selectedReport, setSelectedReport] = useState('users');
   const [exportFormat, setExportFormat] = useState('pdf');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedReport, setGeneratedReport] = useState(null);
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Mock data for admin reports
-
-  const userAnalytics = [
-    { category: 'Students', count: 1124, percentage: 90.1, growth: '+12%' },
-    { category: 'Instructors', count: 89, percentage: 7.1, growth: '+8%' },
-    { category: 'Admins', count: 34, percentage: 2.7, growth: '+2%' }
-  ];
-
-  const courseAnalytics = [
-    { subject: 'Mathematics', courses: 45, students: 2340, completion: 78.5 },
-    { subject: 'Science', courses: 38, students: 1890, completion: 82.3 },
-    { subject: 'Technology', courses: 52, students: 3120, completion: 75.2 },
-    { subject: 'Business', courses: 21, students: 1050, completion: 85.7 }
-  ];
-
-  const enrollmentData = [
-    { month: 'Jan', courses: 12, students: 234 },
-    { month: 'Feb', courses: 15, students: 289 },
-    { month: 'Mar', courses: 14, students: 267 },
-    { month: 'Apr', courses: 18, students: 345 },
-    { month: 'May', courses: 22, students: 412 },
-    { month: 'Jun', courses: 25, students: 478 }
-  ];
-
-  const instructorPerformance = [
-    { name: 'Dr. Sarah Johnson', courses: 12, students: 456, rating: 4.9, status: 'Excellent' },
-    { name: 'Prof. Michael Chen', courses: 8, students: 389, rating: 4.8, status: 'Excellent' },
-    { name: 'Dr. Emily Rodriguez', courses: 15, students: 523, rating: 4.7, status: 'Good' },
-    { name: 'Prof. David Kim', courses: 6, students: 234, rating: 4.9, status: 'Excellent' },
-    { name: 'Dr. Lisa Thompson', courses: 10, students: 312, rating: 4.6, status: 'Good' }
-  ];
-
-  const systemMetrics = [
-    { metric: 'Server Response Time', value: '120ms', status: 'Good', trend: '+5ms' },
-    { metric: 'Database Performance', value: '98.5%', status: 'Excellent', trend: '+0.2%' },
-    { metric: 'Storage Usage', value: '67%', status: 'Good', trend: '+3%' },
-    { metric: 'Active Sessions', value: '1,234', status: 'Normal', trend: '+12' },
-    { metric: 'Error Rate', value: '0.02%', status: 'Excellent', trend: '-0.01%' },
-    { metric: 'API Calls/min', value: '2,456', status: 'Normal', trend: '+156' }
-  ];
-
-  const supportTickets = [
-    { id: 'TKT-001', subject: 'Login Issues', priority: 'High', status: 'Open', created: '2 hours ago', assigned: 'Admin Team' },
-    { id: 'TKT-002', subject: 'Course Upload Problem', priority: 'Medium', status: 'In Progress', created: '4 hours ago', assigned: 'Tech Support' },
-    { id: 'TKT-003', subject: 'System Access Issue', priority: 'High', status: 'Resolved', created: '6 hours ago', assigned: 'Tech Support' },
-    { id: 'TKT-004', subject: 'Feature Request', priority: 'Low', status: 'Open', created: '1 day ago', assigned: 'Product Team' },
-    { id: 'TKT-005', subject: 'System Performance', priority: 'Medium', status: 'In Progress', created: '2 days ago', assigned: 'DevOps Team' }
-  ];
-
-  const handleGenerateReport = () => {
+  const handleGenerateReport = async () => {
     setIsGenerating(true);
+    setLoading(true);
+    setError(null);
     
-    // Simulate report generation
-    setTimeout(() => {
+    try {
+      let data;
+      
+      // Fetch data based on selected report type
+      switch (selectedReport) {
+        case 'users':
+          const userResponse = await apiService.getAdminUserAnalytics();
+          data = userResponse.data;
+          break;
+        case 'courses':
+          const courseResponse = await apiService.getAdminCourseAnalytics();
+          data = courseResponse.data;
+          break;
+        case 'instructors':
+          const instructorResponse = await apiService.getAdminInstructorPerformance();
+          data = instructorResponse.data;
+          break;
+        default:
+          throw new Error('Invalid report type');
+      }
+      
       const report = {
         id: Date.now(),
         type: selectedReport,
-        dateRange: dateRange,
         format: exportFormat,
         generatedAt: new Date(),
-        data: {
-          userAnalytics,
-          courseAnalytics,
-          enrollmentData,
-          instructorPerformance,
-          supportTickets
-        }
+        data: data
       };
       
+      setReportData(data);
       setGeneratedReport(report);
       setIsGenerating(false);
-    }, 2000);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error generating report:', err);
+      setError('Failed to generate report: ' + (err.message || 'Unknown error'));
+      setIsGenerating(false);
+      setLoading(false);
+    }
   };
 
-  const handleDownloadReport = () => {
+  const handleDownloadReport = async () => {
     if (!generatedReport) return;
     
-    const fileName = `admin-report-${generatedReport.generatedAt.toISOString().split('T')[0]}.${exportFormat}`;
-    console.log(`Downloading ${fileName}...`);
-    alert(`Report downloaded as ${fileName}`);
+    try {
+      setLoading(true);
+      // Use the download endpoint for actual file download
+      const response = await apiService.downloadAdminReport(
+        selectedReport,
+        exportFormat === 'pdf' ? 'pdf' : 'csv' // Map to backend format expectations
+      );
+      
+      // Create a blob from the response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `admin-report-${generatedReport.generatedAt.toISOString().split('T')[0]}.${exportFormat === 'pdf' ? 'pdf' : 'xlsx'}`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error downloading report:', err);
+      setError('Failed to download report: ' + (err.message || 'Unknown error'));
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -129,7 +129,7 @@ const AdminReports = () => {
         <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Report Configuration</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Report Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
@@ -138,51 +138,11 @@ const AdminReports = () => {
                 onChange={(e) => setSelectedReport(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
-                <option value="system">System Overview</option>
                 <option value="users">User Analytics</option>
                 <option value="courses">Course Analytics</option>
-                <option value="enrollment">Enrollment Report</option>
                 <option value="instructors">Instructor Performance</option>
-                <option value="support">Support Tickets</option>
               </select>
             </div>
-
-            {/* Date Range */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-              <select 
-                value={dateRange} 
-                onChange={(e) => setDateRange(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-              >
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-                <option value="90d">Last 90 days</option>
-                <option value="1y">Last year</option>
-                <option value="custom">Custom Range</option>
-              </select>
-            </div>
-
-            {/* Custom Date Range */}
-            {dateRange === 'custom' && (
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Custom Date Range</label>
-                <div className="flex space-x-2">
-                  <input
-                    type="date"
-                    value={customDateRange.start}
-                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                  />
-                  <input
-                    type="date"
-                    value={customDateRange.end}
-                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Export Format */}
             <div>
@@ -228,7 +188,34 @@ const AdminReports = () => {
 
 
         {/* Generated Report Content */}
-        {generatedReport && (
+        {loading && (
+          <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#6e63e5]"></div>
+              <span className="ml-3 text-gray-600">Loading report data...</span>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <strong className="font-bold">Error: </strong>
+              <span className="block sm:inline">{error}</span>
+              <button 
+                onClick={() => setError(null)}
+                className="absolute top-0 bottom-0 right-0 px-4 py-3"
+              >
+                <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <title>Close</title>
+                  <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {generatedReport && !loading && (
           <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Generated Report Content</h2>
@@ -244,20 +231,22 @@ const AdminReports = () => {
             </div>
 
             {/* User Analytics */}
-            {selectedReport === 'users' && (
+            {selectedReport === 'users' && reportData && (
               <div className="mb-6">
                 <h3 className="text-md font-medium text-gray-900 mb-3">User Analytics</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {userAnalytics.map((analytics, index) => (
+                  {reportData.map((analytics, index) => (
                     <div key={index} className="p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{analytics.category}</p>
-                          <p className="text-2xl font-bold text-gray-900">{analytics.count.toLocaleString()}</p>
+                          <p className="text-sm font-medium text-gray-900">{analytics.category || analytics.type}</p>
+                          <p className="text-2xl font-bold text-gray-900">{(analytics.count || analytics.total || 0).toLocaleString()}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-gray-600">{analytics.percentage}%</p>
-                          <p className="text-xs text-green-600">{analytics.growth}</p>
+                          <p className="text-sm text-gray-600">{analytics.percentage || analytics.percent || 0}%</p>
+                          {analytics.growth && (
+                            <p className="text-xs text-green-600">{analytics.growth}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -267,7 +256,7 @@ const AdminReports = () => {
             )}
 
             {/* Course Analytics */}
-            {selectedReport === 'courses' && (
+            {selectedReport === 'courses' && reportData && (
               <div className="mb-6">
                 <h3 className="text-md font-medium text-gray-900 mb-3">Course Analytics by Subject</h3>
                 <div className="overflow-x-auto">
@@ -277,17 +266,16 @@ const AdminReports = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completion</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {courseAnalytics.map((course, index) => (
+                      {reportData.map((course, index) => (
                         <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.subject}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courses}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.students.toLocaleString()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.completion}%</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.subject || course.course_type || course.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courses || course.total_courses || 0}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(course.students || course.total_students || 0).toLocaleString()}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(course.completion || course.completion_rate || 0)}%</td>
                         </tr>
                       ))}
                     </tbody>
@@ -296,27 +284,8 @@ const AdminReports = () => {
               </div>
             )}
 
-            {/* Enrollment Chart */}
-            {selectedReport === 'enrollment' && (
-              <div className="mb-6">
-                <h3 className="text-md font-medium text-gray-900 mb-3">Enrollment Trends</h3>
-                <div className="h-64 flex items-end justify-between space-x-2">
-                  {enrollmentData.map((data, index) => (
-                    <div key={index} className="flex flex-col items-center flex-1">
-                      <div 
-                        className="bg-blue-500 rounded-t-2xl w-full mb-2"
-                        style={{ height: `${(data.students / 500) * 150}px` }}
-                        title={`${data.students} students`}
-                      ></div>
-                      <span className="text-xs text-gray-600">{data.month}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Instructor Performance */}
-            {selectedReport === 'instructors' && (
+            {selectedReport === 'instructors' && reportData && (
               <div className="mb-6">
                 <h3 className="text-md font-medium text-gray-900 mb-3">Instructor Performance</h3>
                 <div className="overflow-x-auto">
@@ -331,22 +300,22 @@ const AdminReports = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {instructorPerformance.map((instructor, index) => (
+                      {reportData.map((instructor, index) => (
                         <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{instructor.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.courses}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.students.toLocaleString()}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{instructor.name || instructor.instructor_name || `Instructor ${index + 1}`}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.courses || instructor.total_courses || 0}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(instructor.students || instructor.total_students || 0).toLocaleString()}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <div className="flex items-center">
                               <svg className="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                               </svg>
-                              {instructor.rating}
+                              {instructor.rating || instructor.average_rating || 0}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(instructor.status)}`}>
-                              {instructor.status}
+                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(instructor.status || 'Normal')}`}>
+                              {instructor.status || 'Normal'}
                             </span>
                           </td>
                         </tr>
@@ -357,71 +326,6 @@ const AdminReports = () => {
               </div>
             )}
 
-            {/* Support Tickets */}
-            {selectedReport === 'support' && (
-              <div className="mb-6">
-                <h3 className="text-md font-medium text-gray-900 mb-3">Support Tickets</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ticket ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {supportTickets.map((ticket, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ticket.id}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.subject}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(ticket.priority)}`}>
-                              {ticket.priority}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(ticket.status)}`}>
-                              {ticket.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.created}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.assigned}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* System Metrics */}
-            {selectedReport === 'system' && (
-              <div className="mb-6">
-                <h3 className="text-md font-medium text-gray-900 mb-3">System Metrics</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {systemMetrics.map((metric, index) => (
-                    <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{metric.metric}</p>
-                          <p className="text-xs text-gray-500">Trend: {metric.trend}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-gray-900">{metric.value}</p>
-                          <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(metric.status)}`}>
-                            {metric.status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>

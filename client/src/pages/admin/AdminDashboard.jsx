@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import apiService from '../../services/api';
@@ -9,28 +9,106 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState('30d');
   const [selectedSemester, setSelectedSemester] = useState('all');
-  const [selectedCourseType, setSelectedCourseType] = useState('all');
+  const [selectedCourse, setSelectedCourse] = useState('all');
+  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [selectedInstructor, setSelectedInstructor] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
+  // REMOVED: selectedCRN state as CRN filter is removed
   const [dashboardData, setDashboardData] = useState(null);
+  const [departmentMetrics, setDepartmentMetrics] = useState(null); // New state for department metrics
+  const [filterOptions, setFilterOptions] = useState({
+    semesters: [],
+    courses: [],
+    instructors: [],
+    departments: [],
+    campuses: []
+    // REMOVED: crns from filterOptions state
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const data = await apiService.getAdminDashboard();
-        setDashboardData(data);
-      } catch (err) {
-        console.error('Error fetching admin dashboard data:', err);
-        setError('Failed to load admin dashboard data');
-      } finally {
-        setLoading(false);
-      }
+  // Memoized debounce function
+  const debounce = useCallback((func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
     };
-
-    fetchDashboardData();
   }, []);
+
+  // Fetch dashboard data with error handling and loading states
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch dashboard data, filter options, and department metrics in parallel with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const [dashboardResult, filterOptionsResult, departmentMetricsResult, departmentInstructorsResult] = await Promise.all([
+          apiService.getAdminDashboard(),
+          apiService.getAdminFilterOptions(),
+          apiService.getAdminDepartmentMetrics(),
+          apiService.getAdminDepartmentInstructors()
+        ]);
+        
+        clearTimeout(timeoutId);
+        setDashboardData(dashboardResult);
+        setFilterOptions(filterOptionsResult);
+        
+        // Use the campus-specific instructor count while keeping other metrics
+        setDepartmentMetrics({
+          ...departmentMetricsResult,
+          totalInstructors: departmentInstructorsResult?.totalInstructors || 0
+        });
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          throw new Error('Request timeout - please try again');
+        }
+        throw err;
+      }
+    } catch (err) {
+      console.error('Error fetching admin dashboard data:', err);
+      setError(err.message || 'Failed to load admin dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // Handle filter changes with debounce
+  const handleFilterChange = useCallback(debounce((filterType, value) => {
+    switch (filterType) {
+      case 'semester':
+        setSelectedSemester(value);
+        break;
+      case 'course':
+        setSelectedCourse(value);
+        break;
+      case 'department':
+        setSelectedDepartment(value);
+        break;
+      case 'instructor':
+        setSelectedInstructor(value);
+        break;
+      case 'campus':
+        setSelectedCampus(value);
+        break;
+      // REMOVED: CRN filter case
+      default:
+        break;
+    }
+  }, 300), [debounce]);
 
   if (loading) {
     return (
@@ -49,30 +127,33 @@ const AdminDashboard = () => {
           <div className="text-center">
             <div className="text-red-500 text-xl mb-4">⚠️</div>
             <p className="text-gray-600">{error}</p>
+            <button 
+              onClick={fetchDashboardData}
+              className="mt-4 px-4 py-2 bg-[#6e63e5] text-white rounded-xl hover:bg-[#4c46a0] transition-colors"
+            >
+              Retry
+            </button>
           </div>
         </div>
       </DashboardLayout>
     );
   }
 
-  // Use real data from Firebase or fallback to mock data
-  const adminKPIs = dashboardData ? {
-    totalStudents: dashboardData.total_students || 0,
-    totalCourses: dashboardData.total_courses || 0,
-    totalInstructors: dashboardData.total_instructors || 0,
-    overallPassRate: dashboardData.overall_pass_rate || 0,
-    atRiskStudents: dashboardData.at_risk_students || 0,
-    totalCampuses: dashboardData.total_campuses || 0,
-    activeSemesters: dashboardData.active_semesters || 0
+  // Use department-specific data from the new API
+  const adminKPIs = departmentMetrics ? {
+    totalStudents: departmentMetrics.totalStudents || 0,
+    totalCourses: departmentMetrics.totalCourses || 0,
+    totalInstructors: departmentMetrics.totalInstructors || 0
   } : {
     totalStudents: 0,
     totalCourses: 0,
-    totalInstructors: 0,
-    overallPassRate: 0,
-    atRiskStudents: 0,
-    totalCampuses: 0,
-    activeSemesters: 0
+    totalInstructors: 0
   };
+  console.log('Processed adminKPIs:', adminKPIs);
+
+  // Debug logging to see what data is being received
+  console.log('Department Metrics Data:', departmentMetrics);
+  console.log('Admin KPIs:', adminKPIs);
 
   // Performance over time data
   const performanceOverTime = [
@@ -158,62 +239,10 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* System Overview Content */}
+        {/* System Overview Content - FILTERING OPTIONS BELOW KPI CARDS */}
         <div className="space-y-8">
-          {/* Filtering Options */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Options</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
-                <select
-                  value={selectedSemester}
-                  onChange={(e) => setSelectedSemester(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                >
-                  <option value="all">All Semesters</option>
-                  {dashboardData?.semesters?.map(semester => (
-                    <option key={semester.semesterCode || semester.name} value={semester.semesterCode || semester.name}>
-                      {semester.semesterCode || semester.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Course Type</label>
-                <select
-                  value={selectedCourseType}
-                  onChange={(e) => setSelectedCourseType(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                >
-                  <option value="all">All Course Types</option>
-                  {dashboardData?.courses?.map(course => (
-                    <option key={course.courseCode || course.code} value={course.courseCode || course.code}>
-                      {course.courseName || course.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Campus</label>
-                <select
-                  value={selectedCampus}
-                  onChange={(e) => setSelectedCampus(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                >
-                  <option value="all">All Campuses</option>
-                  {dashboardData?.campuses?.map(campus => (
-                    <option key={campus.campusName || campus.name} value={campus.campusName || campus.name}>
-                      {campus.campusName || campus.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Key Performance Indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          {/* Key Performance Indicators - FIRST POSITION */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Total Students */}
             <div className="bg-white p-6 rounded-3xl shadow-sm">
               <div className="flex items-center">
@@ -223,9 +252,9 @@ const AdminDashboard = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Students</p>
+                  <p className="text-sm font-medium text-gray-600">Students</p>
                   <p className="text-2xl font-bold text-gray-900">{adminKPIs.totalStudents.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">All campuses & courses</p>
+                  <p className="text-xs text-gray-500">In your department</p>
                 </div>
               </div>
             </div>
@@ -239,9 +268,9 @@ const AdminDashboard = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Courses</p>
+                  <p className="text-sm font-medium text-gray-600">Courses</p>
                   <p className="text-2xl font-bold text-gray-900">{adminKPIs.totalCourses}</p>
-                  <p className="text-xs text-gray-500">Across all programs</p>
+                  <p className="text-xs text-gray-500">In your department</p>
                 </div>
               </div>
             </div>
@@ -255,43 +284,94 @@ const AdminDashboard = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Instructors</p>
+                  <p className="text-sm font-medium text-gray-600">Instructors</p>
                   <p className="text-2xl font-bold text-gray-900">{adminKPIs.totalInstructors}</p>
-                  <p className="text-xs text-gray-500">Active faculty</p>
+                  <p className="text-xs text-gray-500">In your department</p>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Overall Pass Rate */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm">
-              <div className="flex items-center">
-                <div className="p-3 bg-[#d3cefc] rounded-2xl">
-                  <svg className="w-6 h-6 text-[#6E63E5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Overall Pass Rate</p>
-                  <p className="text-2xl font-bold text-gray-900">{adminKPIs.overallPassRate}%</p>
-                  <p className="text-xs text-gray-500">Average across courses</p>
-                </div>
+          {/* Filtering Options - SECOND POSITION (below KPI cards) */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Options</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
+                <select
+                  value={selectedSemester}
+                  onChange={(e) => handleFilterChange('semester', e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                >
+                  <option value="all">All Semesters</option>
+                  {filterOptions.semesters.slice(0, 20).map(semester => (
+                    <option key={semester.id} value={semester.name}>
+                      {semester.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
-
-            {/* At-Risk Students */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm">
-              <div className="flex items-center">
-                <div className="p-3 bg-green-100 rounded-2xl">
-                  <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">At-Risk Students</p>
-                  <p className="text-2xl font-bold text-gray-900">{adminKPIs.atRiskStudents}</p>
-                  <p className="text-xs text-gray-500">AI identified</p>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Course Name</label>
+                <select
+                  value={selectedCourse}
+                  onChange={(e) => handleFilterChange('course', e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                >
+                  <option value="all">All Courses</option>
+                  {filterOptions.courses.slice(0, 30).map(course => (
+                    <option key={course.id} value={course.name}>
+                      {course.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => handleFilterChange('department', e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                >
+                  <option value="all">All Departments</option>
+                  {filterOptions.departments.slice(0, 20).map(department => (
+                    <option key={department} value={department}>
+                      {department}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Instructor</label>
+                <select
+                  value={selectedInstructor}
+                  onChange={(e) => handleFilterChange('instructor', e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                >
+                  <option value="all">All Instructors</option>
+                  {filterOptions.instructors.slice(0, 30).map(instructor => (
+                    <option key={instructor.id || instructor} value={instructor.name || instructor}>
+                      {instructor.name || instructor}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Campus</label>
+                <select
+                  value={selectedCampus}
+                  onChange={(e) => handleFilterChange('campus', e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                >
+                  <option value="all">All Campuses</option>
+                  {filterOptions.campuses.slice(0, 15).map(campus => (
+                    <option key={campus} value={campus}>
+                      {campus}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/* REMOVED: CRN filter dropdown as requested */}
             </div>
           </div>
 
@@ -352,30 +432,30 @@ const AdminDashboard = () => {
                 </svg>
                 AI Predictive Insights
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="text-center p-4 bg-white rounded-3xl">
-                  <div className="text-2xl font-bold text-[#6e63e5]">{aiPredictions.nextSemesterProjection}%</div>
-                  <div className="text-sm text-gray-600">Projected Pass Rate</div>
-                  <div className="text-xs text-gray-500">Next Semester</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-2xl">
+                  <p className="text-sm text-gray-600">Next Semester Projection</p>
+                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.nextSemesterProjection}%</p>
+                  <p className="text-xs text-gray-500">Pass Rate</p>
                 </div>
-                <div className="text-center p-4 bg-white rounded-3xl">
-                  <div className="text-2xl font-bold text-red-400">{aiPredictions.atRiskStudentsNextSemester}</div>
-                  <div className="text-sm text-gray-600">At-Risk Students</div>
-                  <div className="text-xs text-gray-500">Predicted</div>
+                <div className="bg-white p-4 rounded-2xl">
+                  <p className="text-sm text-gray-600">At-Risk Students</p>
+                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.atRiskStudentsNextSemester}</p>
+                  <p className="text-xs text-gray-500">Projected</p>
                 </div>
-                <div className="text-center p-4 bg-white rounded-3xl">
-                  <div className="text-2xl font-bold text-blue-400">{aiPredictions.expectedEnrollment}</div>
-                  <div className="text-sm text-gray-600">Expected Enrollment</div>
-                  <div className="text-xs text-gray-500">Next Semester</div>
+                <div className="bg-white p-4 rounded-2xl">
+                  <p className="text-sm text-gray-600">Expected Enrollment</p>
+                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.expectedEnrollment.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">Students</p>
                 </div>
               </div>
-              <div>
-                <h4 className="text-md font-medium text-gray-900 mb-3">Recommended Interventions</h4>
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Recommended Interventions</h4>
                 <ul className="space-y-2">
                   {aiPredictions.recommendedInterventions.map((intervention, index) => (
                     <li key={index} className="flex items-start">
-                      <svg className="w-4 h-4 text-[#6e63e5] mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <svg className="w-4 h-4 text-[#6e63e5] mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                       <span className="text-sm text-gray-700">{intervention}</span>
                     </li>

@@ -11,8 +11,14 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 import pandas as pd
+import asyncio
+import functools
 
 router = APIRouter()
+
+# Simple in-memory cache for filter options
+filter_cache = {}
+CACHE_DURATION = 300  # 5 minutes cache
 
 class KPIData(BaseModel):
     total_students: int
@@ -348,6 +354,153 @@ async def get_admin_dashboard_firestore(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching admin dashboard: {str(e)}")
+
+@router.get("/admin/department-metrics")
+async def get_admin_department_metrics(
+    current_user: dict = Depends(verify_token)
+):
+    """Get department-specific metrics for admin dashboard from Firestore"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get admin data from Firestore
+        admin_id = current_user.get('adminId')
+        if not admin_id:
+            raise HTTPException(status_code=400, detail="Admin ID not found")
+        
+        admin_doc = db.collection('admins').document(admin_id).get()
+        if not admin_doc.exists:
+            raise HTTPException(status_code=404, detail="Admin not found")
+        
+        admin_data = admin_doc.to_dict() or {}
+        admin_department = admin_data.get('department') if admin_data else None
+        admin_campus = admin_data.get('campus') if admin_data else None
+        
+        if not admin_department:
+            raise HTTPException(status_code=400, detail="Admin department not found")
+        
+        # Get courses for this department - try both 'department' and 'courseType' fields
+        # Try querying by 'department' field first
+        courses_query = db.collection('courses').where('department', '==', admin_department).stream()
+        department_courses = [course.to_dict() for course in courses_query]
+        
+        # If no courses found, try querying by 'courseType' field
+        if not department_courses:
+            courses_query = db.collection('courses').where('courseType', '==', admin_department).stream()
+            department_courses = [course.to_dict() for course in courses_query]
+        
+        course_docs = []
+        if department_courses:
+            # Get the document references for the courses we found
+            course_docs = list(db.collection('courses').where('department', '==', admin_department).stream())
+            if not course_docs:
+                course_docs = list(db.collection('courses').where('courseType', '==', admin_department).stream())
+        
+        course_ids = [course_doc.id for course_doc in course_docs]
+        
+        # Get sections for these courses (regardless of campus for department-wide view)
+        sections = []
+        for course_id in course_ids:
+            sections_query = db.collection('sections').where('courseId', '==', course_id).stream()
+            for section_doc in sections_query:
+                section_data = section_doc.to_dict() or {}
+                sections.append(section_data)
+        
+        # Get unique instructor IDs from sections
+        instructor_ids = set()
+        for section in sections:
+            instructor_id = section.get('instructorId')
+            if instructor_id:
+                instructor_ids.add(instructor_id)
+        
+        # Get unique student count from performanceData
+        student_ids = set()
+        section_ids = [section.get('sectionId') or section.get('id') for section in sections if section.get('sectionId') or section.get('id')]
+        
+        if section_ids:
+            # Query performanceData collection for student IDs
+            for section_id in section_ids:
+                performance_query = db.collection('performanceData').where('sectionId', '==', section_id).stream()
+                for record_doc in performance_query:
+                    record_data = record_doc.to_dict() or {}
+                    student_id = record_data.get('studentId')
+                    if student_id:
+                        student_ids.add(student_id)
+        
+        # Calculate metrics
+        total_students = len(student_ids)
+        total_courses = len(department_courses)
+        total_instructors = len(instructor_ids)
+        
+        return {
+            "department": admin_department,
+            "campus": admin_campus,
+            "totalStudents": total_students,
+            "totalCourses": total_courses,
+            "totalInstructors": total_instructors
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching department metrics: {str(e)}")
+
+@router.get("/admin/department-instructors")
+async def get_admin_department_instructors(
+    current_user: dict = Depends(verify_token)
+):
+    """Get department-specific instructor count for admin dashboard from Firestore"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get admin data from Firestore
+        admin_id = current_user.get('adminId')
+        if not admin_id:
+            raise HTTPException(status_code=400, detail="Admin ID not found")
+        
+        admin_doc = db.collection('admins').document(admin_id).get()
+        if not admin_doc.exists:
+            raise HTTPException(status_code=404, detail="Admin not found")
+        
+        admin_data = admin_doc.to_dict() or {}
+        admin_department = admin_data.get('department') if admin_data else None
+        admin_campus = admin_data.get('campus') if admin_data else None
+        
+        if not admin_department:
+            raise HTTPException(status_code=400, detail="Admin department not found")
+        
+        # Get instructors for this specific department and campus
+        instructors_query = db.collection('instructors')
+        if admin_department:
+            instructors_query = instructors_query.where('department', '==', admin_department)
+        if admin_campus:
+            instructors_query = instructors_query.where('campus', '==', admin_campus)
+        
+        instructors_docs = list(instructors_query.stream())
+        instructor_count = len(instructors_docs)
+        
+        return {
+            "department": admin_department,
+            "campus": admin_campus,
+            "totalInstructors": instructor_count
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching department instructor count: {str(e)}")
 
 @router.get("/instructor/courses")
 async def get_instructor_courses_firestore(
@@ -779,7 +932,8 @@ async def get_instructor_announcements_firestore(
 async def get_instructor_course_performance_report(
     current_user: dict = Depends(verify_token)
 ):
-    """Get course performance report for all courses taught by instructor"""
+    """Get comprehensive course performance report for all courses taught by instructor.
+    """
     try:
         db = get_firestore_client()
         if not db:
@@ -795,6 +949,51 @@ async def get_instructor_course_performance_report(
         
         # Get courses for these sections
         course_ids = list(set([section.get('courseId') for section in instructor_sections if section.get('courseId')]))
+        
+        # Extract section IDs for performance data querying
+        section_ids = [section.get('sectionId') or section.get('id') for section in instructor_sections 
+                      if section.get('sectionId') or section.get('id')]
+        
+        # Get performance data for all sections to calculate completion rates and grades
+        performance_data = []
+        student_ids = set()
+        
+        for section_id in section_ids:
+            if section_id:
+                performance_query = db.collection('performanceData').where('sectionId', '==', section_id).stream()
+                for record in performance_query:
+                    record_data = record.to_dict()
+                    performance_data.append(record_data)
+                    # Collect unique student IDs
+                    if record_data.get('studentId'):
+                        student_ids.add(record_data.get('studentId'))
+        
+        # Calculate overall metrics
+        total_assessments = len(performance_data)
+        passing_assessments = sum(1 for p in performance_data if p.get('percentage', 0) >= 60)
+        avg_completion_rate = (passing_assessments / total_assessments * 100) if total_assessments > 0 else 0
+        
+        # Calculate average grade
+        total_percentage = sum(p.get('percentage', 0) for p in performance_data)
+        avg_grade = (total_percentage / total_assessments) if total_assessments > 0 else 0
+        
+        # Identify at-risk students (those with performance below 60%)
+        student_performance = {}
+        for record in performance_data:
+            student_id = record.get('studentId')
+            if student_id:
+                if student_id not in student_performance:
+                    student_performance[student_id] = []
+                student_performance[student_id].append(record.get('percentage', 0))
+        
+        at_risk_students = []
+        for student_id, percentages in student_performance.items():
+            avg_student_performance = sum(percentages) / len(percentages) if percentages else 0
+            if avg_student_performance < 60:
+                at_risk_students.append({
+                    'studentId': student_id,
+                    'averagePerformance': round(avg_student_performance, 2)
+                })
         
         courses_data = []
         for course_id in course_ids:
@@ -816,11 +1015,50 @@ async def get_instructor_course_performance_report(
                             campus_data = campus_doc.to_dict() or {}
                             campus_name = campus_data.get('campusName', 'Unknown Campus')
                     
+                    # Get semester information
+                    semester_id = related_section.get('semesterId')
+                    semester_name = related_section.get('semesterName', 'Unknown Semester')
+                    if semester_id:
+                        semester_doc = db.collection('semesters').document(semester_id).get()
+                        if semester_doc.exists:
+                            semester_data = semester_doc.to_dict() or {}
+                            semester_name = semester_data.get('semesterName', semester_name)
+                    
+                    # Get course-specific performance data
+                    course_section_id = related_section.get('sectionId') or related_section.get('id')
+                    course_performance = [p for p in performance_data if p.get('sectionId') == course_section_id] if course_section_id else []
+                    course_total_assessments = len(course_performance)
+                    course_passing_assessments = sum(1 for p in course_performance if p.get('percentage', 0) >= 60)
+                    course_completion_rate = (course_passing_assessments / course_total_assessments * 100) if course_total_assessments > 0 else 0
+                    
+                    # Calculate course average grade
+                    course_total_percentage = sum(p.get('percentage', 0) for p in course_performance)
+                    course_avg_grade = (course_total_percentage / course_total_assessments) if course_total_assessments > 0 else 0
+                    
+                    # Identify course-specific at-risk students
+                    course_student_performance = {}
+                    for record in course_performance:
+                        student_id = record.get('studentId')
+                        if student_id:
+                            if student_id not in course_student_performance:
+                                course_student_performance[student_id] = []
+                            course_student_performance[student_id].append(record.get('percentage', 0))
+                    
+                    course_at_risk_count = 0
+                    for student_id, percentages in course_student_performance.items():
+                        avg_student_performance = sum(percentages) / len(percentages) if percentages else 0
+                        if avg_student_performance < 60:
+                            course_at_risk_count += 1
+                    
                     course_data.update({
-                        'semesterName': related_section.get('semesterName', 'Unknown Semester'),
+                        'semesterName': semester_name,
                         'campusName': campus_name,
                         'crnCode': related_section.get('crnCode', 'N/A'),
-                        'department': course_data.get('department') or related_section.get('department', 'Unknown Department')
+                        'department': course_data.get('department') or related_section.get('department', 'Unknown Department'),
+                        'courseCompletionRate': round(course_completion_rate, 2),
+                        'courseAverageGrade': round(course_avg_grade, 2),
+                        'courseTotalAssessments': course_total_assessments,
+                        'courseAtRiskStudents': course_at_risk_count
                     })
                     
                     courses_data.append(course_data)
@@ -835,11 +1073,13 @@ async def get_instructor_course_performance_report(
                 'semester': course.get('semesterName', 'Unknown'),
                 'campus': course.get('campusName', 'Unknown'),
                 'department': course.get('department', 'Unknown'),
+                'crnCode': course.get('crnCode', 'N/A'),
                 'totalStudents': course.get('totalEnrollments', 0),
                 'activeStudents': course.get('activeStudents', 0),
-                'completionRate': course.get('completionRate', 0),
-                'averageGrade': course.get('averageRating', 0),
-                'atRiskStudents': max(0, int(course.get('totalEnrollments', 0) * 0.15)),  # Mock at-risk calculation
+                'completionRate': course.get('courseCompletionRate', 0),
+                'averageGrade': course.get('courseAverageGrade', 0),
+                'totalAssessments': course.get('courseTotalAssessments', 0),
+                'atRiskStudents': course.get('courseAtRiskStudents', 0),
                 'topPerformers': max(0, int(course.get('totalEnrollments', 0) * 0.20))   # Mock top performers
             })
         
@@ -851,14 +1091,722 @@ async def get_instructor_course_performance_report(
             "summary": {
                 "totalCourses": len(report_data),
                 "totalStudents": sum(course['totalStudents'] for course in report_data),
-                "avgCompletionRate": round(sum(course['completionRate'] for course in report_data) / len(report_data), 1) if report_data else 0,
-                "avgGrade": round(sum(course['averageGrade'] for course in report_data) / len(report_data), 1) if report_data else 0
+                "totalAssessments": total_assessments,
+                "avgCompletionRate": round(avg_completion_rate, 2),
+                "avgGrade": round(avg_grade, 2),
+                "atRiskStudents": len(at_risk_students),
+                "activeStudents": sum(course['activeStudents'] for course in report_data)
             }
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating course performance report: {str(e)}")
 
+
+@router.get("/instructor/reports/course-performance-analysis")
+async def get_instructor_course_performance_analysis(
+    current_user: dict = Depends(verify_token)
+):
+    """Generate a course performance analysis report for a specific instructor using your existing collections.
+    """
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # First, query the sections collection using the instructor's ID to retrieve all sections 
+        # taught by that instructor, which provides the foundation of courses to analyze
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Get courses for these sections
+        course_ids = list(set([section.get('courseId') for section in instructor_sections if section.get('courseId')]))
+        
+        # Extract section IDs for performance data querying
+        section_ids = [section.get('sectionId') or section.get('id') for section in instructor_sections 
+                      if section.get('sectionId') or section.get('id')]
+        
+        # Using these section IDs, query the performance data collection to gather all assessment records
+        performance_data = []
+        student_ids = set()
+        
+        for section_id in section_ids:
+            if section_id:
+                performance_query = db.collection('performanceData').where('sectionId', '==', section_id).stream()
+                for record in performance_query:
+                    record_data = record.to_dict()
+                    performance_data.append(record_data)
+                    # Collect unique student IDs
+                    if record_data.get('studentId'):
+                        student_ids.add(record_data.get('studentId'))
+        
+        # Calculate overall metrics
+        total_assessments = len(performance_data)
+        passing_assessments = sum(1 for p in performance_data if p.get('percentage', 0) >= 60)
+        avg_completion_rate = (passing_assessments / total_assessments * 100) if total_assessments > 0 else 0
+        
+        # Calculate average grade
+        total_percentage = sum(p.get('percentage', 0) for p in performance_data)
+        avg_grade = (total_percentage / total_assessments) if total_assessments > 0 else 0
+        
+        # Identify at-risk students (those with performance below 60%)
+        student_performance = {}
+        for record in performance_data:
+            student_id = record.get('studentId')
+            if student_id:
+                if student_id not in student_performance:
+                    student_performance[student_id] = []
+                student_performance[student_id].append(record.get('percentage', 0))
+        
+        at_risk_students = []
+        for student_id, percentages in student_performance.items():
+            avg_student_performance = sum(percentages) / len(percentages) if percentages else 0
+            if avg_student_performance < 60:
+                at_risk_students.append({
+                    'studentId': student_id,
+                    'averagePerformance': round(avg_student_performance, 2)
+                })
+        
+        # Process each course for detailed analysis
+        courses_data = []
+        for course_id in course_ids:
+            if course_id:
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict() or {}
+                    course_data['id'] = course_id
+                    
+                    # Find related section for additional data
+                    related_sections = [s for s in instructor_sections if s.get('courseId') == course_id]
+                    
+                    # Get campus information from first section
+                    campus_name = 'Unknown Campus'
+                    if related_sections and related_sections[0].get('campusId'):
+                        campus_id = related_sections[0].get('campusId')
+                        campus_doc = db.collection('campuses').document(campus_id).get()
+                        if campus_doc.exists:
+                            campus_data = campus_doc.to_dict() or {}
+                            campus_name = campus_data.get('campusName', 'Unknown Campus')
+                    
+                    # Get semester information from first section
+                    semester_name = 'Unknown Semester'
+                    if related_sections and related_sections[0].get('semesterId'):
+                        semester_id = related_sections[0].get('semesterId')
+                        semester_doc = db.collection('semesters').document(semester_id).get()
+                        if semester_doc.exists:
+                            semester_data = semester_doc.to_dict() or {}
+                            semester_name = semester_data.get('semesterName', 'Unknown Semester')
+                    
+                    # Get course-specific performance data
+                    course_section_ids = [s.get('sectionId') or s.get('id') for s in related_sections 
+                                        if s.get('sectionId') or s.get('id')]
+                    course_performance = [p for p in performance_data if p.get('sectionId') in course_section_ids]
+                    course_total_assessments = len(course_performance)
+                    course_passing_assessments = sum(1 for p in course_performance if p.get('percentage', 0) >= 60)
+                    course_completion_rate = (course_passing_assessments / course_total_assessments * 100) if course_total_assessments > 0 else 0
+                    
+                    # Calculate course average grade
+                    course_total_percentage = sum(p.get('percentage', 0) for p in course_performance)
+                    course_avg_grade = (course_total_percentage / course_total_assessments) if course_total_assessments > 0 else 0
+                    
+                    # Identify course-specific at-risk students
+                    course_student_performance = {}
+                    for record in course_performance:
+                        student_id = record.get('studentId')
+                        if student_id:
+                            if student_id not in course_student_performance:
+                                course_student_performance[student_id] = []
+                            course_student_performance[student_id].append(record.get('percentage', 0))
+                    
+                    course_at_risk_count = 0
+                    for student_id, percentages in course_student_performance.items():
+                        avg_student_performance = sum(percentages) / len(percentages) if percentages else 0
+                        if avg_student_performance < 60:
+                            course_at_risk_count += 1
+                    
+                    # Get unique students for this course
+                    course_student_ids = set()
+                    for record in course_performance:
+                        if record.get('studentId'):
+                            course_student_ids.add(record.get('studentId'))
+                    
+                    course_data.update({
+                        'semesterName': semester_name,
+                        'campusName': campus_name,
+                        'crnCodes': [s.get('crnCode', 'N/A') for s in related_sections],
+                        'department': course_data.get('department') or (related_sections[0].get('department', 'Unknown Department') if related_sections else 'Unknown Department'),
+                        'courseCompletionRate': round(course_completion_rate, 2),
+                        'courseAverageGrade': round(course_avg_grade, 2),
+                        'courseTotalAssessments': course_total_assessments,
+                        'courseAtRiskStudents': course_at_risk_count,
+                        'courseTotalStudents': len(course_student_ids)
+                    })
+                    
+                    courses_data.append(course_data)
+        
+        # Generate detailed report data
+        report_data = []
+        for course in courses_data:
+            report_data.append({
+                'courseId': course.get('id'),
+                'courseName': course.get('courseName', 'Unknown Course'),
+                'courseCode': course.get('courseCode', 'N/A'),
+                'semester': course.get('semesterName', 'Unknown'),
+                'campus': course.get('campusName', 'Unknown'),
+                'department': course.get('department', 'Unknown'),
+                'crnCodes': course.get('crnCodes', []),
+                'totalStudents': course.get('courseTotalStudents', 0),
+                'activeStudents': course.get('activeStudents', 0),
+                'completionRate': course.get('courseCompletionRate', 0),
+                'averageGrade': course.get('courseAverageGrade', 0),
+                'totalAssessments': course.get('courseTotalAssessments', 0),
+                'atRiskStudents': course.get('courseAtRiskStudents', 0),
+                'topPerformers': max(0, int(course.get('courseTotalStudents', 0) * 0.20))   # Top 20% performers
+            })
+        
+        # Sort courses by average grade (descending)
+        report_data.sort(key=lambda x: x['averageGrade'], reverse=True)
+        
+        return {
+            "reportType": "course-performance-analysis",
+            "generatedAt": datetime.utcnow().isoformat(),
+            "instructorId": instructor_id,
+            "courses": report_data,
+            "summary": {
+                "totalCourses": len(report_data),
+                "totalStudents": sum(course['totalStudents'] for course in report_data),
+                "totalAssessments": total_assessments,
+                "avgCompletionRate": round(avg_completion_rate, 2),
+                "avgGrade": round(avg_grade, 2),
+                "atRiskStudents": len(at_risk_students),
+                "activeStudents": sum(course['activeStudents'] for course in report_data),
+                "bestPerformingCourse": report_data[0]['courseName'] if report_data else 'N/A',
+                "lowestPerformingCourse": report_data[-1]['courseName'] if report_data else 'N/A'
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating course performance analysis: {str(e)}")
+
+
+@router.get("/instructor/reports/student-analysis")
+async def get_instructor_student_analysis_report(
+    course_id: Optional[str] = Query(None, description="Course ID to filter by"),
+    current_user: dict = Depends(verify_token)
+):
+    """Generate a student analysis report for a specific instructor using your existing collections.
+    """
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # First, query the sections collection using the instructor's ID to identify all sections 
+        # taught by that instructor, which provides the relevant section IDs
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Filter by course if specified
+        if course_id:
+            instructor_sections = [s for s in instructor_sections if s.get('courseId') == course_id]
+        
+        # Get section IDs for performance data querying
+        section_ids = [s.get('sectionId') or s.get('id') for s in instructor_sections 
+                      if s.get('sectionId') or s.get('id')]
+        
+        # Get course IDs for course information
+        course_ids = list(set([s.get('courseId') for s in instructor_sections if s.get('courseId')]))
+        
+        # Then, use these section IDs to query the performance data collection and retrieve all 
+        # assessment records for students in those sections
+        performance_data = []
+        student_ids = set()
+        
+        for section_id in section_ids:
+            if section_id:
+                performance_query = db.collection('performanceData').where('sectionId', '==', section_id).stream()
+                for record in performance_query:
+                    record_data = record.to_dict()
+                    performance_data.append(record_data)
+                    # Collect unique student IDs
+                    if record_data.get('studentId'):
+                        student_ids.add(record_data.get('studentId'))
+        
+        # Get student details from students collection
+        students_info = {}
+        for student_id in student_ids:
+            if student_id:
+                student_doc = db.collection('students').document(student_id).get()
+                if student_doc.exists:
+                    student_data = student_doc.to_dict() or {}
+                    students_info[student_id] = {
+                        'studentName': student_data.get('studentName', f'Student {student_id}'),
+                        'email': student_data.get('email', f'{student_id}@example.com')
+                    }
+        
+        # Get course details from courses collection
+        courses_info = {}
+        for course_id in course_ids:
+            if course_id:
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict() or {}
+                    courses_info[course_id] = {
+                        'courseName': course_data.get('courseName', 'Unknown Course'),
+                        'courseCode': course_data.get('courseCode', 'N/A')
+                    }
+        
+        # Analyze the data to generate comprehensive metrics
+        # Group performance data by student
+        student_performance = {}
+        for record in performance_data:
+            student_id = record.get('studentId')
+            section_id = record.get('sectionId')
+            if student_id and section_id:
+                if student_id not in student_performance:
+                    student_performance[student_id] = []
+                student_performance[student_id].append(record)
+        
+        # Calculate individual student metrics
+        students_analysis = []
+        total_progress = 0
+        total_grade = 0
+        active_students = 0
+        at_risk_students = 0
+        
+        for student_id, records in student_performance.items():
+            # Get student info
+            student_info = students_info.get(student_id, {
+                'studentName': f'Student {student_id}',
+                'email': f'{student_id}@example.com'
+            })
+            
+            # Calculate student metrics
+            total_assessments = len(records)
+            completed_assessments = sum(1 for r in records if r.get('percentage') is not None)
+            completion_rate = (completed_assessments / total_assessments * 100) if total_assessments > 0 else 0
+            
+            # Calculate average grade
+            grades = [r.get('percentage', 0) for r in records if r.get('percentage') is not None]
+            avg_grade = sum(grades) / len(grades) if grades else 0
+            
+            # Identify assessment types
+            assessment_types = list(set(r.get('assessmentType', 'Unknown') for r in records))
+            
+            # Determine student status (at-risk if average grade < 60)
+            status = 'at_risk' if avg_grade < 60 else 'active'
+            
+            # Get courses this student is enrolled in
+            student_sections = list(set(r.get('sectionId') for r in records if r.get('sectionId')))
+            student_courses = []
+            for section_id in student_sections:
+                section = next((s for s in instructor_sections if (s.get('sectionId') == section_id or s.get('id') == section_id)), None)
+                if section and section.get('courseId'):
+                    course_id = section.get('courseId')
+                    course_info = courses_info.get(course_id, {'courseName': 'Unknown Course', 'courseCode': 'N/A'})
+                    student_courses.append({
+                        'courseId': course_id,
+                        'courseName': course_info['courseName'],
+                        'courseCode': course_info['courseCode']
+                    })
+            
+            # Create student analysis record
+            student_analysis = {
+                'studentId': student_id,
+                'studentName': student_info['studentName'],
+                'email': student_info['email'],
+                'progress': round(completion_rate, 1),
+                'grade': round(avg_grade, 1),
+                'lastActive': records[-1].get('date', 'Unknown') if records else 'Unknown',
+                'status': status,
+                'assignmentsCompleted': completed_assessments,
+                'totalAssessments': total_assessments,
+                'courses': student_courses,
+                'assessmentTypes': assessment_types
+            }
+            
+            students_analysis.append(student_analysis)
+            
+            # Update summary metrics
+            total_progress += completion_rate
+            total_grade += avg_grade
+            if status == 'active':
+                active_students += 1
+            else:
+                at_risk_students += 1
+        
+        # Sort students by grade (descending)
+        students_analysis.sort(key=lambda x: x['grade'], reverse=True)
+        
+        # Calculate summary statistics
+        total_students = len(students_analysis)
+        avg_progress = (total_progress / total_students) if total_students > 0 else 0
+        avg_grade = (total_grade / total_students) if total_students > 0 else 0
+        
+        return {
+            "reportType": "student-analysis",
+            "generatedAt": datetime.utcnow().isoformat(),
+            "instructorId": instructor_id,
+            "courseId": course_id,
+            "students": students_analysis,
+            "summary": {
+                "totalStudents": total_students,
+                "activeStudents": active_students,
+                "atRiskStudents": at_risk_students,
+                "avgProgress": round(avg_progress, 1),
+                "avgGrade": round(avg_grade, 1),
+                "topPerformingStudent": students_analysis[0]['studentName'] if students_analysis else 'N/A',
+                "lowestPerformingStudent": students_analysis[-1]['studentName'] if students_analysis else 'N/A'
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating student analysis report: {str(e)}")
+
+
+@router.get("/instructor/reports/semester-comparison")
+async def get_instructor_semester_comparison_report(
+    current_user: dict = Depends(verify_token)
+):
+    """Generate a semester comparison report for a specific instructor using your existing collections.
+    """
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # First, query the sections collection using the instructor's ID to retrieve all sections 
+        # taught by that instructor across different semesters, which provides both the section IDs 
+        # and their associated semester IDs
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Extract section IDs and semester IDs for performance data querying
+        section_ids = [s.get('sectionId') or s.get('id') for s in instructor_sections 
+                      if s.get('sectionId') or s.get('id')]
+        semester_ids = list(set([s.get('semesterId') for s in instructor_sections if s.get('semesterId')]))
+        
+        # Then, use these semester IDs to fetch semester details from the semesters collection 
+        # and section IDs to gather all performance records from the performance data collection
+        semester_details = {}
+        for semester_id in semester_ids:
+            if semester_id:
+                semester_doc = db.collection('semesters').document(semester_id).get()
+                if semester_doc.exists:
+                    semester_data = semester_doc.to_dict() or {}
+                    semester_details[semester_id] = {
+                        'semesterName': semester_data.get('semesterName', f'Semester {semester_id}'),
+                        'startDate': semester_data.get('startDate', ''),
+                        'endDate': semester_data.get('endDate', '')
+                    }
+        
+        # Get performance data for all sections to calculate metrics
+        performance_data = []
+        student_ids = set()
+        
+        for section_id in section_ids:
+            if section_id:
+                performance_query = db.collection('performanceData').where('sectionId', '==', section_id).stream()
+                for record in performance_query:
+                    record_data = record.to_dict()
+                    performance_data.append(record_data)
+                    # Collect unique student IDs
+                    if record_data.get('studentId'):
+                        student_ids.add(record_data.get('studentId'))
+        
+        # Group the performance data by semester and calculate key metrics
+        semester_metrics = {}
+        
+        # Process each section to associate with its semester
+        for section in instructor_sections:
+            section_id = section.get('sectionId') or section.get('id')
+            semester_id = section.get('semesterId')
+            semester_name = section.get('semesterName', 'Unknown Semester')
+            
+            # Use semester details if available, otherwise use the name from section
+            if semester_id and semester_id in semester_details:
+                semester_name = semester_details[semester_id]['semesterName']
+            
+            # Initialize semester data if not exists
+            if semester_name not in semester_metrics:
+                semester_metrics[semester_name] = {
+                    'totalStudents': 0,
+                    'totalAssessments': 0,
+                    'passingAssessments': 0,
+                    'totalGrades': 0,
+                    'courses': set(),
+                    'studentIds': set()
+                }
+            
+            # Add course ID to track unique courses
+            course_id = section.get('courseId')
+            if course_id:
+                semester_metrics[semester_name]['courses'].add(course_id)
+            
+            # Filter performance data for this section
+            section_performance = [p for p in performance_data if p.get('sectionId') == section_id]
+            
+            # Update semester metrics with section data
+            semester_metrics[semester_name]['totalAssessments'] += len(section_performance)
+            
+            # Calculate passing assessments (typically 60% or higher)
+            passing_count = sum(1 for p in section_performance if p.get('percentage', 0) >= 60)
+            semester_metrics[semester_name]['passingAssessments'] += passing_count
+            
+            # Sum grades for average calculation
+            total_percentage = sum(p.get('percentage', 0) for p in section_performance)
+            semester_metrics[semester_name]['totalGrades'] += total_percentage
+            
+            # Collect unique students for this section
+            section_students = set(p.get('studentId') for p in section_performance if p.get('studentId'))
+            semester_metrics[semester_name]['studentIds'].update(section_students)
+        
+        # Calculate final metrics for each semester
+        semester_comparison = []
+        for semester_name, data in semester_metrics.items():
+            total_assessments = data['totalAssessments']
+            passing_assessments = data['passingAssessments']
+            total_grades = data['totalGrades']
+            course_count = len(data['courses'])
+            student_count = len(data['studentIds'])
+            
+            # Calculate key metrics
+            avg_grade = (total_grades / total_assessments) if total_assessments > 0 else 0
+            pass_rate = (passing_assessments / total_assessments * 100) if total_assessments > 0 else 0
+            student_to_course_ratio = (student_count / course_count) if course_count > 0 else 0
+            
+            semester_comparison.append({
+                'semester': semester_name,
+                'courses': course_count,
+                'totalStudents': student_count,
+                'avgCompletionRate': round(pass_rate, 2),
+                'avgGrade': round(avg_grade, 2),
+                'studentToCourseRatio': round(student_to_course_ratio, 2),
+                'totalAssessments': total_assessments,
+                'passRate': round(pass_rate, 2)
+            })
+        
+        # Sort by semester name for chronological display
+        semester_comparison.sort(key=lambda x: x['semester'])
+        
+        # By comparing these metrics across semesters, the report reveals trends in teaching effectiveness
+        return {
+            "reportType": "semester-comparison",
+            "generatedAt": datetime.utcnow().isoformat(),
+            "instructorId": instructor_id,
+            "semesters": semester_comparison,
+            "summary": {
+                "totalSemesters": len(semester_comparison),
+                "bestPerformingSemester": max(semester_comparison, key=lambda x: x['avgGrade'])['semester'] if semester_comparison else 'N/A',
+                "worstPerformingSemester": min(semester_comparison, key=lambda x: x['avgGrade'])['semester'] if semester_comparison else 'N/A',
+                "totalStudents": sum(s['totalStudents'] for s in semester_comparison),
+                "totalCourses": sum(s['courses'] for s in semester_comparison)
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating semester comparison report: {str(e)}")
+
+
+@router.get("/instructor/reports/student-analytics")
+async def get_instructor_student_analytics_report(  # pyright: ignore[reportRedeclaration]
+    course_id: Optional[str] = Query(None),
+    current_user: dict = Depends(verify_token)
+):
+    """Get student analytics report for individual student progress"""
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get instructor's sections and courses
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Get courses for these sections
+        course_ids = list(set([section.get('courseId') for section in instructor_sections if section.get('courseId')]))
+        
+        # Extract section IDs for performance data querying
+        section_ids = [section.get('sectionId') or section.get('id') for section in instructor_sections 
+                      if section.get('sectionId') or section.get('id')]
+        
+        # Get performance data for all sections to calculate completion rates and grades
+        performance_data = []
+        student_ids = set()
+        
+        for section_id in section_ids:
+            if section_id:
+                performance_query = db.collection('performanceData').where('sectionId', '==', section_id).stream()
+                for record in performance_query:
+                    record_data = record.to_dict()
+                    performance_data.append(record_data)
+                    # Collect unique student IDs
+                    if record_data.get('studentId'):
+                        student_ids.add(record_data.get('studentId'))
+        
+        # Calculate overall metrics
+        total_assessments = len(performance_data)
+        passing_assessments = sum(1 for p in performance_data if p.get('percentage', 0) >= 60)
+        avg_completion_rate = (passing_assessments / total_assessments * 100) if total_assessments > 0 else 0
+        
+        # Calculate average grade
+        total_percentage = sum(p.get('percentage', 0) for p in performance_data)
+        avg_grade = (total_percentage / total_assessments) if total_assessments > 0 else 0
+        
+        # Identify at-risk students (those with performance below 60%)
+        student_performance = {}
+        for record in performance_data:
+            student_id = record.get('studentId')
+            if student_id:
+                if student_id not in student_performance:
+                    student_performance[student_id] = []
+                student_performance[student_id].append(record.get('percentage', 0))
+        
+        at_risk_students = []
+        for student_id, percentages in student_performance.items():
+            avg_student_performance = sum(percentages) / len(percentages) if percentages else 0
+            if avg_student_performance < 60:
+                at_risk_students.append({
+                    'studentId': student_id,
+                    'averagePerformance': round(avg_student_performance, 2)
+                })
+        
+        # Process each course for detailed analysis
+        courses_data = []
+        for course_id in course_ids:
+            if course_id:
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict() or {}
+                    course_data['id'] = course_id
+                    
+                    # Find related section for additional data
+                    related_sections = [s for s in instructor_sections if s.get('courseId') == course_id]
+                    
+                    # Get campus information from first section
+                    campus_name = 'Unknown Campus'
+                    if related_sections and related_sections[0].get('campusId'):
+                        campus_id = related_sections[0].get('campusId')
+                        campus_doc = db.collection('campuses').document(campus_id).get()
+                        if campus_doc.exists:
+                            campus_data = campus_doc.to_dict() or {}
+                            campus_name = campus_data.get('campusName', 'Unknown Campus')
+                    
+                    # Get semester information from first section
+                    semester_name = 'Unknown Semester'
+                    if related_sections and related_sections[0].get('semesterId'):
+                        semester_id = related_sections[0].get('semesterId')
+                        semester_doc = db.collection('semesters').document(semester_id).get()
+                        if semester_doc.exists:
+                            semester_data = semester_doc.to_dict() or {}
+                            semester_name = semester_data.get('semesterName', 'Unknown Semester')
+                    
+                    # Get course-specific performance data
+                    course_section_ids = [s.get('sectionId') or s.get('id') for s in related_sections 
+                                        if s.get('sectionId') or s.get('id')]
+                    course_performance = [p for p in performance_data if p.get('sectionId') in course_section_ids]
+                    course_total_assessments = len(course_performance)
+                    course_passing_assessments = sum(1 for p in course_performance if p.get('percentage', 0) >= 60)
+                    course_completion_rate = (course_passing_assessments / course_total_assessments * 100) if course_total_assessments > 0 else 0
+                    
+                    # Calculate course average grade
+                    course_total_percentage = sum(p.get('percentage', 0) for p in course_performance)
+                    course_avg_grade = (course_total_percentage / course_total_assessments) if course_total_assessments > 0 else 0
+                    
+                    # Identify course-specific at-risk students
+                    course_student_performance = {}
+                    for record in course_performance:
+                        student_id = record.get('studentId')
+                        if student_id:
+                            if student_id not in course_student_performance:
+                                course_student_performance[student_id] = []
+                            course_student_performance[student_id].append(record.get('percentage', 0))
+                    
+                    course_at_risk_count = 0
+                    for student_id, percentages in course_student_performance.items():
+                        avg_student_performance = sum(percentages) / len(percentages) if percentages else 0
+                        if avg_student_performance < 60:
+                            course_at_risk_count += 1
+                    
+                    # Get unique students for this course
+                    course_student_ids = set()
+                    for record in course_performance:
+                        if record.get('studentId'):
+                            course_student_ids.add(record.get('studentId'))
+                    
+                    course_data.update({
+                        'semesterName': semester_name,
+                        'campusName': campus_name,
+                        'crnCodes': [s.get('crnCode', 'N/A') for s in related_sections],
+                        'department': course_data.get('department') or (related_sections[0].get('department', 'Unknown Department') if related_sections else 'Unknown Department'),
+                        'courseCompletionRate': round(course_completion_rate, 2),
+                        'courseAverageGrade': round(course_avg_grade, 2),
+                        'courseTotalAssessments': course_total_assessments,
+                        'courseAtRiskStudents': course_at_risk_count,
+                        'courseTotalStudents': len(course_student_ids)
+                    })
+                    
+                    courses_data.append(course_data)
+        
+        # Generate detailed report data
+        report_data = []
+        for course in courses_data:
+            report_data.append({
+                'courseId': course.get('id'),
+                'courseName': course.get('courseName', 'Unknown Course'),
+                'courseCode': course.get('courseCode', 'N/A'),
+                'semester': course.get('semesterName', 'Unknown'),
+                'campus': course.get('campusName', 'Unknown'),
+                'department': course.get('department', 'Unknown'),
+                'crnCodes': course.get('crnCodes', []),
+                'totalStudents': course.get('courseTotalStudents', 0),
+                'activeStudents': course.get('activeStudents', 0),
+                'completionRate': course.get('courseCompletionRate', 0),
+                'averageGrade': course.get('courseAverageGrade', 0),
+                'totalAssessments': course.get('courseTotalAssessments', 0),
+                'atRiskStudents': course.get('courseAtRiskStudents', 0),
+                'topPerformers': max(0, int(course.get('courseTotalStudents', 0) * 0.20))   # Top 20% performers
+            })
+        
+        # Sort courses by average grade (descending)
+        report_data.sort(key=lambda x: x['averageGrade'], reverse=True)
+        
+        return {
+            "reportType": "course-performance-analysis",
+            "generatedAt": datetime.utcnow().isoformat(),
+            "instructorId": instructor_id,
+            "courses": report_data,
+            "summary": {
+                "totalCourses": len(report_data),
+                "totalStudents": sum(course['totalStudents'] for course in report_data),
+                "totalAssessments": total_assessments,
+                "avgCompletionRate": round(avg_completion_rate, 2),
+                "avgGrade": round(avg_grade, 2),
+                "atRiskStudents": len(at_risk_students),
+                "activeStudents": sum(course['activeStudents'] for course in report_data),
+                "bestPerformingCourse": report_data[0]['courseName'] if report_data else 'N/A',
+                "lowestPerformingCourse": report_data[-1]['courseName'] if report_data else 'N/A'
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating course performance analysis: {str(e)}")
 
 @router.get("/instructor/reports/student-analytics")
 async def get_instructor_student_analytics_report(
@@ -990,76 +1938,7 @@ async def get_instructor_predictive_risk_report(
         raise HTTPException(status_code=500, detail=f"Error generating predictive risk report: {str(e)}")
 
 
-@router.get("/instructor/reports/semester-comparison")
-async def get_instructor_semester_comparison_report(
-    current_user: dict = Depends(verify_token)
-):
-    """Get semester comparison report for performance across semesters"""
-    try:
-        db = get_firestore_client()
-        if not db:
-            raise HTTPException(status_code=500, detail="Database connection failed")
-        
-        instructor_id = current_user.get('instructorId')
-        if not instructor_id:
-            raise HTTPException(status_code=400, detail="Instructor ID not found")
-        
-        # Get instructor's sections
-        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
-        instructor_sections = [section.to_dict() for section in sections_query]
-        
-        # Group by semester
-        semesters_data = {}
-        for section in instructor_sections:
-            semester = section.get('semesterName', 'Unknown')
-            if semester not in semesters_data:
-                semesters_data[semester] = {
-                    'courses': 0,
-                    'totalStudents': 0,
-                    'totalCompletionRate': 0,
-                    'totalGrades': 0,
-                    'courseIds': set()
-                }
-            
-            course_id = section.get('courseId')
-            if course_id:
-                semesters_data[semester]['courseIds'].add(course_id)
-                
-                # Get course data
-                course_doc = db.collection('courses').document(course_id).get()
-                if course_doc.exists:
-                    course_data = course_doc.to_dict() or {}
-                    semesters_data[semester]['totalStudents'] += course_data.get('totalEnrollments', 0)
-                    semesters_data[semester]['totalCompletionRate'] += course_data.get('completionRate', 0)
-                    semesters_data[semester]['totalGrades'] += course_data.get('averageRating', 0)
-        
-        # Calculate averages
-        semester_comparison = []
-        for semester, data in semesters_data.items():
-            course_count = len(data['courseIds'])
-            semester_comparison.append({
-                'semester': semester,
-                'courses': course_count,
-                'totalStudents': data['totalStudents'],
-                'avgCompletionRate': round(data['totalCompletionRate'] / course_count, 1) if course_count > 0 else 0,
-                'avgGrade': round(data['totalGrades'] / course_count, 1) if course_count > 0 else 0,
-                'studentToCourseRatio': round(data['totalStudents'] / course_count, 1) if course_count > 0 else 0
-            })
-        
-        return {
-            "reportType": "semester-comparison",
-            "generatedAt": datetime.utcnow().isoformat(),
-            "instructorId": instructor_id,
-            "semesters": semester_comparison,
-            "summary": {
-                "totalSemesters": len(semester_comparison),
-                "bestPerformingSemester": max(semester_comparison, key=lambda x: x['avgGrade'])['semester'] if semester_comparison else 'N/A',
-                "worstPerformingSemester": min(semester_comparison, key=lambda x: x['avgGrade'])['semester'] if semester_comparison else 'N/A'
-            }
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating semester comparison report: {str(e)}")
+
 
 
 @router.get("/instructor/reports/detailed-assessment")
@@ -1067,7 +1946,8 @@ async def get_instructor_detailed_assessment_report(
     course_id: Optional[str] = Query(None),
     current_user: dict = Depends(verify_token)
 ):
-    """Get detailed assessment report for assignment/exam analysis"""
+    """Generate a detailed assessment report for a specific instructor using your existing collections.
+    """
     try:
         db = get_firestore_client()
         if not db:
@@ -1077,7 +1957,8 @@ async def get_instructor_detailed_assessment_report(
         if not instructor_id:
             raise HTTPException(status_code=400, detail="Instructor ID not found")
         
-        # Get instructor's sections
+        # First, query the sections collection using the instructor's unique ID to retrieve all sections 
+        # taught by that instructor, obtaining the relevant section IDs
         sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
         instructor_sections = [section.to_dict() for section in sections_query]
         
@@ -1085,32 +1966,151 @@ async def get_instructor_detailed_assessment_report(
         if course_id:
             instructor_sections = [s for s in instructor_sections if s.get('courseId') == course_id]
         
-        # Mock assessment data
-        assessments = []
-        assessment_types = ['Quiz', 'Assignment', 'Exam', 'Project']
+        # Get course IDs and section IDs for performance data querying
+        course_ids = list(set([s.get('courseId') for s in instructor_sections if s.get('courseId')]))
+        section_ids = [s.get('sectionId') or s.get('id') for s in instructor_sections 
+                      if s.get('sectionId') or s.get('id')]
         
-        for i in range(20):  # Mock 20 assessments
+        # Then, use these section IDs to query the performance data collection, extracting all assessment 
+        # records including assessment titles, scores, max scores, percentages, assessment types, and weights
+        performance_data = []
+        for section_id in section_ids:
+            if section_id:
+                performance_query = db.collection('performanceData').where('sectionId', '==', section_id).stream()
+                for record in performance_query:
+                    record_data = record.to_dict()
+                    performance_data.append(record_data)
+        
+        # Get course details from courses collection
+        courses_info = {}
+        for course_id in course_ids:
+            if course_id:
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict() or {}
+                    courses_info[course_id] = {
+                        'courseName': course_data.get('courseName', 'Unknown Course'),
+                        'courseCode': course_data.get('courseCode', 'N/A'),
+                        'semesterId': course_data.get('semesterId', ''),
+                        'department': course_data.get('department', 'Unknown Department')
+                    }
+        
+        # Get semester details from semesters collection
+        semester_details = {}
+        semester_ids = list(set([courses_info[course_id]['semesterId'] for course_id in course_ids 
+                                if course_id in courses_info and courses_info[course_id]['semesterId']]))
+        for semester_id in semester_ids:
+            if semester_id:
+                semester_doc = db.collection('semesters').document(semester_id).get()
+                if semester_doc.exists:
+                    semester_data = semester_doc.to_dict() or {}
+                    semester_details[semester_id] = {
+                        'semesterName': semester_data.get('semesterName', f'Semester {semester_id}'),
+                        'startDate': semester_data.get('startDate', ''),
+                        'endDate': semester_data.get('endDate', '')
+                    }
+        
+        # Process the data to generate comprehensive metrics
+        assessments = []
+        assessment_metrics = {
+            'quizzes': {'count': 0, 'totalScore': 0, 'totalMaxScore': 0, 'passingCount': 0},
+            'assignments': {'count': 0, 'totalScore': 0, 'totalMaxScore': 0, 'passingCount': 0},
+            'exams': {'count': 0, 'totalScore': 0, 'totalMaxScore': 0, 'passingCount': 0},
+            'projects': {'count': 0, 'totalScore': 0, 'totalMaxScore': 0, 'passingCount': 0}
+        }
+        
+        # Group performance data by assessment
+        assessment_groups = {}
+        for record in performance_data:
+            assessment_name = record.get('assessmentName', 'Unknown Assessment')
+            if assessment_name not in assessment_groups:
+                assessment_groups[assessment_name] = []
+            assessment_groups[assessment_name].append(record)
+        
+        # Process each assessment group
+        for assessment_name, records in assessment_groups.items():
+            if not records:
+                continue
+                
+            # Get assessment details from first record
+            first_record = records[0]
+            assessment_type = first_record.get('assessmentType', 'Unknown').lower()
+            section_id = first_record.get('sectionId', '')
+            
+            # Find the section and course for this assessment
+            section = next((s for s in instructor_sections if (s.get('sectionId') == section_id or s.get('id') == section_id)), None)
+            course_id = section.get('courseId') if section else 'Unknown'
+            course_info = courses_info.get(course_id, {}) if section else {}
+            
+            # Calculate metrics for this assessment
+            total_score = sum(r.get('score', 0) for r in records)
+            total_max_score = sum(r.get('maxScore', 100) for r in records)
+            total_records = len(records)
+            
+            # Calculate averages
+            avg_score = total_score / total_records if total_records > 0 else 0
+            avg_max_score = total_max_score / total_records if total_records > 0 else 100
+            avg_percentage = (avg_score / avg_max_score * 100) if avg_max_score > 0 else 0
+            
+            # Count passing assessments (typically 60% or higher)
+            passing_count = sum(1 for r in records if (r.get('percentage', 0) >= 60))
+            pass_rate = (passing_count / total_records * 100) if total_records > 0 else 0
+            
+            # Determine assessment type category
+            type_category = 'assignments'  # default
+            if 'quiz' in assessment_type:
+                type_category = 'quizzes'
+            elif 'exam' in assessment_type:
+                type_category = 'exams'
+            elif 'project' in assessment_type:
+                type_category = 'projects'
+            
+            # Update assessment metrics
+            assessment_metrics[type_category]['count'] += 1
+            assessment_metrics[type_category]['totalScore'] += total_score
+            assessment_metrics[type_category]['totalMaxScore'] += total_max_score
+            assessment_metrics[type_category]['passingCount'] += passing_count
+            
+            # Create assessment record
             assessments.append({
-                'assessmentId': f'A{i+1:03d}',
-                'assessmentName': f'{assessment_types[i % len(assessment_types)]} {i+1}',
-                'courseId': course_id or 'Unknown',
-                'type': assessment_types[i % len(assessment_types)],
-                'dueDate': f'2024-0{i % 9 + 1}-{i % 28 + 1:02d}',
-                'totalPoints': 100,
-                'avgScore': 75 + (i % 25),  # 75-99
-                'highestScore': 95 + (i % 5),  # 95-99
-                'lowestScore': 50 + (i % 25),  # 50-74
-                'submissions': 40 + (i % 10),  # 40-49
-                'passRate': 85 + (i % 15),  # 85-99%
-                'feedbackProvided': i % 3 != 0  # 2/3 have feedback
+                'assessmentName': assessment_name,
+                'courseId': course_id,
+                'courseName': course_info.get('courseName', 'Unknown Course'),
+                'courseCode': course_info.get('courseCode', 'N/A'),
+                'type': first_record.get('assessmentType', 'Unknown'),
+                'dueDate': first_record.get('date', 'Unknown'),
+                'totalPoints': avg_max_score,
+                'avgScore': round(avg_score, 2),
+                'highestScore': max(r.get('score', 0) for r in records),
+                'lowestScore': min(r.get('score', 0) for r in records),
+                'submissions': total_records,
+                'passRate': round(pass_rate, 2),
+                'avgPercentage': round(avg_percentage, 2),
+                'feedbackProvided': first_record.get('feedback', False)
             })
         
-        # Categorize by type
-        quizzes = [a for a in assessments if a['type'] == 'Quiz']
-        assignments = [a for a in assessments if a['type'] == 'Assignment']
-        exams = [a for a in assessments if a['type'] == 'Exam']
-        projects = [a for a in assessments if a['type'] == 'Project']
+        # Calculate overall metrics
+        total_assessments = sum(metrics['count'] for metrics in assessment_metrics.values())
+        total_submissions = sum(len([r for r in performance_data if r.get('assessmentType', '').lower() in 
+                                   (type_key[:-1] if type_key.endswith('s') else type_key)]) 
+                               for type_key in assessment_metrics.keys())
         
+        # Calculate overall averages
+        overall_avg_score = 0
+        overall_pass_rate = 0
+        if performance_data:
+            total_scores = sum(r.get('score', 0) for r in performance_data)
+            total_max_scores = sum(r.get('maxScore', 100) for r in performance_data)
+            overall_avg_score = (total_scores / len(performance_data)) if len(performance_data) > 0 else 0
+            overall_percentage = (overall_avg_score / (total_max_scores / len(performance_data)) * 100) if len(performance_data) > 0 and total_max_scores > 0 else 0
+            passing_submissions = sum(1 for r in performance_data if r.get('percentage', 0) >= 60)
+            overall_pass_rate = (passing_submissions / len(performance_data) * 100) if len(performance_data) > 0 else 0
+        
+        # Sort assessments by due date
+        assessments.sort(key=lambda x: x['dueDate'])
+        
+        # By correlating this assessment data with course information from the courses collection 
+        # and semester details from the semesters collection, the report provides a complete picture
         return {
             "reportType": "detailed-assessment",
             "generatedAt": datetime.utcnow().isoformat(),
@@ -1118,13 +2118,14 @@ async def get_instructor_detailed_assessment_report(
             "courseId": course_id,
             "assessments": assessments,
             "summary": {
-                "totalAssessments": len(assessments),
-                "quizzes": len(quizzes),
-                "assignments": len(assignments),
-                "exams": len(exams),
-                "projects": len(projects),
-                "avgScore": round(sum(a['avgScore'] for a in assessments) / len(assessments), 1) if assessments else 0,
-                "overallPassRate": round(sum(a['passRate'] for a in assessments) / len(assessments), 1) if assessments else 0
+                "totalAssessments": total_assessments,
+                "quizzes": assessment_metrics['quizzes']['count'],
+                "assignments": assessment_metrics['assignments']['count'],
+                "exams": assessment_metrics['exams']['count'],
+                "projects": assessment_metrics['projects']['count'],
+                "avgScore": round(overall_avg_score, 2),
+                "overallPassRate": round(overall_pass_rate, 2),
+                "totalSubmissions": len(performance_data)
             }
         }
         
@@ -1276,6 +2277,43 @@ async def download_course_performance_report(
     
     raise HTTPException(status_code=400, detail="Invalid format specified")
 
+@router.get("/instructor/reports/course-performance-analysis/download")
+async def download_course_performance_analysis_report(
+    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
+    current_user: dict = Depends(verify_token)
+):
+    """Download course performance analysis report in specified format"""
+    # Get the report data first
+    report_data = await get_instructor_course_performance_analysis(current_user)
+    
+    if format.lower() == "pdf":
+        pdf_buffer = create_pdf_report(report_data, "course-performance-analysis")
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=course-performance-analysis-report.pdf"}
+        )
+    elif format.lower() in ["xlsx", "excel"]:
+        excel_buffer = create_excel_report(report_data, "course-performance-analysis")
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=course-performance-analysis-report.xlsx"}
+        )
+    elif format.lower() == "csv":
+        buffer = io.StringIO()
+        if 'courses' in report_data and report_data['courses']:
+            df = pd.DataFrame(report_data['courses'])
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return Response(
+                content=buffer.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=course-performance-analysis-report.csv"}
+            )
+    
+    raise HTTPException(status_code=400, detail="Invalid format specified")
+
 @router.get("/instructor/reports/student-analytics/download")
 async def download_student_analytics_report(
     format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
@@ -1384,6 +2422,44 @@ async def download_semester_comparison_report(
                 content=buffer.getvalue(),
                 media_type="text/csv",
                 headers={"Content-Disposition": "attachment; filename=semester-comparison-report.csv"}
+            )
+    
+    raise HTTPException(status_code=400, detail="Invalid format specified")
+
+@router.get("/instructor/reports/student-analysis/download")
+async def download_student_analysis_report(
+    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
+    course_id: Optional[str] = Query(None, description="Course ID to filter by"),
+    current_user: dict = Depends(verify_token)
+):
+    """Download student analysis report in specified format"""
+    # Get the report data first
+    report_data = await get_instructor_student_analysis_report(course_id, current_user)
+    
+    if format.lower() == "pdf":
+        pdf_buffer = create_pdf_report(report_data, "student-analysis")
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=student-analysis-report.pdf"}
+        )
+    elif format.lower() in ["xlsx", "excel"]:
+        excel_buffer = create_excel_report(report_data, "student-analysis")
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=student-analysis-report.xlsx"}
+        )
+    elif format.lower() == "csv":
+        buffer = io.StringIO()
+        if 'students' in report_data and report_data['students']:
+            df = pd.DataFrame(report_data['students'])
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return Response(
+                content=buffer.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=student-analysis-report.csv"}
             )
     
     raise HTTPException(status_code=400, detail="Invalid format specified")
@@ -1533,6 +2609,78 @@ async def get_instructor_semester_performance(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching semester performance data: {str(e)}")
 
+@router.get("/admin/course-performance")
+async def get_admin_course_performance(
+    current_user: dict = Depends(verify_token)
+):
+    """Get course performance data from performanceData collection"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get performance data with limit for better performance
+        performance_query = db.collection('performanceData').limit(1000).stream()
+        
+        performance_data = []
+        course_performance = {}
+        
+        # Process performance data
+        for record_doc in performance_query:
+            record_data = record_doc.to_dict() or {}
+            
+            # Extract relevant information
+            section_id = record_data.get('sectionId')
+            student_id = record_data.get('studentId')
+            assessment_type = record_data.get('assessmentType')
+            percentage = record_data.get('percentage', 0)
+            weight = record_data.get('assessmentWeight', 0)
+            
+            # Group by section (which relates to courses)
+            if section_id:
+                if section_id not in course_performance:
+                    course_performance[section_id] = {
+                        "section_id": section_id,
+                        "total_students": 0,
+                        "total_assessments": 0,
+                        "average_score": 0,
+                        "weighted_average": 0,
+                        "students": set(),
+                        "scores": []
+                    }
+                
+                # Add student and score data
+                course_performance[section_id]["students"].add(student_id)
+                course_performance[section_id]["scores"].append(percentage)
+                course_performance[section_id]["total_assessments"] += 1
+        
+        # Calculate averages for each section
+        for section_id, data in course_performance.items():
+            data["total_students"] = len(data["students"])
+            if data["scores"]:
+                data["average_score"] = round(sum(data["scores"]) / len(data["scores"]), 2)
+                # Simple weighted average (in a real implementation, this would be more complex)
+                data["weighted_average"] = round(sum(data["scores"]) / len(data["scores"]), 2)
+            
+            # Remove the set for JSON serialization
+            del data["students"]
+            del data["scores"]
+        
+        # Convert to list
+        performance_list = list(course_performance.values())
+        
+        return {
+            "total_records": len(performance_list),
+            "performance_data": performance_list
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching course performance data: {str(e)}")
+
 @router.get("/admin/metrics")
 async def get_admin_platform_metrics(
     current_user: dict = Depends(verify_token)
@@ -1614,3 +2762,121 @@ async def get_admin_course_popularity(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching course distribution data: {str(e)}")
+
+@router.get("/admin/filter-options")
+async def get_admin_filter_options(
+    current_user: dict = Depends(verify_token)
+):
+    """Get filter options for admin dashboard from Firestore with caching"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        # Check cache first
+        cache_key = "admin_filter_options"
+        current_time = datetime.now().timestamp()
+        
+        if cache_key in filter_cache:
+            cached_data, timestamp = filter_cache[cache_key]
+            if current_time - timestamp < CACHE_DURATION:
+                print("Returning cached filter options")
+                return cached_data
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Use more efficient querying with limits and better data processing
+        # Fetch only necessary data to reduce payload size
+        
+        # Fetch semesters with limit
+        semesters_query = db.collection('semesters').limit(50).stream()
+        semesters = []
+        for semester_doc in semesters_query:
+            semester_data = semester_doc.to_dict() or {}
+            semesters.append({
+                "id": semester_doc.id,
+                "name": semester_data.get('semesterName', 'Unknown Semester')
+            })
+        
+        # Fetch campuses with limit
+        campuses_query = db.collection('campuses').limit(50).stream()
+        campuses = []
+        for campus_doc in campuses_query:
+            campus_data = campus_doc.to_dict() or {}
+            campus_name = campus_data.get('campusName')
+            if campus_name:
+                campuses.append(campus_name)
+        
+        # Fetch instructors with limit
+        instructors_query = db.collection('instructors').limit(100).stream()
+        instructors = []
+        for instructor_doc in instructors_query:
+            instructor_data = instructor_doc.to_dict() or {}
+            instructor_name = instructor_data.get('display_name') or instructor_data.get('username') or instructor_data.get('email')
+            if instructor_name:
+                instructors.append({
+                    "id": instructor_doc.id,
+                    "name": instructor_name
+                })
+        
+        # Fetch courses with limit and process efficiently
+        courses_query = db.collection('courses').limit(200).stream()
+        courses = []
+        departments = set()
+        
+        for course_doc in courses_query:
+            course_data = course_doc.to_dict() or {}
+            course_id = course_doc.id
+            course_name = course_data.get('courseName', 'Unknown Course')
+            course_type = course_data.get('courseType', 'Unknown')
+            department = course_data.get('department')
+            
+            courses.append({
+                "id": course_id,
+                "name": course_name,
+                "type": course_type
+            })
+            
+            if department:
+                departments.add(department)
+        
+        # Get departments from admins collection instead of separate departments collection
+        admins_query = db.collection('admins').limit(100).stream()
+        admin_departments = set()
+        for admin_doc in admins_query:
+            admin_data = admin_doc.to_dict() or {}
+            department = admin_data.get('department')
+            if department:
+                admin_departments.add(department)
+        
+        # Combine departments from courses and admins
+        all_departments = departments.union(admin_departments)
+        
+        # Sort all lists efficiently
+        semesters.sort(key=lambda x: x["name"])
+        courses.sort(key=lambda x: x["name"])
+        instructors.sort(key=lambda x: x["name"])
+        instructors_list = [{"id": "all", "name": "All Instructors"}] + instructors[:50]  # Limit instructors list
+        departments_list = sorted(list(all_departments))[:50]  # Limit departments list
+        campuses_list = sorted(list(set(campuses)))[:30]  # Limit campuses list
+        
+        # Prepare response data
+        response_data = {
+            "semesters": semesters,
+            "courses": courses[:100],  # Limit courses list
+            "instructors": instructors_list,
+            "departments": departments_list,
+            "campuses": campuses_list
+            # REMOVED: crns from return object
+        }
+        
+        # Cache the response
+        filter_cache[cache_key] = (response_data, current_time)
+        
+        return response_data
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching filter options: {str(e)}")
+

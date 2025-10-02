@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { Bar, Line, Pie } from 'react-chartjs-2';
@@ -28,97 +28,109 @@ const AdminPanel = () => {
     { role: 'Admins', count: 0, percentage: 0 }
   ]);
   const [coursePopularityData, setCoursePopularityData] = useState([]);
+  const [coursePerformanceData, setCoursePerformanceData] = useState(null);
+  
+  // Memoized fetch functions with error handling
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const usersData = await apiService.getAllUsers();
+      setUsers(usersData);
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
+      setError('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // Fetch users from API
+  const fetchPlatformMetrics = useCallback(async () => {
+    try {
+      const metricsData = await apiService.getAdminPlatformMetrics();
+      setPlatformMetrics(metricsData);
+      
+      // Calculate percentages for role distribution
+      const totalUsers = metricsData.totalInstructors + metricsData.totalAdmins;
+      const roleDistributionData = [
+        { 
+          role: 'Instructors', 
+          count: metricsData.totalInstructors,
+          percentage: totalUsers > 0 ? Math.round((metricsData.totalInstructors / totalUsers) * 100) : 0
+        },
+        { 
+          role: 'Admins', 
+          count: metricsData.totalAdmins,
+          percentage: totalUsers > 0 ? Math.round((metricsData.totalAdmins / totalUsers) * 100) : 0
+        }
+      ];
+      setRoleDistribution(roleDistributionData);
+    } catch (err) {
+      console.error('Failed to fetch platform metrics:', err);
+    }
+  }, []);
+
+  const fetchCoursePopularity = useCallback(async () => {
+    try {
+      const popularityData = await apiService.getAdminCoursePopularity();
+      setCoursePopularityData(popularityData);
+    } catch (err) {
+      console.error('Failed to fetch course popularity data:', err);
+    }
+  }, []);
+
+  const fetchCoursePerformance = useCallback(async () => {
+    try {
+      const performanceData = await apiService.getAdminCoursePerformance();
+      setCoursePerformanceData(performanceData);
+    } catch (err) {
+      console.error('Failed to fetch course performance data:', err);
+    }
+  }, []);
+
+  const fetchDropdownData = useCallback(async () => {
+    try {
+      const [campusesData, departmentsData] = await Promise.all([
+        apiService.getCampuses(),
+        apiService.getDepartments()
+      ]);
+      setCampuses(campusesData);
+      setDepartments(departmentsData);
+    } catch (err) {
+      console.error('Failed to fetch dropdown data:', err);
+      // Fallback to default values if API fails
+      setCampuses([
+        "Abu Dhabi", "Al Ain", "Dubai", "Fujairah", 
+        "Sharjah", "Ajman", "Ras Al Khaimah", "Umm Al Quwain"
+      ]);
+      setDepartments([
+        "Mathematics", "Computer Science", "Physics", "Chemistry",
+        "Biology", "Engineering", "Psychology", "Administration",
+        "Computer Information Science", "Applied Media", 
+        "Engineering Technology & Science"
+      ]);
+    }
+  }, []);
+
+  // Fetch users when activeTab is 'users'
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        const usersData = await apiService.getAllUsers();
-        setUsers(usersData);
-      } catch (err) {
-        console.error('Failed to fetch users:', err);
-        setError('Failed to load users');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (activeTab === 'users') {
       fetchUsers();
     }
-  }, [activeTab]);
+  }, [activeTab, fetchUsers]);
 
-  // Fetch platform metrics and role distribution
+  // Fetch platform metrics and course popularity when activeTab is 'metrics'
   useEffect(() => {
-    const fetchPlatformMetrics = async () => {
-      try {
-        const metricsData = await apiService.getAdminPlatformMetrics();
-        setPlatformMetrics(metricsData);
-        
-        // Calculate percentages for role distribution
-        const totalUsers = metricsData.totalInstructors + metricsData.totalAdmins;
-        const roleDistributionData = [
-          { 
-            role: 'Instructors', 
-            count: metricsData.totalInstructors,
-            percentage: totalUsers > 0 ? Math.round((metricsData.totalInstructors / totalUsers) * 100) : 0
-          },
-          { 
-            role: 'Admins', 
-            count: metricsData.totalAdmins,
-            percentage: totalUsers > 0 ? Math.round((metricsData.totalAdmins / totalUsers) * 100) : 0
-          }
-        ];
-        setRoleDistribution(roleDistributionData);
-      } catch (err) {
-        console.error('Failed to fetch platform metrics:', err);
-      }
-    };
-
-    const fetchCoursePopularity = async () => {
-      try {
-        const popularityData = await apiService.getAdminCoursePopularity();
-        setCoursePopularityData(popularityData);
-      } catch (err) {
-        console.error('Failed to fetch course popularity data:', err);
-      }
-    };
-
     if (activeTab === 'metrics') {
       fetchPlatformMetrics();
       fetchCoursePopularity();
+      fetchCoursePerformance();
     }
-  }, [activeTab]);
+  }, [activeTab, fetchPlatformMetrics, fetchCoursePopularity, fetchCoursePerformance]);
 
-  // Fetch campuses and departments
+  // Fetch dropdown data once on component mount
   useEffect(() => {
-    const fetchDropdownData = async () => {
-      try {
-        const [campusesData, departmentsData] = await Promise.all([
-          apiService.getCampuses(),
-          apiService.getDepartments()
-        ]);
-        setCampuses(campusesData);
-        setDepartments(departmentsData);
-      } catch (err) {
-        console.error('Failed to fetch dropdown data:', err);
-        // Fallback to default values if API fails
-        setCampuses([
-          "Abu Dhabi", "Al Ain", "Dubai", "Fujairah", 
-          "Sharjah", "Ajman", "Ras Al Khaimah", "Umm Al Quwain"
-        ]);
-        setDepartments([
-          "Mathematics", "Computer Science", "Physics", "Chemistry",
-          "Biology", "Engineering", "Psychology", "Administration",
-          "Computer Information Science", "Applied Media", 
-          "Engineering Technology & Science"
-        ]);
-      }
-    };
-
     fetchDropdownData();
-  }, []);
+  }, [fetchDropdownData]);
 
   // Chart data using Chart.js format
   const coursesPerInstructor = []; // This would need to be fetched from API in a real implementation
@@ -154,7 +166,7 @@ const AdminPanel = () => {
     }]
   };
 
-  // Course distribution chart data
+  // Course distribution chart data with performance optimizations
   const courseDistributionChartData = {
     labels: coursePopularityData.map(course => course.course_type),
     datasets: [
@@ -173,6 +185,31 @@ const AdminPanel = () => {
       }
     ]
   };
+
+  // Prepare chart data for course performance
+  const coursePerformanceChartData = coursePerformanceData ? {
+    labels: coursePerformanceData.performance_data.slice(0, 10).map(item => item.section_id),
+    datasets: [
+      {
+        label: 'Average Score',
+        data: coursePerformanceData.performance_data.slice(0, 10).map(item => item.average_score),
+        backgroundColor: '#6e63e5',
+        borderColor: '#6e63e5',
+        borderWidth: 1,
+        borderRadius: 5,  // Add border radius to the bars
+        borderSkipped: false
+      },
+      {
+        label: 'Weighted Average',
+        data: coursePerformanceData.performance_data.slice(0, 10).map(item => item.weighted_average),
+        backgroundColor: '#d3cefc',
+        borderColor: '#d3cefc',
+        borderWidth: 1,
+        borderRadius: 5,  // Add border radius to the bars
+        borderSkipped: false
+      }
+    ]
+  } : null;
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -298,6 +335,20 @@ const AdminPanel = () => {
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
           <strong className="font-bold">Error: </strong>
           <span className="block sm:inline">{error}</span>
+          <button 
+            onClick={() => {
+              setError(null);
+              if (activeTab === 'users') {
+                fetchUsers();
+              } else if (activeTab === 'metrics') {
+                fetchPlatformMetrics();
+                fetchCoursePopularity();
+              }
+            }}
+            className="mt-2 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </DashboardLayout>
     );
@@ -660,6 +711,81 @@ const AdminPanel = () => {
                 </div>
               </div>
             </div>
+
+            {/* Course Performance Data */}
+            {coursePerformanceData && (
+              <div className="bg-white p-6 rounded-3xl shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Performance Overview</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Data Table */}
+                  <div>
+                    <h4 className="text-md font-medium text-gray-900 mb-3">Performance by Section</h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Section ID</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Score</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {coursePerformanceData.performance_data.slice(0, 5).map((performance, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{performance.section_id}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{performance.total_students}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{performance.average_score}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  
+                  {/* Chart Visualization */}
+                  <div>
+                    <h4 className="text-md font-medium text-gray-900 mb-3">Performance Visualization</h4>
+                    <div className="h-64">
+                      <Bar 
+                        data={coursePerformanceChartData} 
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: 'top',
+                            },
+                            tooltip: {
+                              callbacks: {
+                                label: function(context) {
+                                  return `${context.dataset.label}: ${context.parsed.y}%`;
+                                }
+                              }
+                            }
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              max: 100,
+                              ticks: {
+                                callback: function(value) {
+                                  return value + '%';
+                                }
+                              }
+                            }
+                          },
+                          // Add border radius to the bars
+                          barBorderRadius: 5
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 text-sm text-gray-500">
+                  Showing {Math.min(10, coursePerformanceData.performance_data.length)} of {coursePerformanceData.total_records} records
+                </div>
+              </div>
+            )}
 
             {/* Course Distribution Bar Chart */}
             <div className="bg-white p-6 rounded-3xl shadow-sm">

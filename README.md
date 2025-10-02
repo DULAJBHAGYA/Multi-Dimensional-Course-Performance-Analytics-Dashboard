@@ -8,6 +8,7 @@ A comprehensive analytics dashboard for tracking course performance across multi
 - **Interactive Dashboards**: Real-time analytics with Chart.js visualizations
 - **User Management**: Admin panel for managing users, roles, and permissions
 - **Course Analytics**: Detailed course performance tracking and insights
+- **Admin Reports**: Generate and download detailed reports in PDF or Excel format
 - **Responsive Design**: Mobile-friendly interface with Tailwind CSS
 - **Authentication**: Secure login system with role-based access control
 - **Data Visualization**: Bar charts, line charts, pie charts with custom styling
@@ -18,6 +19,8 @@ A comprehensive analytics dashboard for tracking course performance across multi
 - **Authentication**: JWT-based authentication system
 - **Real-time Data**: Firebase real-time database capabilities
 - **Analytics Processing**: Advanced data processing and aggregation
+- **Report Generation**: PDF and Excel report generation capabilities
+- **Admin Endpoints**: Dedicated API routes for admin reporting functionality
 
 ## 📋 Prerequisites
 
@@ -189,6 +192,11 @@ Multi-Dimensional-Course-Performance-Analytics-Dashboard/
 │   ├── app/
 │   │   ├── models/                 # Database models
 │   │   ├── routes/                 # API routes
+│   │   │   ├── admin_report.py     # Admin report generation endpoints
+│   │   │   ├── course_analytics.py # Course analytics endpoints
+│   │   │   ├── firebase_auth.py    # Authentication endpoints
+│   │   │   ├── instructor_dashboard.py # Instructor dashboard endpoints
+│   │   │   └── user_management.py  # User management endpoints
 │   │   ├── services/               # Business logic
 │   │   └── firebase_config.py      # Firebase configuration
 │   ├── main.py                     # FastAPI application entry point
@@ -212,6 +220,7 @@ Multi-Dimensional-Course-Performance-Analytics-Dashboard/
 - **Database**: Firebase Firestore
 - **Authentication**: JWT tokens
 - **CORS**: Enabled for frontend communication
+- **Report Generation**: Uses reportlab for PDF and pandas for Excel
 
 ## 🎨 Customization
 
@@ -224,10 +233,28 @@ The project uses a custom purple color scheme:
 
 ### Chart Styling
 All charts use Chart.js with custom styling:
-- Rounded corners (`borderRadius: 12`)
+- Rounded corners (`borderRadius: 5`)
 - Alternating colors for bar charts
 - Custom tooltips and legends
 - Responsive design
+
+## 📊 Admin Reports
+
+The dashboard includes comprehensive admin reporting capabilities:
+
+### Report Types
+- **User Analytics**: Detailed user activity and engagement metrics
+- **Course Analytics**: Course performance and completion statistics
+- **Instructor Performance**: Instructor effectiveness and course ratings
+
+### Export Formats
+- **PDF Reports**: Professional quality PDF documents with charts and data
+- **Excel Spreadsheets**: Data-rich Excel files for further analysis
+
+### Features
+- One-click download of reports in preferred format
+- No date range restrictions for comprehensive data analysis
+- Role-based access control ensuring only admins can generate reports
 
 ## 🚀 Deployment
 
@@ -300,4 +327,3 @@ The dashboard works with the following data entities:
 ## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-

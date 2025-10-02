@@ -3,8 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import apiService from '../../services/api';
 console.log('apiService imported:', apiService);
-import { Bar, Line } from 'react-chartjs-2';
-import { generateBarChartData, generateLineChartData, getChartOptions } from '../../utils/chartUtils';
+import { Bar } from 'react-chartjs-2';
+import { generateBarChartData, getChartOptions } from '../../utils/chartUtils';
 
 const InstructorDashboard = () => {
   console.log('InstructorDashboard component initializing');
@@ -12,6 +12,7 @@ const InstructorDashboard = () => {
   console.log('User context:', user);
   const [kpis, setKpis] = useState(null);
   const [studentCount, setStudentCount] = useState(0); // New state for student count
+  const [students, setStudents] = useState([]); // New state for student data
   console.log('Current studentCount state:', studentCount);
   const [filterOptions, setFilterOptions] = useState({
     semesters: [],
@@ -21,7 +22,6 @@ const InstructorDashboard = () => {
   const [selectedCrn1, setSelectedCrn1] = useState('');
   const [selectedCrn2, setSelectedCrn2] = useState('');
   const [crnComparisonData, setCrnComparisonData] = useState(null);
-  const [performanceTrendData, setPerformanceTrendData] = useState([]);
   const [courseOverviews, setCourseOverviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -41,26 +41,27 @@ const InstructorDashboard = () => {
         const promises = [
           apiService.getInstructorKPIs(),
           apiService.getInstructorFilters(),
-          apiService.getInstructorPerformanceTrend(),
           apiService.getInstructorCourseOverviews(),
-          apiService.getInstructorStudentCount()
+          apiService.getInstructorStudentCount(),
+          apiService.getInstructorStudents() // Add student data fetching
         ];
         
         console.log('Executing Promise.all...');
         const results = await Promise.all(promises);
         console.log('All API calls completed:', results);
         
-        const [kpiData, filterData, trendData, courseData, studentCountData] = results;
+        const [kpiData, filterData, courseData, studentCountData, studentData] = results;
         
         if (isMounted) {
           console.log('Setting state with fetched data...');
           console.log('Student count data:', studentCountData);
+          console.log('Student data:', studentData);
           
           setKpis(kpiData);
           setStudentCount(studentCountData.total_students); // Set the specific student count
           setFilterOptions(filterData);
-          setPerformanceTrendData(trendData);
           setCourseOverviews(courseData);
+          setStudents(studentData || []); // Set student data
           
           console.log('Student count set to:', studentCountData.total_students);
         }
@@ -132,16 +133,7 @@ const InstructorDashboard = () => {
     );
   }
 
-  console.log('InstructorDashboard rendering with data:', { kpis, studentCount, filterOptions, performanceTrendData, courseOverviews });
-
-  // Prepare performance trend chart data
-  const performanceTrendChartData = performanceTrendData && performanceTrendData.length > 0
-    ? generateLineChartData(performanceTrendData, 'semester', 'avgCompletionRate', 'Semester Performance')
-    : generateLineChartData([
-        { semester: 'Fall 2023', avgCompletionRate: 85 },
-        { semester: 'Spring 2024', avgCompletionRate: 87 },
-        { semester: 'Summer 2024', avgCompletionRate: 89 }
-      ], 'semester', 'avgCompletionRate', 'Semester Performance');
+  console.log('InstructorDashboard rendering with data:', { kpis, studentCount, filterOptions, courseOverviews });
 
   // Prepare CRN comparison chart data if available
   let crnComparisonChartData = null;
@@ -392,55 +384,76 @@ const InstructorDashboard = () => {
           )}
         </div>
 
-        {/* Performance Trend Chart */}
-        <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Semester Performance Trend</h3>
-          <div className="h-64">
-            <Line 
-              data={performanceTrendChartData} 
-              options={getChartOptions('line', '')}
-            />
+        {/* Course and Student Overview - Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Courses Column */}
+          <div className="bg-white rounded-3xl shadow-sm">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Courses</h3>
+            </div>
+            <div className="p-6">
+              {courseOverviews && courseOverviews.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course ID</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Name</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {courseOverviews.map((course, index) => (
+                        <tr key={`${course.courseId}-${index}`} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{course.courseId}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{course.courseName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Course</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No course data available
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Course Overview */}
-        <div className="bg-white rounded-3xl shadow-sm">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900">Course Overview</h3>
-          </div>
-          <div className="p-6">
-            {courseOverviews && courseOverviews.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {courseOverviews.map((course, index) => (
-                  <div key={`${course.courseId}-${index}`} className="border border-gray-200 rounded-3xl p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-gray-900">{course.courseName}</h4>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-2">
-                      CRN: {course.crnCode} | {course.semesterName}
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                      <span>{course.totalStudents} students</span>
-                      <span className="font-medium text-gray-900">{course.completionRate}% completion</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-gray-600">
-                      <span>{course.activeStudents} active</span>
-                      <span className="font-medium text-gray-900">Avg: {course.averageGrade}</span>
-                    </div>
-                    <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-[#6e63e5] h-2 rounded-xl"
-                        style={{ width: `${course.completionRate}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                No course data available
-              </div>
-            )}
+          {/* Students Column */}
+          <div className="bg-white rounded-3xl shadow-sm">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Students</h3>
+            </div>
+            <div className="p-6">
+              {students && students.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {students.map((student, index) => (
+                        <tr key={`${student.studentId}-${index}`} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.studentName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.studentId}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.email}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No student data available
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
