@@ -35,14 +35,37 @@ Before setting up this project, ensure you have the following installed:
 
 ### 1. Clone the Repository
 
+#### For macOS/Linux/Unix systems:
 ```bash
 git clone https://github.com/yourusername/Multi-Dimensional-Course-Performance-Analytics-Dashboard.git
 cd Multi-Dimensional-Course-Performance-Analytics-Dashboard
 ```
 
+#### For Windows systems:
+```cmd
+git clone https://github.com/yourusername/Multi-Dimensional-Course-Performance-Analytics-Dashboard.git
+cd Multi-Dimensional-Course-Performance-Analytics-Dashboard
+```
+
+#### For ISO systems:
+If you're using an ISO image to run this project, make sure to mount the ISO properly and extract the project files to your desired location before proceeding with the setup.
+
 ### 2. Frontend Setup (React.js)
 
+#### For macOS/Linux/Unix systems:
 ```bash
+# Navigate to client directory
+cd client
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+#### For Windows systems:
+```cmd
 # Navigate to client directory
 cd client
 
@@ -59,6 +82,7 @@ The frontend will be available at `http://localhost:5173`
 
 #### Step 1: Create Python Virtual Environment
 
+##### For macOS/Linux/Unix systems:
 ```bash
 # Navigate to server directory
 cd server
@@ -67,10 +91,37 @@ cd server
 python -m venv venv
 
 # Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
 source venv/bin/activate
+```
+
+##### For Windows systems:
+```cmd
+# Navigate to server directory
+cd server
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+venv\Scripts\activate
+```
+
+##### For ISO systems:
+When running from an ISO, you may need to copy the project files to a writable location first before creating the virtual environment:
+```bash
+# Copy project to writable location (if needed)
+# cp -r /path/to/iso/project /home/user/projects/
+
+# Navigate to server directory
+cd server
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate  # For Unix-like systems
+# OR
+# venv\Scripts\activate  # For Windows systems
 ```
 
 #### Step 2: Install Python Dependencies
@@ -152,11 +203,19 @@ FIREBASE_CLIENT_X509_CERT_URL="your-client-x509-cert-url-from-json"
 
 #### Step 5: Start Backend Server
 
+##### For macOS/Linux/Unix systems:
 ```bash
 # Make sure virtual environment is activated
-source venv/bin/activate  # On macOS/Linux
-# or
-venv\Scripts\activate     # On Windows
+source venv/bin/activate
+
+# Start FastAPI server
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+##### For Windows systems:
+```cmd
+# Make sure virtual environment is activated
+venv\Scripts\activate
 
 # Start FastAPI server
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
