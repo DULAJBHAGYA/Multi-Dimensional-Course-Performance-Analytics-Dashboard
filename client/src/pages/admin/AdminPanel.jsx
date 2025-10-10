@@ -20,15 +20,18 @@ const AdminPanel = () => {
   const [platformMetrics, setPlatformMetrics] = useState({
     totalInstructors: 0,
     totalCourses: 0,
-    totalStudents: 0,
+    totalDepartmentHeads: 0,
     totalAdmins: 0
   });
   const [roleDistribution, setRoleDistribution] = useState([
     { role: 'Instructors', count: 0, percentage: 0 },
-    { role: 'Admins', count: 0, percentage: 0 }
+    { role: 'Admins', count: 0, percentage: 0 },
+    { role: 'Department Heads', count: 0, percentage: 0 }
   ]);
   const [coursePopularityData, setCoursePopularityData] = useState([]);
-  const [coursePerformanceData, setCoursePerformanceData] = useState(null);
+  const [campusPerformanceData, setCampusPerformanceData] = useState([]);
+  const [campusPerformanceLoading, setCampusPerformanceLoading] = useState(false);
+
   
   // Memoized fetch functions with error handling
   const fetchUsers = useCallback(async () => {
@@ -50,7 +53,7 @@ const AdminPanel = () => {
       setPlatformMetrics(metricsData);
       
       // Calculate percentages for role distribution
-      const totalUsers = metricsData.totalInstructors + metricsData.totalAdmins;
+      const totalUsers = metricsData.totalInstructors + metricsData.totalAdmins + metricsData.totalDepartmentHeads;
       const roleDistributionData = [
         { 
           role: 'Instructors', 
@@ -61,6 +64,11 @@ const AdminPanel = () => {
           role: 'Admins', 
           count: metricsData.totalAdmins,
           percentage: totalUsers > 0 ? Math.round((metricsData.totalAdmins / totalUsers) * 100) : 0
+        },
+        { 
+          role: 'Department Heads', 
+          count: metricsData.totalDepartmentHeads,
+          percentage: totalUsers > 0 ? Math.round((metricsData.totalDepartmentHeads / totalUsers) * 100) : 0
         }
       ];
       setRoleDistribution(roleDistributionData);
@@ -78,38 +86,21 @@ const AdminPanel = () => {
     }
   }, []);
 
-  const fetchCoursePerformance = useCallback(async () => {
+  const fetchCampusPerformance = useCallback(async () => {
     try {
-      const performanceData = await apiService.getAdminCoursePerformance();
-      setCoursePerformanceData(performanceData);
+      setCampusPerformanceLoading(true);
+      const performanceData = await apiService.getAdminCampusPerformance();
+      setCampusPerformanceData(performanceData);
     } catch (err) {
-      console.error('Failed to fetch course performance data:', err);
+      console.error('Failed to fetch campus performance data:', err);
+    } finally {
+      setCampusPerformanceLoading(false);
     }
   }, []);
 
-  const fetchDropdownData = useCallback(async () => {
-    try {
-      const [campusesData, departmentsData] = await Promise.all([
-        apiService.getCampuses(),
-        apiService.getDepartments()
-      ]);
-      setCampuses(campusesData);
-      setDepartments(departmentsData);
-    } catch (err) {
-      console.error('Failed to fetch dropdown data:', err);
-      // Fallback to default values if API fails
-      setCampuses([
-        "Abu Dhabi", "Al Ain", "Dubai", "Fujairah", 
-        "Sharjah", "Ajman", "Ras Al Khaimah", "Umm Al Quwain"
-      ]);
-      setDepartments([
-        "Mathematics", "Computer Science", "Physics", "Chemistry",
-        "Biology", "Engineering", "Psychology", "Administration",
-        "Computer Information Science", "Applied Media", 
-        "Engineering Technology & Science"
-      ]);
-    }
-  }, []);
+
+
+
 
   // Fetch users when activeTab is 'users'
   useEffect(() => {
@@ -123,14 +114,11 @@ const AdminPanel = () => {
     if (activeTab === 'metrics') {
       fetchPlatformMetrics();
       fetchCoursePopularity();
-      fetchCoursePerformance();
+      fetchCampusPerformance();
     }
-  }, [activeTab, fetchPlatformMetrics, fetchCoursePopularity, fetchCoursePerformance]);
+  }, [activeTab, fetchPlatformMetrics, fetchCoursePopularity, fetchCampusPerformance]);
 
-  // Fetch dropdown data once on component mount
-  useEffect(() => {
-    fetchDropdownData();
-  }, [fetchDropdownData]);
+
 
   // Chart data using Chart.js format
   const coursesPerInstructor = []; // This would need to be fetched from API in a real implementation
@@ -153,13 +141,15 @@ const AdminPanel = () => {
       data: roleDistribution.map(item => item.count),
       backgroundColor: [
         '#6e63e5', // Purple for Instructors
-        '#d3cefc', // Amber for Admins
+        '#d3cefc', // Light purple for Admins
+        '#fbbf24'  // Amber for Department Heads
       ],
       borderColor: '#ffffff',
       borderWidth: 3,
       hoverBackgroundColor: [
         '#7C3AED', // Darker purple on hover
         '#D97706', // Darker amber on hover
+        '#f59e0b'  // Darker amber for Department Heads on hover
       ],
       hoverBorderColor: '#ffffff',
       hoverBorderWidth: 4,
@@ -168,7 +158,7 @@ const AdminPanel = () => {
 
   // Course distribution chart data with performance optimizations
   const courseDistributionChartData = {
-    labels: coursePopularityData.map(course => course.course_type),
+    labels: coursePopularityData.map(course => course.department),
     datasets: [
       {
         label: '',
@@ -185,31 +175,6 @@ const AdminPanel = () => {
       }
     ]
   };
-
-  // Prepare chart data for course performance
-  const coursePerformanceChartData = coursePerformanceData ? {
-    labels: coursePerformanceData.performance_data.slice(0, 10).map(item => item.section_id),
-    datasets: [
-      {
-        label: 'Average Score',
-        data: coursePerformanceData.performance_data.slice(0, 10).map(item => item.average_score),
-        backgroundColor: '#6e63e5',
-        borderColor: '#6e63e5',
-        borderWidth: 1,
-        borderRadius: 5,  // Add border radius to the bars
-        borderSkipped: false
-      },
-      {
-        label: 'Weighted Average',
-        data: coursePerformanceData.performance_data.slice(0, 10).map(item => item.weighted_average),
-        backgroundColor: '#d3cefc',
-        borderColor: '#d3cefc',
-        borderWidth: 1,
-        borderRadius: 5,  // Add border radius to the bars
-        borderSkipped: false
-      }
-    ]
-  } : null;
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -268,11 +233,6 @@ const AdminPanel = () => {
     }
   };
 
-  const handleEditUser = (userId) => {
-    const user = users.find(u => u.id === userId);
-    setEditingUser(user);
-  };
-
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     try {
@@ -314,9 +274,13 @@ const AdminPanel = () => {
   };
 
   const getRoleColor = (role) => {
-    return role === 'admin' 
-      ? 'text-[#6e63e5] bg-[#D3CEFC]' 
-      : 'text-blue-400 bg-blue-100';
+    if (role === 'admin') {
+      return 'text-[#6e63e5] bg-[#D3CEFC]';
+    } else if (role === 'department_head') {  // Add color for department heads
+      return 'text-amber-600 bg-amber-100';
+    } else {
+      return 'text-blue-400 bg-blue-100';
+    }
   };
 
   if (loading) {
@@ -389,16 +353,6 @@ const AdminPanel = () => {
               >
                 Platform Metrics
               </button>
-              <button
-                onClick={() => setActiveTab('security')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'security'
-                    ? 'border-[#6e63e5] text-[#6e63e5]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Security Settings
-              </button>
             </nav>
           </div>
         </div>
@@ -429,6 +383,7 @@ const AdminPanel = () => {
                   <option value="all">All Roles</option>
                   <option value="instructor">Instructors</option>
                   <option value="admin">Admins</option>
+                  <option value="department_head">Department Heads</option>  {/* Add department head option */}
                 </select>
               </div>
               <button
@@ -478,6 +433,7 @@ const AdminPanel = () => {
                         >
                           <option value="instructor">Instructor</option>
                           <option value="admin">Admin</option>
+                          <option value="department_head">Department Head</option>  {/* Add department head option */}
                         </select>
                       </div>
                       <div>
@@ -569,6 +525,7 @@ const AdminPanel = () => {
                         >
                           <option value="instructor">Instructor</option>
                           <option value="admin">Admin</option>
+                          <option value="department_head">Department Head</option>  {/* Add department head option */}
                         </select>
                       </div>
                       <div>
@@ -699,8 +656,8 @@ const AdminPanel = () => {
               
               <div className="bg-white p-6 rounded-3xl shadow-sm">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.totalStudents.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">Total Students</div>
+                  <div className="text-2xl font-bold text-[#6e63e5]">{platformMetrics.totalDepartmentHeads.toLocaleString()}</div>
+                  <div className="text-sm text-gray-600">Total Department Heads</div>
                 </div>
               </div>
               
@@ -712,84 +669,9 @@ const AdminPanel = () => {
               </div>
             </div>
 
-            {/* Course Performance Data */}
-            {coursePerformanceData && (
-              <div className="bg-white p-6 rounded-3xl shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Performance Overview</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Data Table */}
-                  <div>
-                    <h4 className="text-md font-medium text-gray-900 mb-3">Performance by Section</h4>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Section ID</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Score</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {coursePerformanceData.performance_data.slice(0, 5).map((performance, index) => (
-                            <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{performance.section_id}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{performance.total_students}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{performance.average_score}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  
-                  {/* Chart Visualization */}
-                  <div>
-                    <h4 className="text-md font-medium text-gray-900 mb-3">Performance Visualization</h4>
-                    <div className="h-64">
-                      <Bar 
-                        data={coursePerformanceChartData} 
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: {
-                              position: 'top',
-                            },
-                            tooltip: {
-                              callbacks: {
-                                label: function(context) {
-                                  return `${context.dataset.label}: ${context.parsed.y}%`;
-                                }
-                              }
-                            }
-                          },
-                          scales: {
-                            y: {
-                              beginAtZero: true,
-                              max: 100,
-                              ticks: {
-                                callback: function(value) {
-                                  return value + '%';
-                                }
-                              }
-                            }
-                          },
-                          // Add border radius to the bars
-                          barBorderRadius: 5
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 text-sm text-gray-500">
-                  Showing {Math.min(10, coursePerformanceData.performance_data.length)} of {coursePerformanceData.total_records} records
-                </div>
-              </div>
-            )}
-
             {/* Course Distribution Bar Chart */}
             <div className="bg-white p-6 rounded-3xl shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Distribution by Course Type</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Distribution by Department</h3>
               <div className="h-64">
                 <Bar 
                   data={courseDistributionChartData} 
@@ -858,7 +740,7 @@ const AdminPanel = () => {
                     <div 
                       className="w-4 h-4 rounded-full mr-2" 
                       style={{ 
-                        backgroundColor: index === 0 ? '#6e63e5' : '#d3cefc' 
+                        backgroundColor: index === 0 ? '#6e63e5' : index === 1 ? '#d3cefc' : '#fbbf24' 
                       }}
                     ></div>
                     <span className="text-sm text-gray-600">
@@ -868,78 +750,46 @@ const AdminPanel = () => {
                 ))}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Security Settings Tab */}
-        {activeTab === 'security' && (
-          <div className="space-y-2">
+            {/* Course Metrics Table */}
             <div className="bg-white p-6 rounded-3xl shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Access Control & Security Settings</h3>
-              
-              <div className="space-y-6">
-                {/* Password Policy */}
-                <div>
-                  <h4 className="text-md font-medium text-gray-900 mb-3">Password Policy</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
-                      <span className="ml-2 text-sm text-gray-700">Require strong passwords (8+ characters, mixed case, numbers)</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
-                      <span className="ml-2 text-sm text-gray-700">Force password reset every 90 days</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
-                      <span className="ml-2 text-sm text-gray-700">Prevent password reuse (last 5 passwords)</span>
-                    </label>
-                  </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Campus Performance Metrics</h3>
+              {campusPerformanceLoading ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#6e63e5]"></div>
                 </div>
-
-
-                {/* System Access */}
-                <div>
-                  <h4 className="text-md font-medium text-gray-900 mb-3">System Access</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
-                      <span className="ml-2 text-sm text-gray-700">Allow instructors to create courses</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" />
-                      <span className="ml-2 text-sm text-gray-700">Require admin approval for new courses</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="h-4 w-4 text-red-400 focus:ring-[#6e63e5] border-gray-300 rounded" defaultChecked />
-                      <span className="ml-2 text-sm text-gray-700">Enable user self-registration</span>
-                    </label>
-                  </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campus ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campus</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {campusPerformanceData && campusPerformanceData.length > 0 ? (
+                        campusPerformanceData.map((campus, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{campus.campus_id || 'N/A'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{campus.campus || 'Unknown'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{campus.averageGrade !== undefined ? `${campus.averageGrade}%` : 'N/A'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{campus.passRate !== undefined ? `${campus.passRate}%` : 'N/A'}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
+                            No campus performance data available
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-
-
-
-                {/* System Maintenance */}
-                <div>
-                  <h4 className="text-md font-medium text-gray-900 mb-3">System Maintenance</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 border border-gray-200 rounded-3xl">
-                      <h5 className="text-sm font-medium text-gray-900 mb-2">Database Cleanup</h5>
-                      <p className="text-xs text-gray-600 mb-3">Remove old logs and temporary data</p>
-                      <button className="px-3 py-1 text-xs font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-xl transition-colors">
-                        Clean Database
-                      </button>
-                    </div>
-                    <div className="p-4 border border-gray-200 rounded-3xl">
-                      <h5 className="text-sm font-medium text-gray-900 mb-2">Cache Management</h5>
-                      <p className="text-xs text-gray-600 mb-3">Clear system cache for better performance</p>
-                      <button className="px-3 py-1 text-xs font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-xl transition-colors">
-                        Clear Cache
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}

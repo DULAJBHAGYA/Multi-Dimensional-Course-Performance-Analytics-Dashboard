@@ -106,7 +106,7 @@ def test_collections():
             print("❌ Could not get Firestore client")
             return False
         
-        collections = ['instructors', 'admins', 'students', 'courses', 'sections', 'campuses']
+        collections = ['instructors', 'admins', 'students', 'courses', 'sections', 'campuses', 'department_heads']
         
         for collection_name in collections:
             try:

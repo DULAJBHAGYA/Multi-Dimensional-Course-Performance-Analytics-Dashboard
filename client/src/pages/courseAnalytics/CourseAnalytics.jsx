@@ -7,74 +7,160 @@ import { generateBarChartData, generateLineChartData, generatePieChartData, getC
 
 const CourseAnalytics = () => {
   const { user } = useAuth();
-  const [analyticsData, setAnalyticsData] = useState(null);
+  const [courseCount, setCourseCount] = useState(0);
+  const [sectionCount, setSectionCount] = useState(0);
+  const [averageGrade, setAverageGrade] = useState(0);
+  const [passRate, setPassRate] = useState(0);
+  const [atRiskCoursesCount, setAtRiskCoursesCount] = useState(0);
+  const [gradeDistributionData, setGradeDistributionData] = useState([]); // New state for grade distribution data
+  const [coursePerformanceData, setCoursePerformanceData] = useState([]);
+  const [atRiskCoursesData, setAtRiskCoursesData] = useState([]); // New state for at-risk courses data
+  const [realSemesterComparisonData, setRealSemesterComparisonData] = useState([]); // New state for semester comparison data
+  const [coursePassFailSummaryData, setCoursePassFailSummaryData] = useState([]); // New state for course pass-fail summary data
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Add state for course count
-  const [courseCount, setCourseCount] = useState(0);
-  // Add state for unique student count
-  const [uniqueStudentCount, setUniqueStudentCount] = useState(0);
-  // Add state for total assessments count
-  const [totalAssessments, setTotalAssessments] = useState(0);
-  // Add state for assignment pass rate
-  const [assignmentPassRate, setAssignmentPassRate] = useState(0);
-  // Add state for high performance rate
-  const [highPerformanceRate, setHighPerformanceRate] = useState(0);
-  // Add state for grade distribution
-  const [gradeDistribution, setGradeDistribution] = useState({});
-  // Add state for course performance comparison
-  const [coursePerformance, setCoursePerformance] = useState([]);
-  // Add state for semester comparison
-  const [semesterComparison, setSemesterComparison] = useState([]);
-  // Add state for pass rate comparison
-  const [passRateComparison, setPassRateComparison] = useState([]);
 
   useEffect(() => {
-    const fetchAnalyticsData = async () => {
+    const fetchCounts = async () => {
       try {
         setLoading(true);
-        // Fetch data without filters
-        const [analyticsResult, courseCountResult, uniqueStudentCountResult, totalAssessmentsResult, assignmentPassRateResult, highPerformanceRateResult, gradeDistributionResult, coursePerformanceResult, semesterComparisonResult, passRateComparisonResult] = await Promise.all([
-          apiService.getInstructorCourseAnalytics(),
+        // Fetch course count, section count, average grade, pass rate, at-risk courses count, grade distribution data, course performance data, at-risk courses data, semester comparison data, course performance comparison data, and course pass-fail summary data from the backend API
+        const [courseCountResult, sectionCountResult, averageGradeResult, passRateResult, atRiskCoursesCountResult, gradeDistributionResult, coursePerformanceResult, atRiskCoursesResult, semesterComparisonResult, coursePerformanceComparisonResult, coursePassFailSummaryResult] = await Promise.all([
           apiService.getInstructorCourseCount(),
-          apiService.getInstructorUniqueStudentCount(),
-          apiService.getInstructorTotalAssessments(),
-          apiService.getInstructorAssignmentPassRate(),
-          apiService.getInstructorHighPerformanceRate(),
-          apiService.getInstructorGradeDistribution(),
-          apiService.getInstructorCoursePerformanceComparison(),
-          apiService.getInstructorSemesterComparison(),
-          apiService.getInstructorPassRateComparison()
+          apiService.getInstructorSectionCount(),
+          apiService.getInstructorSectionBasedPerformanceAverage(),
+          apiService.getInstructorPassRate(),
+          apiService.getInstructorAtRiskRate(),
+          apiService.getInstructorGradeDistribution(), // New API call for grade distribution data
+          apiService.getInstructorCoursePerformance(),
+          apiService.getInstructorAtRiskCourses(), // New API call for at-risk courses data
+          apiService.getInstructorSemesterComparison(), // New API call for semester comparison data
+          apiService.getInstructorCoursePerformanceComparison(), // New API call for course performance comparison data
+          apiService.getInstructorCoursePassFailSummary() // New API call for course pass-fail summary data
         ]);
-        setAnalyticsData(analyticsResult);
-        // We'll use the course count from the new API endpoint
         setCourseCount(courseCountResult?.total_courses || 0);
-        // We'll use the unique student count from the new API endpoint
-        setUniqueStudentCount(uniqueStudentCountResult?.unique_student_count || 0);
-        // We'll use the total assessments count from the new API endpoint
-        setTotalAssessments(totalAssessmentsResult?.total_assessments || 0);
-        // We'll use the assignment pass rate from the new API endpoint
-        setAssignmentPassRate(assignmentPassRateResult?.pass_rate || 0);
-        // We'll use the high performance rate from the new API endpoint
-        setHighPerformanceRate(highPerformanceRateResult?.high_performance_rate || 0);
-        // We'll use the grade distribution from the new API endpoint
-        setGradeDistribution(gradeDistributionResult?.grade_distribution || {});
-        // We'll use the course performance comparison from the new API endpoint
-        setCoursePerformance(coursePerformanceResult || []);
-        // We'll use the semester comparison from the new API endpoint
-        setSemesterComparison(semesterComparisonResult || []);
-        // We'll use the pass rate comparison from the new API endpoint
-        setPassRateComparison(passRateComparisonResult || []);
+        setSectionCount(sectionCountResult?.total_sections || 0);
+        setAverageGrade(averageGradeResult?.avg_performance || 0);
+        setPassRate(passRateResult?.pass_rate || 0);
+        setAtRiskCoursesCount(atRiskCoursesCountResult?.at_risk_rate || 0);
+        setGradeDistributionData(gradeDistributionResult?.assessments || []); // Set grade distribution data
+        setCoursePerformanceData(coursePerformanceComparisonResult?.courses || []);
+        setAtRiskCoursesData(atRiskCoursesResult?.courses || []); // Set at-risk courses data
+        setRealSemesterComparisonData(semesterComparisonResult?.semesters || []); // Set semester comparison data
+        setCoursePassFailSummaryData(coursePassFailSummaryResult?.courses || []); // Set course pass-fail summary data
       } catch (err) {
-        console.error('Error fetching analytics data:', err);
-        setError('Failed to load course analytics data');
+        console.error('Error fetching data:', err);
+        setError('Failed to load data');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAnalyticsData();
+    fetchCounts();
   }, []);
+
+  // Mock data for all other KPIs
+  const mockKpiData = {
+    totalSections: sectionCount, // Use the real section count from backend
+    averageGrade: averageGrade, // Use the real average grade from backend
+    passRate: passRate, // Use the real pass rate from backend
+    atRiskCoursesRate: atRiskCoursesCount, // Use the real at-risk courses count from backend
+    totalCourses: courseCount // Use the real course count from backend
+  };
+
+  // Prepare grade distribution data for pie charts (using real data)
+  const prepareGradeDistributionChartData = (assessmentType) => {
+    // Find the assessment data for the specified type
+    const assessmentData = gradeDistributionData.find(assessment => assessment.assessment_type === assessmentType);
+    
+    if (!assessmentData) {
+      // Return mock data if no real data is available
+      return {
+        labels: ['A Grade', 'B Grade', 'C Grade', 'D Grade', 'F Grade'],
+        datasets: [
+          {
+            data: [0, 0, 0, 0, 0],
+            backgroundColor: [
+              '#10B981', // A Grade - green
+              '#3B82F6', // B Grade - blue
+              '#F59E0B', // C Grade - yellow
+              '#EF4444', // D Grade - red
+              '#6B7280'  // F Grade - gray
+            ],
+            borderWidth: 2,
+            borderColor: '#FFFFFF'
+          }
+        ]
+      };
+    }
+    
+    const gradeData = assessmentData.grade_distribution;
+    
+    return {
+      labels: ['A Grade', 'B Grade', 'C Grade', 'D Grade', 'F Grade'],
+      datasets: [
+        {
+          data: [
+            gradeData['A'] || 0,
+            gradeData['B'] || 0,
+            gradeData['C'] || 0,
+            gradeData['D'] || 0,
+            gradeData['F'] || 0
+          ],
+          backgroundColor: [
+            '#10B981', // A Grade - green
+            '#3B82F6', // B Grade - blue
+            '#F59E0B', // C Grade - yellow
+            '#EF4444', // D Grade - red
+            '#6B7280'  // F Grade - gray
+          ],
+          borderWidth: 2,
+          borderColor: '#FFFFFF'
+        }
+      ]
+    };
+  };
+
+  // Prepare course performance comparison data for bar chart (using real data)
+  const coursePerformanceChartData = {
+    labels: coursePerformanceData.map(course => `${course.course_name} - ${course.campus}`),
+    datasets: [
+      {
+        label: 'Average Performance Score',
+        data: coursePerformanceData.map(course => course.average_grade),
+        backgroundColor: coursePerformanceData.map((_, index) => 
+          index % 2 === 0 ? '#6e63e5' : '#D3CEFC'  // Alternate between main color and light purple
+        ),
+        borderWidth: 0, // Remove borders from bars
+        borderRadius: 15, // Border radius of 15px
+        borderSkipped: false
+      }
+    ]
+  };
+
+  // Prepare semester comparison data for line chart (using real data)
+  const semesterComparisonData = {
+    labels: realSemesterComparisonData.length > 0 
+      ? realSemesterComparisonData.map(semester => semester.semester_name)
+      : [],
+    datasets: [
+      {
+        label: 'Average Grade',
+        data: realSemesterComparisonData.length > 0 
+          ? realSemesterComparisonData.map(semester => semester.average_grade)
+          : [],
+        borderColor: '#6e63e5',
+        backgroundColor: 'rgba(110, 99, 229, 0.1)',
+        borderWidth: 3,
+        pointRadius: 6,
+        pointBackgroundColor: '#6e63e5',
+        pointBorderColor: '#fff',
+        pointHoverRadius: 8,
+        fill: true,
+        tension: 0.4
+      }
+    ]
+  };
 
   if (loading) {
     return (
@@ -99,130 +185,6 @@ const CourseAnalytics = () => {
     );
   }
 
-  // Use real data from API or fallback to empty data
-  const courses = analyticsData && Array.isArray(analyticsData) ? [
-    { id: 'all', name: 'All Courses' },
-    ...analyticsData.map(course => ({
-      id: course.id,
-      name: course.name || course.courseName || 'Unknown Course'
-    }))
-  ] : [{ id: 'all', name: 'All Courses' }];
-
-  // If analyticsData is an array (from the current backend), we need to compute the KPIs
-  const kpiData = analyticsData && Array.isArray(analyticsData) ? {
-    totalAssessments: totalAssessments,
-    // Use the unique student count from our new API endpoint for active students
-    activeStudents: uniqueStudentCount,
-    passRate: assignmentPassRate,
-    highPerformanceRate: highPerformanceRate,
-    totalCourses: courseCount // Use the course count from our new API endpoint
-  } : {
-    totalAssessments: totalAssessments,
-    // Use the unique student count from our new API endpoint for active students
-    activeStudents: uniqueStudentCount,
-    passRate: assignmentPassRate,
-    highPerformanceRate: highPerformanceRate,
-    totalCourses: courseCount // Use the course count from our new API endpoint
-  };
-
-  // Prepare grade distribution data for pie chart
-  const gradeDistributionData = {
-    labels: ['A Grade', 'B Grade', 'C Grade', 'D Grade', 'F Grade'],
-    datasets: [
-      {
-        data: [
-          gradeDistribution['A'] || 0,
-          gradeDistribution['B'] || 0,
-          gradeDistribution['C'] || 0,
-          gradeDistribution['D'] || 0,
-          gradeDistribution['F'] || 0
-        ],
-        backgroundColor: [
-          '#10B981', // A Grade - green
-          '#3B82F6', // B Grade - blue
-          '#F59E0B', // C Grade - yellow
-          '#EF4444', // D Grade - red
-          '#6B7280'  // F Grade - gray
-        ],
-        borderWidth: 2,
-        borderColor: '#FFFFFF'
-      }
-    ]
-  };
-
-  // Prepare course performance comparison data for bar chart
-  const coursePerformanceData = {
-    labels: coursePerformance.map(course => course.course_name),
-    datasets: [
-      {
-        label: 'Average Performance Score',
-        data: coursePerformance.map(course => course.average_percentage),
-        backgroundColor: coursePerformance.map((_, index) => 
-          index % 2 === 0 ? '#6e63e5' : '#D3CEFC'  // Alternate between main color and light purple
-        ),
-        borderWidth: 0, // Remove borders from bars
-        borderRadius: 15, // Border radius of 15px
-        borderSkipped: false
-      }
-    ]
-  };
-
-  // Prepare semester comparison data for line chart
-  const semesterComparisonData = {
-    labels: semesterComparison.map(semester => semester.semester_name),
-    datasets: [
-      {
-        label: 'Average Grade',
-        data: semesterComparison.map(semester => semester.average_grade),
-        borderColor: '#6e63e5',
-        backgroundColor: 'rgba(110, 99, 229, 0.1)',
-        borderWidth: 3,
-        pointRadius: 6,
-        pointBackgroundColor: '#6e63e5',
-        pointBorderColor: '#fff',
-        pointHoverRadius: 8,
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: 'Pass Rate',
-        data: semesterComparison.map(semester => semester.pass_rate),
-        borderColor: '#10B981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        borderWidth: 3,
-        pointRadius: 6,
-        pointBackgroundColor: '#10B981',
-        pointBorderColor: '#fff',
-        pointHoverRadius: 8,
-        fill: true,
-        tension: 0.4
-      }
-    ]
-  };
-
-  // Prepare pass rate comparison data for donut charts
-  const passRateComparisonData = passRateComparison.map(course => ({
-    labels: ['Pass', 'Fail'],
-    datasets: [
-      {
-        data: [course.pass_rate, course.fail_rate],
-        backgroundColor: ['#6e63e5', '#D3CEFC'], // Purple colors for pass/fail
-        borderWidth: 2,
-        borderColor: '#FFFFFF'
-      }
-    ]
-  }));
-
-  // For other data, we'll use empty arrays since the current backend doesn't provide them
-  const enrollmentTrend = [];
-  const mostViewedLessons = [];
-  const leastViewedLessons = [];
-
-  // Chart data using Chart.js format
-  const enrollmentTrendChartData = generateBarChartData(enrollmentTrend, 'month', 'enrollments', 'Enrollments');
-
-
-
   return (
     <DashboardLayout>
       <div className="max-w-full mx-auto px-4">
@@ -236,8 +198,23 @@ const CourseAnalytics = () => {
           </div>
         </div>
 
-        {/* KPI Cards */}
+        {/* KPI Cards - Moved Total Courses to the first position */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+          {/* Total Courses - Now displayed first */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-2xl">
+                <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Courses</p>
+                <p className="text-2xl font-bold text-gray-900">{mockKpiData.totalCourses}</p>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="flex items-center">
               <div className="p-3 bg-blue-100 rounded-2xl">
@@ -246,12 +223,13 @@ const CourseAnalytics = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Assessments</p>
-                <p className="text-2xl font-bold text-gray-900">{kpiData.totalAssessments.toLocaleString()}</p>
+                <p className="text-sm font-medium text-gray-600">Total Sections</p>
+                <p className="text-2xl font-bold text-gray-900">{mockKpiData.totalSections.toLocaleString()}</p>
               </div>
             </div>
           </div>
 
+          {/* Changed from Active Students to Average Grade */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="flex items-center">
               <div className="p-3 bg-pink-100 rounded-2xl">
@@ -260,8 +238,8 @@ const CourseAnalytics = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Students</p>
-                <p className="text-2xl font-bold text-gray-900">{kpiData.activeStudents.toLocaleString()}</p>
+                <p className="text-sm font-medium text-gray-600">Average Grade</p>
+                <p className="text-2xl font-bold text-gray-900">{mockKpiData.averageGrade}%</p>
               </div>
             </div>
           </div>
@@ -275,54 +253,101 @@ const CourseAnalytics = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Pass Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{kpiData.passRate}%</p>
+                <p className="text-2xl font-bold text-gray-900">{mockKpiData.passRate}%</p>
               </div>
             </div>
           </div>
 
+          {/* Changed from High Performance Rate to At Risk Courses Count with red color */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="flex items-center">
-              <div className="p-3 bg-[#d3cefc] rounded-2xl">
-                <svg className="w-6 h-6 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              <div className="p-3 bg-red-100 rounded-2xl">
+                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">High Performance Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{kpiData.highPerformanceRate}%</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-100 rounded-2xl">
-                <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Courses</p>
-                <p className="text-2xl font-bold text-gray-900">{kpiData.totalCourses}</p>
+                <p className="text-sm font-medium text-gray-600">At Risk Courses</p>
+                <p className="text-2xl font-bold text-gray-900">{mockKpiData.atRiskCoursesRate}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Charts Section */}
+        {/* Charts Section - Modified to put Grade Distribution and Course Pass-Fail Summary side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Grade Distribution Pie Chart */}
+          {/* Grade Distribution Pie Charts - Using real data */}
           <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Grade Distribution</h3>
-            <div className="h-64">
-              <Pie 
-                data={gradeDistributionData} 
-                options={getChartOptions('pie', '')}
-              />
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Grade Distribution by Assessment Type</h3>
+            <div className="space-y-6">
+              {/* Quiz 1 Grade Distribution */}
+              <div>
+                <h4 className="text-md font-medium text-gray-800 mb-2">Quiz 1</h4>
+                <div className="h-48">
+                  <Pie 
+                    data={prepareGradeDistributionChartData("Quiz 1")} 
+                    options={getChartOptions('pie', '')}
+                  />
+                </div>
+              </div>
+              
+              {/* Midterm Exam Grade Distribution */}
+              <div>
+                <h4 className="text-md font-medium text-gray-800 mb-2">Midterm Exam</h4>
+                <div className="h-48">
+                  <Pie 
+                    data={prepareGradeDistributionChartData("Midterm Exam")} 
+                    options={getChartOptions('pie', '')}
+                  />
+                </div>
+              </div>
+              
+              {/* Final Exam Grade Distribution */}
+              <div>
+                <h4 className="text-md font-medium text-gray-800 mb-2">Final Exam</h4>
+                <div className="h-48">
+                  <Pie 
+                    data={prepareGradeDistributionChartData("Final Exam")} 
+                    options={getChartOptions('pie', '')}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Semester Comparison Line Chart */}
+          {/* Course Pass-Fail Summary - Replacing Pass Rate Summary */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Pass-Fail Summary</h3>
+            <div className="space-y-4">
+              {coursePassFailSummaryData && coursePassFailSummaryData.length > 0 ? (
+                coursePassFailSummaryData.map((course, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-3xl">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{course.course_name}</p>
+                      <p className="text-xs text-gray-500">
+                        Pass: {course.pass_count} | Fail: {course.fail_count}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-[#6e63e5] h-2 rounded-full"
+                          style={{ width: `${course.pass_percentage}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{course.pass_percentage}%</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No course pass-fail data available</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Semester Comparison Line Chart - Now in its own row */}
+        <div className="grid grid-cols-1 gap-6 mb-8">
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Semester Comparison</h3>
             <div className="h-64">
@@ -341,89 +366,62 @@ const CourseAnalytics = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Performance Comparison</h3>
             <div className="h-64">
               <Bar 
-                data={coursePerformanceData} 
+                data={coursePerformanceChartData} 
                 options={getChartOptions('bar', '')}
               />
             </div>
           </div>
         </div>
 
-        {/* Student Engagement */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Pass Rate Comparison Donut Charts - Replacing Most Viewed Lessons */}
+        {/* At Risk Courses */}
+        <div className="grid grid-cols-1 gap-6 mb-8">
           <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Pass Rate Comparison</h3>
-            <div className="space-y-6">
-              {passRateComparison && passRateComparison.length > 0 ? (
-                passRateComparison.map((course, index) => (
-                  <div key={index} className="flex items-center">
-                    <div className="w-1/3">
-                      <p className="text-sm font-medium text-gray-900 truncate">{course.course_name}</p>
-                    </div>
-                    <div className="w-2/3 flex items-center">
-                      <div className="w-32 h-32">
-                        <Pie 
-                          data={passRateComparisonData[index]} 
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                              legend: {
-                                display: false
-                              },
-                              tooltip: {
-                                callbacks: {
-                                  label: function(context) {
-                                    return `${context.label}: ${context.raw.toFixed(1)}%`;
-                                  }
-                                }
-                              }
-                            },
-                            cutout: '70%'
-                          }}
-                        />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-900">Pass: {course.pass_rate}%</p>
-                        <p className="text-sm font-medium text-gray-900">Fail: {course.fail_rate}%</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">At Risk Courses</h3>
+            <div className="overflow-x-auto">
+              {atRiskCoursesData && atRiskCoursesData.length > 0 ? (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campus</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {atRiskCoursesData.map((course, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{course.course_name}</div>
+                          <div className="text-sm text-gray-500">{course.course_code}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.campus}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-red-600">{course.average_grade}%</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            At Risk
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               ) : (
-                <p className="text-gray-500 text-center py-4">No pass rate data available</p>
+                <div className="text-center py-4 text-gray-500">
+                  No at-risk courses found. All courses are performing above the risk threshold.
+                </div>
               )}
             </div>
-          </div>
-
-          {/* Additional Pass Rate Information - Replacing Least Viewed Lessons */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Pass Rate Summary</h3>
-            <div className="space-y-4">
-              {passRateComparison && passRateComparison.length > 0 ? (
-                passRateComparison.map((course, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-100 rounded-3xl">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{course.course_name}</p>
-                      <p className="text-xs text-gray-500">{course.passing_assessments} of {course.total_assessments} passed</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-16 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-[#6e63e5] h-2 rounded-full"
-                          style={{ width: `${course.pass_rate}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">{course.pass_rate}%</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No pass rate data available</p>
-              )}
+            <div className="mt-4 text-sm text-gray-500">
+              <p>* Courses with average grade below 40% are considered at risk</p>
             </div>
           </div>
         </div>
+
+        {/* Student Engagement */}
+        {/* Pass Rate Comparison section removed as requested */}
       </div>
     </DashboardLayout>
   );

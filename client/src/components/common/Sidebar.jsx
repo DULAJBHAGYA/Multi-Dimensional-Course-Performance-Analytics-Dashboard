@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import UserProfile from './UserProfile';
 
-const Sidebar = ({ onClose, onLogoutClick }) => {
+const Sidebar = ({ onClose, onLogoutClick, onProfileClick }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [showProfile, setShowProfile] = useState(false);
 
   const isActive = (path) => {
     return location.pathname === path;
   };
 
-  const handleLogoutClick = () => {
+  const handleLogoutClickInternal = () => {
     onLogoutClick && onLogoutClick();
+  };
+
+  const handleProfileClickInternal = () => {
+    onProfileClick && onProfileClick();
   };
 
   const getRoleBasedMenuItems = () => {
@@ -22,6 +24,14 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
         { path: '/admin', label: 'Admin Panel', icon: 'admin' },
         { path: '/admin-dashboard', label: 'Admin Dashboard', icon: 'dashboard' },
         { path: '/admin-reports', label: 'Admin Reports', icon: 'reports' },
+      ];
+    } else if (user?.role === 'department_head') {
+      // Department Head role
+      return [
+        { path: '/department-head-dashboard', label: 'Department Dashboard', icon: 'dashboard' },
+        { path: '/department-head-predictive', label: 'Predictive Analytics', icon: 'predictive' },
+        { path: '/department-head-reports', label: 'Reports', icon: 'reports' },
+        // Removed Instructor Analytics as the component was deleted
       ];
     } else {
       // Instructor role
@@ -99,7 +109,7 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
       <div className="hidden lg:block p-6 border-b border-gray-200">
         <h1 className="text-xl font-bold text-[#6e63e5]">EduAnalytics</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {user?.role === 'admin' ? 'Administrator' : 'Instructor'} Portal
+          {user?.role === 'admin' ? 'Administrator' : user?.role === 'department_head' ? 'Department Head' : 'Instructor'} Portal
         </p>
       </div>
 
@@ -107,7 +117,7 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
       <div className="p-4 border-b border-gray-200">
         <div 
           className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors"
-          onClick={() => setShowProfile(true)}
+          onClick={handleProfileClickInternal}
         >
           <div className="w-10 h-10 bg-[#D3CEFC] rounded-full flex items-center justify-center">
             <span className="text-[#6e63e5] font-semibold text-sm">
@@ -149,7 +159,7 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
       {/* Logout Button */}
       <div className="p-4 border-t border-gray-200">
         <button
-          onClick={handleLogoutClick}
+          onClick={handleLogoutClickInternal}
           className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-100 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,12 +168,6 @@ const Sidebar = ({ onClose, onLogoutClick }) => {
           <span>Logout</span>
         </button>
       </div>
-
-      {/* User Profile Modal */}
-      <UserProfile 
-        isOpen={showProfile} 
-        onClose={() => setShowProfile(false)} 
-      />
     </div>
   );
 };

@@ -177,7 +177,7 @@ nano .env  # or use your preferred editor
 
 **Update `.env` file with your Firebase credentials:**
 
-```env
+```
 # FastAPI Configuration
 APP_NAME="Course Analytics API"
 DEBUG=True

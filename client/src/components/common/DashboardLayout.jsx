@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import LogoutModal from './LogoutModal';
+import UserProfile from './UserProfile';
 import { useAuth } from '../../context/AuthContext';
 
 const DashboardLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const { logout } = useAuth();
 
   const handleLogoutClick = () => {
@@ -22,6 +24,10 @@ const DashboardLayout = ({ children }) => {
     setShowLogoutModal(false);
   };
 
+  const handleProfileClick = () => {
+    setShowProfile(true);
+  };
+
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Mobile Sidebar Overlay */}
@@ -36,7 +42,11 @@ const DashboardLayout = ({ children }) => {
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        <Sidebar onClose={() => setSidebarOpen(false)} onLogoutClick={handleLogoutClick} />
+        <Sidebar 
+          onClose={() => setSidebarOpen(false)} 
+          onLogoutClick={handleLogoutClick} 
+          onProfileClick={handleProfileClick}
+        />
       </div>
       
       {/* Main Content */}
@@ -65,6 +75,12 @@ const DashboardLayout = ({ children }) => {
         isOpen={showLogoutModal}
         onClose={handleLogoutCancel}
         onConfirm={handleLogoutConfirm}
+      />
+      
+      {/* User Profile Modal */}
+      <UserProfile 
+        isOpen={showProfile} 
+        onClose={() => setShowProfile(false)} 
       />
     </div>
   );

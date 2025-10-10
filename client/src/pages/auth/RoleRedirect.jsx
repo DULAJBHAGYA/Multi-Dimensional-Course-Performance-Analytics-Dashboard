@@ -13,6 +13,8 @@ const RoleRedirect = () => {
         navigate('/admin-dashboard', { replace: true });
       } else if (user.role === 'instructor') {
         navigate('/dashboard', { replace: true });
+      } else if (user.role === 'department_head') {
+        navigate('/department-head-dashboard', { replace: true });
       } else {
         // Default redirect for other roles (like student)
         navigate('/dashboard', { replace: true });

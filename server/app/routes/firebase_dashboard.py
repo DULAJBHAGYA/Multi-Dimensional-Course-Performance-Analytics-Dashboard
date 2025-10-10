@@ -335,7 +335,7 @@ async def get_admin_dashboard_firestore(
             "campus_breakdown": campus_breakdown,
             "course_distribution": [
                 {
-                    "course_type": course.get('courseName', 'Unknown'),
+                    "department": course.get('department', 'Unknown'),  # Changed from course_type to department
                     "average_performance": course.get('completion_rate', 0),
                     "total_courses": 1,
                     "students": course.get('students', 0)
@@ -355,11 +355,303 @@ async def get_admin_dashboard_firestore(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching admin dashboard: {str(e)}")
 
+@router.get("/admin/campus-course-performance")
+async def get_admin_campus_course_performance(
+    current_user: dict = Depends(verify_token)
+):
+    """Get campus course performance data - average grade and pass rate for each unique course"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get admin data from Firestore
+        admin_id = current_user.get('adminId')
+        if not admin_id:
+            raise HTTPException(status_code=400, detail="Admin ID not found")
+        
+        admin_doc = db.collection('admins').document(admin_id).get()
+        if not admin_doc.exists:
+            raise HTTPException(status_code=404, detail="Admin not found")
+        
+        admin_data = admin_doc.to_dict() or {}
+        admin_campus = admin_data.get('campus') if admin_data else None
+        
+        if not admin_campus:
+            raise HTTPException(status_code=400, detail="Admin campus not found")
+        
+        # Get all sections for this campus
+        sections_query = db.collection('sections').where('campus', '==', admin_campus).stream()
+        campus_sections = [section.to_dict() for section in sections_query]
+        
+        # Group sections by course
+        course_sections = {}
+        for section in campus_sections:
+            course_id = section.get('courseId')
+            course_code = section.get('courseCode', 'Unknown')
+            
+            if not course_id or not course_code:
+                continue
+                
+            if course_code not in course_sections:
+                course_sections[course_code] = {
+                    'courseId': course_id,
+                    'sections': []
+                }
+            
+            course_sections[course_code]['sections'].append(section)
+        
+        # Get course details from courses collection
+        course_details = {}
+        for course_code in course_sections.keys():
+            # Query courses collection by courseCode
+            courses_query = db.collection('courses').where('courseCode', '==', course_code).limit(1).stream()
+            course_docs = list(courses_query)
+            
+            if course_docs:
+                course_doc = course_docs[0]
+                course_data = course_doc.to_dict() or {}
+                course_details[course_code] = {
+                    'courseName': course_data.get('courseName', f'Unknown Course ({course_code})'),
+                    'department': course_data.get('department', 'Unknown Department')
+                }
+        
+        # Calculate metrics for each course
+        course_performance = []
+        for course_code, course_data in course_sections.items():
+            sections = course_data['sections']
+            
+            # Get course details or use fallback values
+            details = course_details.get(course_code, {
+                'courseName': f'Unknown Course ({course_code})',
+                'department': 'Unknown Department'
+            })
+            
+            # Calculate average grade
+            total_average_grades = sum(section.get('averageGrade', 0) for section in sections)
+            average_grade = round(total_average_grades / len(sections), 2) if sections else 0
+            
+            # Calculate pass rate
+            total_pass = 0
+            total_fail = 0
+            
+            for section in sections:
+                assessments = section.get('assessments', {})
+                for assessment_name, assessment_data in assessments.items():
+                    grade_breakdown = assessment_data.get('gradeBreakdown', {})
+                    
+                    # Count pass grades (A, B, C, D)
+                    pass_count = (
+                        grade_breakdown.get('A', 0) +
+                        grade_breakdown.get('B', 0) +
+                        grade_breakdown.get('C', 0) +
+                        grade_breakdown.get('D', 0)
+                    )
+                    
+                    # Count fail grades (F)
+                    fail_count = grade_breakdown.get('F', 0)
+                    
+                    total_pass += pass_count
+                    total_fail += fail_count
+            
+            # Calculate pass rate percentage
+            total_grades = total_pass + total_fail
+            pass_rate = round((total_pass / total_grades) * 100, 1) if total_grades > 0 else 0
+            
+            course_performance.append({
+                'courseCode': course_code,
+                'courseName': details['courseName'],
+                'department': details['department'],
+                'averageGrade': average_grade,
+                'passRate': pass_rate
+            })
+        
+        # Sort by course code for consistent display
+        course_performance.sort(key=lambda x: x['courseCode'])
+        
+        return course_performance
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching campus course performance: {str(e)}")
+
+@router.get("/admin/campus-performance-trend")
+async def get_admin_campus_performance_trend(
+    current_user: dict = Depends(verify_token)
+):
+    """Get campus performance trend data for line chart - average grades by semester"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get admin data from Firestore
+        admin_id = current_user.get('adminId')
+        if not admin_id:
+            raise HTTPException(status_code=400, detail="Admin ID not found")
+        
+        admin_doc = db.collection('admins').document(admin_id).get()
+        if not admin_doc.exists:
+            raise HTTPException(status_code=404, detail="Admin not found")
+        
+        admin_data = admin_doc.to_dict() or {}
+        admin_campus = admin_data.get('campus') if admin_data else None
+        
+        if not admin_campus:
+            raise HTTPException(status_code=400, detail="Admin campus not found")
+        
+        # Get all sections for this campus
+        sections_query = db.collection('sections').where('campus', '==', admin_campus).stream()
+        campus_sections = [section.to_dict() for section in sections_query]
+        
+        # Group sections by semesterId and calculate average grades
+        semester_performance = {}
+        
+        for section in campus_sections:
+            semester_id = section.get('semesterId')
+            average_grade = section.get('averageGrade', 0)
+            
+            # Skip sections without semester information
+            if not semester_id:
+                continue
+                
+            if semester_id not in semester_performance:
+                semester_performance[semester_id] = {
+                    "total_grades": 0,
+                    "section_count": 0
+                }
+            
+            semester_performance[semester_id]["total_grades"] += average_grade
+            semester_performance[semester_id]["section_count"] += 1
+        
+        # Get semester names from semesters collection
+        semesters_query = db.collection('semesters').stream()
+        semester_names = {}
+        for semester_doc in semesters_query:
+            semester_data = semester_doc.to_dict() or {}
+            semester_names[semester_doc.id] = semester_data.get('semesterName', f'Semester {semester_doc.id}')
+        
+        # Calculate average grades for each semester and add semester names
+        performance_trend = []
+        for semester_id, data in semester_performance.items():
+            if data["section_count"] > 0:
+                avg_grade = round(data["total_grades"] / data["section_count"], 2)
+                performance_trend.append({
+                    "semesterId": semester_id,
+                    "semesterName": semester_names.get(semester_id, f'Unknown Semester ({semester_id})'),
+                    "averageGrade": avg_grade
+                })
+        
+        # Sort by semester name for proper chronological display
+        performance_trend.sort(key=lambda x: x["semesterName"])
+        
+        return performance_trend
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching campus performance trend: {str(e)}")
+
+@router.get("/admin/campus-grade-distribution")
+async def get_admin_campus_grade_distribution(
+    current_user: dict = Depends(verify_token)
+):
+    """Get campus grade distribution data for pie chart - percentage of grades (A, B, C, D, F)"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get admin data from Firestore
+        admin_id = current_user.get('adminId')
+        if not admin_id:
+            raise HTTPException(status_code=400, detail="Admin ID not found")
+        
+        admin_doc = db.collection('admins').document(admin_id).get()
+        if not admin_doc.exists:
+            raise HTTPException(status_code=404, detail="Admin not found")
+        
+        admin_data = admin_doc.to_dict() or {}
+        admin_campus = admin_data.get('campus') if admin_data else None
+        
+        if not admin_campus:
+            raise HTTPException(status_code=400, detail="Admin campus not found")
+        
+        # Get all sections for this campus
+        sections_query = db.collection('sections').where('campus', '==', admin_campus).stream()
+        campus_sections = [section.to_dict() for section in sections_query]
+        
+        # Initialize grade counters
+        grade_counts = {
+            'A': 0,
+            'B': 0,
+            'C': 0,
+            'D': 0,
+            'F': 0
+        }
+        
+        # Process each section and aggregate grade breakdowns
+        for section in campus_sections:
+            assessments = section.get('assessments', {})
+            
+            # Process each assessment in the section
+            for assessment_name, assessment_data in assessments.items():
+                grade_breakdown = assessment_data.get('gradeBreakdown', {})
+                
+                # Add grade counts to totals
+                grade_counts['A'] += grade_breakdown.get('A', 0)
+                grade_counts['B'] += grade_breakdown.get('B', 0)
+                grade_counts['C'] += grade_breakdown.get('C', 0)
+                grade_counts['D'] += grade_breakdown.get('D', 0)
+                grade_counts['F'] += grade_breakdown.get('F', 0)
+        
+        # Calculate total grades
+        total_grades = sum(grade_counts.values())
+        
+        # Calculate percentages
+        grade_distribution = []
+        if total_grades > 0:
+            for grade, count in grade_counts.items():
+                percentage = round((count / total_grades) * 100, 1)
+                grade_distribution.append({
+                    "grade": grade,
+                    "count": count,
+                    "percentage": percentage
+                })
+        else:
+            # If no grades, return zero percentages
+            for grade in grade_counts.keys():
+                grade_distribution.append({
+                    "grade": grade,
+                    "count": 0,
+                    "percentage": 0.0
+                })
+        
+        return grade_distribution
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching campus grade distribution: {str(e)}")
+
 @router.get("/admin/department-metrics")
 async def get_admin_department_metrics(
     current_user: dict = Depends(verify_token)
 ):
-    """Get department-specific metrics for admin dashboard from Firestore"""
+    """Get campus-specific metrics for admin dashboard from Firestore"""
     try:
         # Verify user is admin
         if current_user.get("role") != "admin":
@@ -382,66 +674,30 @@ async def get_admin_department_metrics(
         admin_department = admin_data.get('department') if admin_data else None
         admin_campus = admin_data.get('campus') if admin_data else None
         
-        if not admin_department:
-            raise HTTPException(status_code=400, detail="Admin department not found")
+        if not admin_campus:
+            raise HTTPException(status_code=400, detail="Admin campus not found")
         
-        # Get courses for this department - try both 'department' and 'courseType' fields
-        # Try querying by 'department' field first
-        courses_query = db.collection('courses').where('department', '==', admin_department).stream()
-        department_courses = [course.to_dict() for course in courses_query]
+        # Get all courses (we'll filter by campus later)
+        courses_query = db.collection('courses').stream()
+        all_courses = [course.to_dict() for course in courses_query]
         
-        # If no courses found, try querying by 'courseType' field
-        if not department_courses:
-            courses_query = db.collection('courses').where('courseType', '==', admin_department).stream()
-            department_courses = [course.to_dict() for course in courses_query]
+        # Get sections for this campus
+        sections_query = db.collection('sections').where('campus', '==', admin_campus).stream()
+        campus_sections = [section.to_dict() for section in sections_query]
         
-        course_docs = []
-        if department_courses:
-            # Get the document references for the courses we found
-            course_docs = list(db.collection('courses').where('department', '==', admin_department).stream())
-            if not course_docs:
-                course_docs = list(db.collection('courses').where('courseType', '==', admin_department).stream())
-        
-        course_ids = [course_doc.id for course_doc in course_docs]
-        
-        # Get sections for these courses (regardless of campus for department-wide view)
-        sections = []
-        for course_id in course_ids:
-            sections_query = db.collection('sections').where('courseId', '==', course_id).stream()
-            for section_doc in sections_query:
-                section_data = section_doc.to_dict() or {}
-                sections.append(section_data)
-        
-        # Get unique instructor IDs from sections
-        instructor_ids = set()
-        for section in sections:
-            instructor_id = section.get('instructorId')
-            if instructor_id:
-                instructor_ids.add(instructor_id)
-        
-        # Get unique student count from performanceData
-        student_ids = set()
-        section_ids = [section.get('sectionId') or section.get('id') for section in sections if section.get('sectionId') or section.get('id')]
-        
-        if section_ids:
-            # Query performanceData collection for student IDs
-            for section_id in section_ids:
-                performance_query = db.collection('performanceData').where('sectionId', '==', section_id).stream()
-                for record_doc in performance_query:
-                    record_data = record_doc.to_dict() or {}
-                    student_id = record_data.get('studentId')
-                    if student_id:
-                        student_ids.add(student_id)
+        # Get instructors for this campus
+        instructors_query = db.collection('instructors').where('campus', '==', admin_campus).stream()
+        campus_instructors = [instructor.to_dict() for instructor in instructors_query]
         
         # Calculate metrics
-        total_students = len(student_ids)
-        total_courses = len(department_courses)
-        total_instructors = len(instructor_ids)
+        total_sections = len(campus_sections)
+        total_courses = len(all_courses)  # Total courses in the system
+        total_instructors = len(campus_instructors)
         
         return {
-            "department": admin_department,
             "campus": admin_campus,
-            "totalStudents": total_students,
+            "department": admin_department,  # Keep for reference but not used for filtering
+            "totalStudents": total_sections,  # Changed to represent sections
             "totalCourses": total_courses,
             "totalInstructors": total_instructors
         }
@@ -449,13 +705,13 @@ async def get_admin_department_metrics(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching department metrics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching campus metrics: {str(e)}")
 
 @router.get("/admin/department-instructors")
 async def get_admin_department_instructors(
     current_user: dict = Depends(verify_token)
 ):
-    """Get department-specific instructor count for admin dashboard from Firestore"""
+    """Get campus-specific instructor count for admin dashboard from Firestore"""
     try:
         # Verify user is admin
         if current_user.get("role") != "admin":
@@ -478,29 +734,22 @@ async def get_admin_department_instructors(
         admin_department = admin_data.get('department') if admin_data else None
         admin_campus = admin_data.get('campus') if admin_data else None
         
-        if not admin_department:
-            raise HTTPException(status_code=400, detail="Admin department not found")
+        if not admin_campus:
+            raise HTTPException(status_code=400, detail="Admin campus not found")
         
-        # Get instructors for this specific department and campus
-        instructors_query = db.collection('instructors')
-        if admin_department:
-            instructors_query = instructors_query.where('department', '==', admin_department)
-        if admin_campus:
-            instructors_query = instructors_query.where('campus', '==', admin_campus)
-        
-        instructors_docs = list(instructors_query.stream())
+        # Get instructors for this specific campus
+        instructors_query = db.collection('instructors').where('campus', '==', admin_campus).stream()
+        instructors_docs = list(instructors_query)
         instructor_count = len(instructors_docs)
         
         return {
-            "department": admin_department,
             "campus": admin_campus,
+            "department": admin_department,  # Keep for reference but not used for filtering
             "totalInstructors": instructor_count
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching department instructor count: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching campus instructor count: {str(e)}")
 
 @router.get("/instructor/courses")
 async def get_instructor_courses_firestore(
@@ -2609,77 +2858,7 @@ async def get_instructor_semester_performance(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching semester performance data: {str(e)}")
 
-@router.get("/admin/course-performance")
-async def get_admin_course_performance(
-    current_user: dict = Depends(verify_token)
-):
-    """Get course performance data from performanceData collection"""
-    try:
-        # Verify user is admin
-        if current_user.get("role") != "admin":
-            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
-        
-        db = get_firestore_client()
-        if not db:
-            raise HTTPException(status_code=500, detail="Database connection failed")
-        
-        # Get performance data with limit for better performance
-        performance_query = db.collection('performanceData').limit(1000).stream()
-        
-        performance_data = []
-        course_performance = {}
-        
-        # Process performance data
-        for record_doc in performance_query:
-            record_data = record_doc.to_dict() or {}
-            
-            # Extract relevant information
-            section_id = record_data.get('sectionId')
-            student_id = record_data.get('studentId')
-            assessment_type = record_data.get('assessmentType')
-            percentage = record_data.get('percentage', 0)
-            weight = record_data.get('assessmentWeight', 0)
-            
-            # Group by section (which relates to courses)
-            if section_id:
-                if section_id not in course_performance:
-                    course_performance[section_id] = {
-                        "section_id": section_id,
-                        "total_students": 0,
-                        "total_assessments": 0,
-                        "average_score": 0,
-                        "weighted_average": 0,
-                        "students": set(),
-                        "scores": []
-                    }
-                
-                # Add student and score data
-                course_performance[section_id]["students"].add(student_id)
-                course_performance[section_id]["scores"].append(percentage)
-                course_performance[section_id]["total_assessments"] += 1
-        
-        # Calculate averages for each section
-        for section_id, data in course_performance.items():
-            data["total_students"] = len(data["students"])
-            if data["scores"]:
-                data["average_score"] = round(sum(data["scores"]) / len(data["scores"]), 2)
-                # Simple weighted average (in a real implementation, this would be more complex)
-                data["weighted_average"] = round(sum(data["scores"]) / len(data["scores"]), 2)
-            
-            # Remove the set for JSON serialization
-            del data["students"]
-            del data["scores"]
-        
-        # Convert to list
-        performance_list = list(course_performance.values())
-        
-        return {
-            "total_records": len(performance_list),
-            "performance_data": performance_list
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching course performance data: {str(e)}")
+
 
 @router.get("/admin/metrics")
 async def get_admin_platform_metrics(
@@ -2700,16 +2879,18 @@ async def get_admin_platform_metrics(
         students_count = len([doc for doc in db.collection('students').stream()])
         courses_count = len([doc for doc in db.collection('courses').stream()])
         admins_count = len([doc for doc in db.collection('admins').stream()])
+        department_heads_count = len([doc for doc in db.collection('departmentHeads').stream()])  # New count for department heads
         
         # Get role distribution data for pie chart
         role_distribution = [
             {"role": "Instructors", "count": instructors_count},
-            {"role": "Admins", "count": admins_count}
+            {"role": "Admins", "count": admins_count},
+            {"role": "Department Heads", "count": department_heads_count}  # Add department heads to role distribution
         ]
         
         return {
             "totalInstructors": instructors_count,
-            "totalStudents": students_count,
+            "totalDepartmentHeads": department_heads_count,  # Changed from totalStudents to totalDepartmentHeads
             "totalCourses": courses_count,
             "totalAdmins": admins_count,
             "roleDistribution": role_distribution
@@ -2724,7 +2905,7 @@ async def get_admin_platform_metrics(
 async def get_admin_course_popularity(
     current_user: dict = Depends(verify_token)
 ):
-    """Get course distribution by course type for bar chart from Firestore"""
+    """Get course distribution by department for bar chart from Firestore"""
     try:
         # Verify user is admin
         if current_user.get("role") != "admin":
@@ -2737,31 +2918,127 @@ async def get_admin_course_popularity(
         # Get all courses
         courses_query = db.collection('courses').stream()
         
-        # Group courses by course type
+        # Group courses by department instead of course type
         course_distribution = {}
         for course_doc in courses_query:
             course_data = course_doc.to_dict() or {}
-            # Use courseType field as it exists in the database
-            course_type = course_data.get('courseType', 'Unknown')
+            # Use department field instead of courseType
+            department = course_data.get('department', 'Unknown')
             
-            if course_type not in course_distribution:
-                course_distribution[course_type] = {
-                    "course_type": course_type,
+            if department not in course_distribution:
+                course_distribution[department] = {
+                    "department": department,
                     "total_courses": 0
                 }
             
-            course_distribution[course_type]["total_courses"] += 1
+            course_distribution[department]["total_courses"] += 1
         
         # Convert to list
         course_distribution_list = list(course_distribution.values())
         
-        # Sort alphabetically by course type for consistent display
-        course_distribution_list.sort(key=lambda x: x["course_type"])
+        # Sort alphabetically by department for consistent display
+        course_distribution_list.sort(key=lambda x: x["department"])
         
         return course_distribution_list
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching course distribution data: {str(e)}")
+
+@router.get("/admin/campus-performance")
+async def get_admin_campus_performance(
+    current_user: dict = Depends(verify_token)
+):
+    """Get campus-level performance metrics by calculating average grades and pass rates from sections and assessment data"""
+    try:
+        # Verify user is admin
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to access admin metrics")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get all sections
+        sections_query = db.collection('sections').stream()
+        
+        # Group performance data by campus
+        campus_performance = {}
+        
+        # Process sections
+        for section_doc in sections_query:
+            section_data = section_doc.to_dict() or {}
+            campus_id = section_data.get('campusId')
+            campus_name = section_data.get('campus')
+            
+            # Skip sections without campus information
+            if not campus_id:
+                continue
+                
+            # Initialize campus data if not exists
+            if campus_id not in campus_performance:
+                campus_performance[campus_id] = {
+                    "campus_id": campus_id,
+                    "campus_name": campus_name or f'Campus {campus_id}',
+                    "total_sections": 0,
+                    "sum_average_grades": 0,
+                    "total_pass": 0,
+                    "total_fail": 0
+                }
+            
+            # Increment section count
+            campus_performance[campus_id]["total_sections"] += 1
+            
+            # Get average grade for this section
+            average_grade = section_data.get('averageGrade', 0)
+            campus_performance[campus_id]["sum_average_grades"] += average_grade
+            
+            # Process assessments to calculate pass/fail rates
+            assessments = section_data.get('assessments', {})
+            for assessment_name, assessment_data in assessments.items():
+                grade_breakdown = assessment_data.get('gradeBreakdown', {})
+                
+                # Count pass grades (A, B, C, D)
+                pass_count = (
+                    grade_breakdown.get('A', 0) +
+                    grade_breakdown.get('B', 0) +
+                    grade_breakdown.get('C', 0) +
+                    grade_breakdown.get('D', 0)
+                )
+                
+                # Count fail grades (F)
+                fail_count = grade_breakdown.get('F', 0)
+                
+                campus_performance[campus_id]["total_pass"] += pass_count
+                campus_performance[campus_id]["total_fail"] += fail_count
+        
+        # Calculate final metrics for each campus
+        campus_performance_list = []
+        for campus_id, data in campus_performance.items():
+            # Calculate average of average grades
+            if data["total_sections"] > 0:
+                campus_average_grade = round(data["sum_average_grades"] / data["total_sections"], 2)
+            else:
+                campus_average_grade = 0
+            
+            # Calculate pass rate
+            total_grades = data["total_pass"] + data["total_fail"]
+            if total_grades > 0:
+                pass_rate = round((data["total_pass"] / total_grades) * 100, 2)
+            else:
+                pass_rate = 0
+            
+            campus_performance_list.append({
+                "campus_id": data["campus_id"],
+                "campus": data["campus_name"],
+                "averageGrade": campus_average_grade,
+                "passRate": pass_rate
+            })
+        
+        return campus_performance_list
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching campus performance data: {str(e)}")
+
 
 @router.get("/admin/filter-options")
 async def get_admin_filter_options(

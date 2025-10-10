@@ -34,11 +34,16 @@ export const AuthProvider = ({ children }) => {
         try {
           const userData = JSON.parse(storedUser);
           
-          // Verify token is still valid by making a request
-          const { default: apiService } = await import('../services/api');
-          const currentUser = await apiService.getCurrentUser();
+          // Instead of importing apiService which might cause circular dependency,
+          // we'll make a direct fetch request to validate the token
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8001/api'}/firebase/auth/v2/me`, {
+            headers: {
+              'Authorization': `Bearer ${storedToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
           
-          if (currentUser) {
+          if (response.ok) {
             setUser(userData);
           } else {
             // Token is invalid, clear storage
@@ -63,28 +68,35 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Import apiService dynamically to avoid circular dependency
-      const { default: apiService } = await import('../services/api');
-      const response = await apiService.login(email, password);
+      // Make direct fetch request instead of importing apiService
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8001/api'}/firebase/auth/v2/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
       
-      if (response.access_token) {
+      const data = await response.json();
+      
+      if (response.ok && data.access_token) {
         const userData = {
-          email: response.user.email,
-          name: response.user.name,
-          role: response.user.role,
-          id: response.user.id,
-          token: response.access_token,
-          campus: response.user.campus,
-          department: response.user.department,
-          username: response.user.username,
-          students: response.user.students,
+          email: data.user.email,
+          name: data.user.name,
+          role: data.user.role,
+          id: data.user.id,
+          token: data.access_token,
+          campus: data.user.campus,
+          department: data.user.department,
+          username: data.user.username,
+          students: data.user.students,
           loginTime: new Date().toISOString()
         };
         
         console.log('Setting user data:', userData);
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('authToken', response.access_token);
+        localStorage.setItem('authToken', data.access_token);
         console.log('User set in context and localStorage');
         
         // Show success notification
@@ -92,7 +104,7 @@ export const AuthProvider = ({ children }) => {
         
         return { success: true, user: userData };
       } else {
-        const errorMsg = response.detail || 'Login failed';
+        const errorMsg = data.detail || 'Login failed';
         setError(errorMsg);
         notifyError(errorMsg, 'Login Failed');
         return { success: false, error: errorMsg };
@@ -110,9 +122,17 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      setLoading(true);
-      const { default: apiService } = await import('../services/api');
-      await apiService.logout();
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        // Make direct fetch request instead of importing apiService
+        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8001/api'}/firebase/auth/v2/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -139,9 +159,20 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const { default: apiService } = await import('../services/api');
-      const currentUser = await apiService.getCurrentUser();
-      if (currentUser) {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        return { success: false, error: 'No authentication token found' };
+      }
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8001/api'}/firebase/auth/v2/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const currentUser = await response.json();
         const updatedUser = { ...user, ...currentUser };
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -200,6 +231,14 @@ export const useAuthExtended = () => {
       'view_own_progress',
       'submit_assignments',
       'view_grades'
+    ],
+    department_head: [
+      'view_department_analytics',
+      'view_instructor_performance',
+      'view_predictive_insights',
+      'manage_department_courses',
+      'approve_course_materials',
+      'view_reports'
     ]
   };
 
@@ -219,6 +258,8 @@ export const useAuthExtended = () => {
         return '/admin-dashboard';
       case 'instructor':
         return '/dashboard';
+      case 'department_head':
+        return '/department-head-dashboard';
       case 'student':
         return '/student-dashboard';
       default:

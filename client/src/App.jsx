@@ -10,13 +10,18 @@ import LandingPage from './pages/LandingPage';
 import Login from './pages/auth/Login';
 import RoleRedirect from './pages/auth/RoleRedirect';
 import HomeDashboard from './pages/dashboard/HomeDashboard';
-import InstructorDashboard from './pages/instructor/InstructorDashboard';
 import CourseAnalytics from './pages/courseAnalytics/CourseAnalytics';
 import PredictiveAnalytics from './pages/predictiveAnalytics/PredictiveAnalytics';
 import ReportGeneration from './pages/reportGeneration/ReportGeneration';
 import AdminPanel from './pages/admin/AdminPanel';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminReports from './pages/admin/AdminReports';
+
+// Department Head Pages
+import DepartmentHeadDashboard from './pages/departmentHead/DepartmentHeadDashboard';
+import DepartmentPerformancePredictive from './pages/departmentHead/DepartmentPerformancePredictive';
+import DepartmentHeadReports from './pages/departmentHead/DepartmentHeadReports';
+// Removed InstructorPerformanceAnalytics import as the file was deleted
 
 function App() {
   return (
@@ -46,14 +51,6 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <HomeDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/instructor-dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <InstructorDashboard />
                   </ProtectedRoute>
                 } 
               />
@@ -105,6 +102,33 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              
+              {/* Department Head Routes */}
+              <Route 
+                path="/department-head-dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <DepartmentHeadDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/department-head-predictive" 
+                element={
+                  <ProtectedRoute>
+                    <DepartmentPerformancePredictive />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/department-head-reports" 
+                element={
+                  <ProtectedRoute>
+                    <DepartmentHeadReports />
+                  </ProtectedRoute>
+                } 
+              />
+              {/* Removed InstructorPerformanceAnalytics route as the file was deleted */}
               
               {/* Redirect any unknown routes to landing page */}
               <Route path="*" element={<Navigate to="/" replace />} />
