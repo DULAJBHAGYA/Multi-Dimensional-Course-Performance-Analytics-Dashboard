@@ -84,11 +84,17 @@ async def login(login_data: LoginRequest):
         user = await firebase_service.get_user_by_email(login_data.email)
         
         if not user:
+            # Determine role based on email
+            role = "admin" if "admin" in login_data.email.lower() else "instructor"
+            # Check for department head role
+            if "dept" in login_data.email.lower() or "department" in login_data.email.lower():
+                role = "department_head"
+            
             # Create a new user for development
             user_data = {
                 "name": login_data.email.split('@')[0].title(),
                 "email": login_data.email,
-                "role": "admin" if "admin" in login_data.email.lower() else "instructor",
+                "role": role,
                 "status": "active",
                 "department": "Computer Science",
                 "password_hash": "hashed_password_here",  # In production, hash the password

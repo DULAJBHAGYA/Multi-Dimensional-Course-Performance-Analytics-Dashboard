@@ -7,38 +7,15 @@ import { generateBarChartData, generateLineChartData, generatePieChartData, getC
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const [timeRange, setTimeRange] = useState('30d');
-  const [selectedSemester, setSelectedSemester] = useState('all');
-  const [selectedCourse, setSelectedCourse] = useState('all');
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
-  const [selectedInstructor, setSelectedInstructor] = useState('all');
-  const [selectedCampus, setSelectedCampus] = useState('all');
-  // REMOVED: selectedCRN state as CRN filter is removed
   const [dashboardData, setDashboardData] = useState(null);
-  const [departmentMetrics, setDepartmentMetrics] = useState(null); // New state for department metrics
-  const [filterOptions, setFilterOptions] = useState({
-    semesters: [],
-    courses: [],
-    instructors: [],
-    departments: [],
-    campuses: []
-    // REMOVED: crns from filterOptions state
-  });
+  const [departmentMetrics, setDepartmentMetrics] = useState(null);
+  const [campusPerformanceTrend, setCampusPerformanceTrend] = useState(null);
+  const [campusGradeDistribution, setCampusGradeDistribution] = useState(null);
+  const [campusCoursePerformance, setCampusCoursePerformance] = useState([]); // New state for campus course performance
+  const [currentPage, setCurrentPage] = useState(1);
+  const [coursesPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Memoized debounce function
-  const debounce = useCallback((func, wait) => {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  }, []);
 
   // Fetch dashboard data with error handling and loading states
   const fetchDashboardData = useCallback(async () => {
@@ -46,21 +23,25 @@ const AdminDashboard = () => {
       setLoading(true);
       setError(null);
       
-      // Fetch dashboard data, filter options, and department metrics in parallel with timeout
+      // Fetch dashboard data, filter options, department metrics, campus performance trend, grade distribution, and course performance in parallel
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       try {
-        const [dashboardResult, filterOptionsResult, departmentMetricsResult, departmentInstructorsResult] = await Promise.all([
+        const [dashboardResult, departmentMetricsResult, departmentInstructorsResult, campusPerformanceTrendResult, campusGradeDistributionResult, campusCoursePerformanceResult] = await Promise.all([
           apiService.getAdminDashboard(),
-          apiService.getAdminFilterOptions(),
           apiService.getAdminDepartmentMetrics(),
-          apiService.getAdminDepartmentInstructors()
+          apiService.getAdminDepartmentInstructors(),
+          apiService.getAdminCampusPerformanceTrend(),
+          apiService.getAdminCampusGradeDistribution(),
+          apiService.getAdminCampusCoursePerformance()
         ]);
         
         clearTimeout(timeoutId);
         setDashboardData(dashboardResult);
-        setFilterOptions(filterOptionsResult);
+        setCampusPerformanceTrend(campusPerformanceTrendResult);
+        setCampusGradeDistribution(campusGradeDistributionResult);
+        setCampusCoursePerformance(campusCoursePerformanceResult || []);
         
         // Use the campus-specific instructor count while keeping other metrics
         setDepartmentMetrics({
@@ -85,30 +66,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
-
-  // Handle filter changes with debounce
-  const handleFilterChange = useCallback(debounce((filterType, value) => {
-    switch (filterType) {
-      case 'semester':
-        setSelectedSemester(value);
-        break;
-      case 'course':
-        setSelectedCourse(value);
-        break;
-      case 'department':
-        setSelectedDepartment(value);
-        break;
-      case 'instructor':
-        setSelectedInstructor(value);
-        break;
-      case 'campus':
-        setSelectedCampus(value);
-        break;
-      // REMOVED: CRN filter case
-      default:
-        break;
-    }
-  }, 300), [debounce]);
 
   if (loading) {
     return (
@@ -154,18 +111,21 @@ const AdminDashboard = () => {
   // Debug logging to see what data is being received
   console.log('Department Metrics Data:', departmentMetrics);
   console.log('Admin KPIs:', adminKPIs);
+  console.log('Campus Performance Trend:', campusPerformanceTrend);
+  console.log('Campus Grade Distribution:', campusGradeDistribution);
+  console.log('Campus Course Performance:', campusCoursePerformance);
 
-  // Performance over time data
-  const performanceOverTime = [
-    { semester: 'Fall 2022', passRate: 72.3, gpa: 3.2, students: 1100 },
-    { semester: 'Spring 2023', passRate: 75.1, gpa: 3.3, students: 1150 },
-    { semester: 'Fall 2023', passRate: 76.8, gpa: 3.4, students: 1200 },
-    { semester: 'Spring 2024', passRate: 78.5, gpa: 3.5, students: 1247 }
-  ];
+  // Performance over time data - now using campus performance trend data
+  const performanceOverTime = campusPerformanceTrend?.map(item => ({
+    semester: item.semesterName,
+    passRate: item.averageGrade,
+    gpa: item.averageGrade / 20, // Converting to GPA scale (assuming 100 point scale)
+    students: 0 // Placeholder, as we don't have student count per semester
+  })) || [];
 
   // Course distribution data from Firebase
   const courseDistribution = dashboardData?.courses?.map(course => ({
-    courseType: course.courseName || course.name,
+    department: course.department || course.courseName || course.name,
     averagePerformance: course.average_performance || 0,
     totalCourses: 1,
     students: course.total_students || 0
@@ -180,23 +140,27 @@ const AdminDashboard = () => {
     instructors: campus.total_instructors || 0
   })) || [];
 
-  // Student grade distribution
-  const gradeDistribution = [
-    { grade: 'A+', count: 156, percentage: 12.5 },
-    { grade: 'A', count: 234, percentage: 18.8 },
-    { grade: 'A-', count: 198, percentage: 15.9 },
-    { grade: 'B+', count: 187, percentage: 15.0 },
-    { grade: 'B', count: 165, percentage: 13.2 },
-    { grade: 'B-', count: 142, percentage: 11.4 },
-    { grade: 'C+', count: 98, percentage: 7.9 },
-    { grade: 'C', count: 67, percentage: 5.4 },
-    { grade: 'D', count: 0, percentage: 0.0 },
-    { grade: 'F', count: 0, percentage: 0.0 }
+  // Campus grade distribution - now using campus-specific data
+  const gradeDistribution = campusGradeDistribution || [
+    { grade: 'A', count: 0, percentage: 0 },
+    { grade: 'B', count: 0, percentage: 0 },
+    { grade: 'C', count: 0, percentage: 0 },
+    { grade: 'D', count: 0, percentage: 0 },
+    { grade: 'F', count: 0, percentage: 0 }
   ];
 
+  // Get current courses for pagination
+  const indexOfLastCourse = currentPage * coursesPerPage;
+  const indexOfFirstCourse = indexOfLastCourse - coursesPerPage;
+  const currentCourses = campusCoursePerformance.slice(indexOfFirstCourse, indexOfLastCourse);
+  const totalPages = Math.ceil(campusCoursePerformance.length / coursesPerPage);
+
+  // Change page
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
   // Chart data using Chart.js format
-  const performanceOverTimeChartData = generateLineChartData(performanceOverTime, 'semester', 'passRate', 'Pass Rate');
-  const courseDistributionChartData = generateBarChartData(courseDistribution, 'courseType', 'averagePerformance', 'Average Performance');
+  const performanceOverTimeChartData = generateLineChartData(performanceOverTime, 'semester', 'passRate', '');
+  const courseDistributionChartData = generateBarChartData(courseDistribution, 'department', 'averagePerformance', 'Average Performance');
   const campusPerformanceChartData = generateBarChartData(campusPerformance, 'campus', 'passRate', 'Pass Rate');
   const gradeDistributionChartData = generatePieChartData(gradeDistribution, 'grade', 'count');
 
@@ -224,18 +188,6 @@ const AdminDashboard = () => {
               </h1>
               <p className="text-gray-600 mt-2">System overview, analytics, and administrative insights</p>
             </div>
-            <div className="mt-4 sm:mt-0">
-              <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value)}
-                className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-              >
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-                <option value="90d">Last 90 days</option>
-                <option value="1y">Last year</option>
-              </select>
-            </div>
           </div>
         </div>
 
@@ -243,7 +195,7 @@ const AdminDashboard = () => {
         <div className="space-y-8">
           {/* Key Performance Indicators - FIRST POSITION */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Total Students */}
+            {/* Total Sections */}
             <div className="bg-white p-6 rounded-3xl shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 bg-blue-100 rounded-2xl">
@@ -252,9 +204,9 @@ const AdminDashboard = () => {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Students</p>
+                  <p className="text-sm font-medium text-gray-600">Sections</p>
                   <p className="text-2xl font-bold text-gray-900">{adminKPIs.totalStudents.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">In your department</p>
+                  <p className="text-xs text-gray-500">In your campus</p>
                 </div>
               </div>
             </div>
@@ -270,7 +222,7 @@ const AdminDashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Courses</p>
                   <p className="text-2xl font-bold text-gray-900">{adminKPIs.totalCourses}</p>
-                  <p className="text-xs text-gray-500">In your department</p>
+                  <p className="text-xs text-gray-500">In your campus</p>
                 </div>
               </div>
             </div>
@@ -286,92 +238,9 @@ const AdminDashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Instructors</p>
                   <p className="text-2xl font-bold text-gray-900">{adminKPIs.totalInstructors}</p>
-                  <p className="text-xs text-gray-500">In your department</p>
+                  <p className="text-xs text-gray-500">In your campus</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Filtering Options - SECOND POSITION (below KPI cards) */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Options</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
-                <select
-                  value={selectedSemester}
-                  onChange={(e) => handleFilterChange('semester', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                >
-                  <option value="all">All Semesters</option>
-                  {filterOptions.semesters.slice(0, 20).map(semester => (
-                    <option key={semester.id} value={semester.name}>
-                      {semester.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Course Name</label>
-                <select
-                  value={selectedCourse}
-                  onChange={(e) => handleFilterChange('course', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                >
-                  <option value="all">All Courses</option>
-                  {filterOptions.courses.slice(0, 30).map(course => (
-                    <option key={course.id} value={course.name}>
-                      {course.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                <select
-                  value={selectedDepartment}
-                  onChange={(e) => handleFilterChange('department', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                >
-                  <option value="all">All Departments</option>
-                  {filterOptions.departments.slice(0, 20).map(department => (
-                    <option key={department} value={department}>
-                      {department}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Instructor</label>
-                <select
-                  value={selectedInstructor}
-                  onChange={(e) => handleFilterChange('instructor', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                >
-                  <option value="all">All Instructors</option>
-                  {filterOptions.instructors.slice(0, 30).map(instructor => (
-                    <option key={instructor.id || instructor} value={instructor.name || instructor}>
-                      {instructor.name || instructor}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Campus</label>
-                <select
-                  value={selectedCampus}
-                  onChange={(e) => handleFilterChange('campus', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-                >
-                  <option value="all">All Campuses</option>
-                  {filterOptions.campuses.slice(0, 15).map(campus => (
-                    <option key={campus} value={campus}>
-                      {campus}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {/* REMOVED: CRN filter dropdown as requested */}
             </div>
           </div>
 
@@ -388,39 +257,116 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Course Distribution and Campus Performance */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Course Distribution Bar Chart */}
-              <div className="bg-white p-6 rounded-3xl shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Distribution by Performance</h3>
-                <div className="h-64">
-                  <Bar 
-                    data={courseDistributionChartData} 
-                    options={getChartOptions('bar', '')}
-                  />
-                </div>
-              </div>
-
-              {/* Campus Performance Comparison */}
-              <div className="bg-white p-6 rounded-3xl shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Campus Performance Comparison</h3>
-                <div className="h-64">
-                  <Bar 
-                    data={campusPerformanceChartData} 
-                    options={getChartOptions('bar', '')}
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* Student Grade Distribution */}
             <div className="bg-white p-6 rounded-3xl shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Grade Distribution</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Grade Distribution</h3>
               <div className="h-64">
                 <Pie 
                   data={gradeDistributionChartData} 
                   options={getChartOptions('pie', '')}
                 />
+              </div>
+            </div>
+
+            {/* Course Performance Table */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Campus Course Performance</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Rate</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {currentCourses.map((course, index) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.courseCode}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.department}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.passRate}%</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.averageGrade}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Pagination */}
+              <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-b-2xl">
+                <div className="flex flex-1 justify-between sm:hidden">
+                  <button
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${
+                      currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium ${
+                      currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing <span className="font-medium">{indexOfFirstCourse + 1}</span> to{' '}
+                      <span className="font-medium">{Math.min(indexOfLastCourse, campusCoursePerformance.length)}</span> of{' '}
+                      <span className="font-medium">{campusCoursePerformance.length}</span> results
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                      <button
+                        onClick={() => paginate(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${
+                          currentPage === 1 ? 'cursor-not-allowed' : ''
+                        }`}
+                      >
+                        <span className="sr-only">Previous</span>
+                        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      {[...Array(totalPages)].map((_, index) => (
+                        <button
+                          key={index + 1}
+                          onClick={() => paginate(index + 1)}
+                          className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                            currentPage === index + 1
+                              ? 'z-10 bg-[#6e63e5] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6e63e5]'
+                              : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {index + 1}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => paginate(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${
+                          currentPage === totalPages ? 'cursor-not-allowed' : ''
+                        }`}
+                      >
+                        <span className="sr-only">Next</span>
+                        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </nav>
+                  </div>
+                </div>
               </div>
             </div>
 

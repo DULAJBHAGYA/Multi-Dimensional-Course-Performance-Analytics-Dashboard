@@ -43,7 +43,7 @@ class UserInfo(BaseModel):
 class CreateUserRequest(BaseModel):
     name: str
     email: str
-    role: str  # "admin" or "instructor"
+    role: str  # "admin", "instructor", or "department_head"
     password: str
     department: str
     campus: str
@@ -65,7 +65,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
-        user_type: str = payload.get("user_type", "instructor")  # instructor, admin, or student
+        user_type: str = payload.get("user_type", "instructor")  # instructor, admin, department_head, or student
         
         if user_id is None:
             raise HTTPException(
@@ -115,6 +115,22 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
                     "username": admin_data.get('username', ''),
                     "students": admin_data.get('students', 0)
                 }
+        elif user_type == "department_head":
+            dept_head_doc = db.collection('departmentHeads').document(user_id).get()
+            if dept_head_doc.exists:
+                dept_head_data = dept_head_doc.to_dict() or {}
+                user = {
+                    "id": user_id,
+                    "departmentHeadId": dept_head_data.get('deptheadId', user_id),
+                    "name": dept_head_data.get('display_name', dept_head_data.get('username', 'Unknown')),
+                    "email": dept_head_data.get('email', ''),
+                    "role": "department_head",
+                    "status": "active",
+                    "department": dept_head_data.get('department', ''),
+                    "campus": dept_head_data.get('campus', ''),
+                    "username": dept_head_data.get('username', ''),
+                    "students": dept_head_data.get('students', 0)
+                }
         elif user_type == "student":
             student_doc = db.collection('students').document(user_id).get()
             if student_doc.exists:
@@ -146,7 +162,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
 
 @router.post("/login", response_model=LoginResponse)
 async def login(login_data: LoginRequest):
-    """Login with Firestore authentication - checks both instructors and admins collections"""
+    """Login with Firestore authentication - checks instructors, admins, department_heads, and students collections"""
     try:
         logger.info(f"Login attempt for email: {login_data.email}")
         
@@ -200,7 +216,27 @@ async def login(login_data: LoginRequest):
                     }
                     break
         
-        # If not found in admins, search in students collection
+        # If not found in admins, search in department_heads collection
+        if not user:
+            dept_heads_query = db.collection('departmentHeads').where('email', '==', login_data.email).stream()
+            for doc in dept_heads_query:
+                dept_head_data = doc.to_dict() or {}
+                if dept_head_data.get('password') == login_data.password:
+                    user = {
+                        "id": doc.id,
+                        "departmentHeadId": dept_head_data.get('deptheadId', doc.id),
+                        "name": dept_head_data.get('display_name', dept_head_data.get('username', 'Unknown')),
+                        "email": dept_head_data.get('email', ''),
+                        "role": "department_head",
+                        "status": "active",
+                        "department": dept_head_data.get('department', ''),
+                        "campus": dept_head_data.get('campus', ''),
+                        "username": dept_head_data.get('username', ''),
+                        "students": dept_head_data.get('students', 0)
+                    }
+                    break
+        
+        # If not found in department_heads, search in students collection
         if not user:
             # For students, we assume the email format is studentId@domain
             student_id = login_data.email.split('@')[0]
@@ -228,7 +264,7 @@ async def login(login_data: LoginRequest):
         # Create access token with user type
         access_token = create_access_token(data={
             "sub": user["id"],
-            "user_type": user["role"]  # This will be "instructor", "admin", or "student"
+            "user_type": user["role"]  # This will be "instructor", "admin", "department_head", or "student"
         })
         
         return LoginResponse(
@@ -318,6 +354,20 @@ async def get_all_users(current_user: dict = Depends(verify_token)):
                 status="active",
                 department=admin_data.get('department', ''),
                 campus=admin_data.get('campus', '')
+            ))
+        
+        # Get all department heads
+        dept_heads_query = db.collection('departmentHeads').stream()
+        for doc in dept_heads_query:
+            dept_head_data = doc.to_dict()
+            users.append(UserInfo(
+                id=doc.id,
+                name=dept_head_data.get('display_name', dept_head_data.get('username', 'Unknown')),
+                email=dept_head_data.get('email', ''),
+                role="department_head",
+                status="active",
+                department=dept_head_data.get('department', ''),
+                campus=dept_head_data.get('campus', '')
             ))
         
         return users
@@ -480,10 +530,24 @@ async def create_user(create_user_data: CreateUserRequest, current_user: dict = 
                 "display_name": create_user_data.name,
                 "students": 0  # Default value for instructors
             }
+        elif create_user_data.role == "department_head":
+            user_id = get_next_id(db, "departmentHeads", "dept_head")
+            collection_name = "departmentHeads"
+            user_data = {
+                "departmentHeadId": user_id,
+                "name": create_user_data.name,
+                "email": create_user_data.email,
+                "password": create_user_data.password,
+                "department": create_user_data.department,
+                "campus": create_user_data.campus,
+                "username": create_user_data.username or create_user_data.email.split('@')[0],
+                "display_name": create_user_data.name,
+                "students": 0  # Default value for department heads
+            }
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid role. Must be 'admin' or 'instructor'"
+                detail="Invalid role. Must be 'admin', 'instructor', or 'department_head'"
             )
         
         # Add the user to the appropriate collection
@@ -572,7 +636,15 @@ async def get_departments(current_user: dict = Depends(verify_token)):
             department = admin_data.get('department')
             if department:
                 departments.add(department)
-        
+
+        # Get departments from department_heads
+        dept_heads_query = db.collection('department_heads').stream()
+        for doc in dept_heads_query:
+            dept_head_data = doc.to_dict()
+            department = dept_head_data.get('department')
+            if department:
+                departments.add(department)
+
         return sorted(list(departments))
         
     except Exception as e:
@@ -585,7 +657,7 @@ async def get_departments(current_user: dict = Depends(verify_token)):
 class UpdateUserRequest(BaseModel):
     name: str
     email: str
-    role: str  # "admin" or "instructor"
+    role: str  # "admin", "instructor", or "department_head"
     department: str
     campus: str
 
@@ -626,10 +698,19 @@ async def update_user(user_id: str, update_user_data: UpdateUserRequest, current
                 "campus": update_user_data.campus,
                 "display_name": update_user_data.name
             }
+        elif update_user_data.role == "department_head":
+            collection_name = "department_heads"
+            user_data = {
+                "name": update_user_data.name,
+                "email": update_user_data.email,
+                "department": update_user_data.department,
+                "campus": update_user_data.campus,
+                "display_name": update_user_data.name
+            }
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid role. Must be 'admin' or 'instructor'"
+                detail="Invalid role. Must be 'admin', 'instructor', or 'department_head'"
             )
         
         # Update the user in the appropriate collection
@@ -699,6 +780,14 @@ async def delete_user(user_id: str, current_user: dict = Depends(verify_token)):
             instructor_ref.delete()
             return {"message": "Instructor user deleted successfully"}
         
+        # If not found in instructors, try department_heads collection
+        dept_head_ref = db.collection('department_heads').document(user_id)
+        dept_head_doc = dept_head_ref.get()
+        
+        if dept_head_doc.exists:
+            dept_head_ref.delete()
+            return {"message": "Department head user deleted successfully"}
+
         # If not found in either collection
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

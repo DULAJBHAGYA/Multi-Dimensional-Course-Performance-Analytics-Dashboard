@@ -281,7 +281,7 @@ This document provides comprehensive documentation for all APIs developed in the
     },
     "course_distribution": [
       {
-        "course_type": "Mathematics 101",
+        "department": "Mathematics 101",
         "average_performance": 85.5,
         "total_courses": 1,
         "students": 45

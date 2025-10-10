@@ -10,6 +10,8 @@ const AdminReports = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedReport, setGeneratedReport] = useState(null);
   const [reportData, setReportData] = useState(null);
+  const [coursePerformanceData, setCoursePerformanceData] = useState([]); // New state for course performance data
+  const [userDetailsData, setUserDetailsData] = useState([]); // New state for user details data
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -24,31 +26,36 @@ const AdminReports = () => {
       // Fetch data based on selected report type
       switch (selectedReport) {
         case 'users':
-          const userResponse = await apiService.getAdminUserAnalytics();
-          data = userResponse.data;
-          break;
-        case 'courses':
-          const courseResponse = await apiService.getAdminCourseAnalytics();
-          data = courseResponse.data;
+          // Fetch campus user details data
+          const userResponse = await apiService.getAdminCampusUserDetails();
+          setUserDetailsData(userResponse.data || []);
           break;
         case 'instructors':
           const instructorResponse = await apiService.getAdminInstructorPerformance();
           data = instructorResponse.data;
           break;
+        case 'course-performance':
+          // Fetch campus course performance data
+          const coursePerformanceResponse = await apiService.getAdminCampusCoursePerformance();
+          setCoursePerformanceData(coursePerformanceResponse || []);
+          break;
         default:
           throw new Error('Invalid report type');
       }
       
-      const report = {
-        id: Date.now(),
-        type: selectedReport,
-        format: exportFormat,
-        generatedAt: new Date(),
-        data: data
-      };
+      if (selectedReport !== 'users' && selectedReport !== 'course-performance') {
+        const report = {
+          id: Date.now(),
+          type: selectedReport,
+          format: exportFormat,
+          generatedAt: new Date(),
+          data: data
+        };
+        
+        setReportData(data);
+        setGeneratedReport(report);
+      }
       
-      setReportData(data);
-      setGeneratedReport(report);
       setIsGenerating(false);
       setLoading(false);
     } catch (err) {
@@ -60,7 +67,7 @@ const AdminReports = () => {
   };
 
   const handleDownloadReport = async () => {
-    if (!generatedReport) return;
+    if (!generatedReport && selectedReport !== 'course-performance' && selectedReport !== 'users') return;
     
     try {
       setLoading(true);
@@ -77,7 +84,7 @@ const AdminReports = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `admin-report-${generatedReport.generatedAt.toISOString().split('T')[0]}.${exportFormat === 'pdf' ? 'pdf' : 'xlsx'}`;
+      a.download = `admin-report-${generatedReport ? generatedReport.generatedAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}.${exportFormat === 'pdf' ? 'pdf' : 'xlsx'}`;
       document.body.appendChild(a);
       a.click();
       
@@ -97,6 +104,9 @@ const AdminReports = () => {
     switch (status) {
       case 'Excellent': return 'text-green-600 bg-green-100';
       case 'Good': return 'text-blue-600 bg-blue-100';
+      case 'Fair': return 'text-yellow-600 bg-yellow-100';
+      case 'Poor': return 'text-orange-600 bg-orange-100';
+      case 'Very Poor': return 'text-red-600 bg-red-100';
       case 'Normal': return 'text-gray-600 bg-gray-100';
       case 'Open': return 'text-red-400 bg-red-50';
       case 'In Progress': return 'text-yellow-600 bg-yellow-100';
@@ -138,9 +148,9 @@ const AdminReports = () => {
                 onChange={(e) => setSelectedReport(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
-                <option value="users">User Analytics</option>
-                <option value="courses">Course Analytics</option>
+                <option value="users">Campus User Details</option>
                 <option value="instructors">Instructor Performance</option>
+                <option value="course-performance">Campus Course Performance</option>
               </select>
             </div>
 
@@ -208,14 +218,98 @@ const AdminReports = () => {
               >
                 <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                   <title>Close</title>
-                  <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+                  <path d="M14.348 14.849a1.2 1.2 0 01-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 11-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 11 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 11 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
                 </svg>
               </button>
             </div>
           </div>
         )}
 
-        {generatedReport && !loading && (
+        {selectedReport === 'users' && userDetailsData.length > 0 && !loading && (
+          <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Campus User Details</h2>
+              <button
+                onClick={handleDownloadReport}
+                className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download Report
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {userDetailsData.map((user, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.role}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.department}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {selectedReport === 'course-performance' && coursePerformanceData.length > 0 && !loading && (
+          <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Campus Course Performance</h2>
+              <button
+                onClick={handleDownloadReport}
+                className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download Report
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Rate</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {coursePerformanceData.map((course, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.courseCode}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.department}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.passRate}%</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.averageGrade}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {generatedReport && !loading && selectedReport !== 'course-performance' && selectedReport !== 'users' && (
           <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Generated Report Content</h2>
@@ -230,60 +324,6 @@ const AdminReports = () => {
               </button>
             </div>
 
-            {/* User Analytics */}
-            {selectedReport === 'users' && reportData && (
-              <div className="mb-6">
-                <h3 className="text-md font-medium text-gray-900 mb-3">User Analytics</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {reportData.map((analytics, index) => (
-                    <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{analytics.category || analytics.type}</p>
-                          <p className="text-2xl font-bold text-gray-900">{(analytics.count || analytics.total || 0).toLocaleString()}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600">{analytics.percentage || analytics.percent || 0}%</p>
-                          {analytics.growth && (
-                            <p className="text-xs text-green-600">{analytics.growth}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Course Analytics */}
-            {selectedReport === 'courses' && reportData && (
-              <div className="mb-6">
-                <h3 className="text-md font-medium text-gray-900 mb-3">Course Analytics by Subject</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completion</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {reportData.map((course, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.subject || course.course_type || course.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courses || course.total_courses || 0}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(course.students || course.total_students || 0).toLocaleString()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(course.completion || course.completion_rate || 0)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
             {/* Instructor Performance */}
             {selectedReport === 'instructors' && reportData && (
               <div className="mb-6">
@@ -292,30 +332,23 @@ const AdminReports = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instructor</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instructor ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Rate</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {reportData.map((instructor, index) => (
                         <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{instructor.name || instructor.instructor_name || `Instructor ${index + 1}`}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.courses || instructor.total_courses || 0}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(instructor.students || instructor.total_students || 0).toLocaleString()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <div className="flex items-center">
-                              <svg className="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                              {instructor.rating || instructor.average_rating || 0}
-                            </div>
-                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{instructor.id}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.pass_rate}%</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.average_grade}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(instructor.status || 'Normal')}`}>
-                              {instructor.status || 'Normal'}
+                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(instructor.status)}`}>
+                              {instructor.status}
                             </span>
                           </td>
                         </tr>

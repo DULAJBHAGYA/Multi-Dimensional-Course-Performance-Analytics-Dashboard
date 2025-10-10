@@ -40,7 +40,7 @@ class ApiService {
           // Retry the request with new token
           config.headers.Authorization = `Bearer ${this.getToken()}`;
           const retryResponse = await fetch(url, config);
-          console.log(`API Retry Response for ${url}:`, retryResponse.status, retryRetryResponse.statusText);
+          console.log(`API Retry Response for ${url}:`, retryResponse.status, retryResponse.statusText);
           if (!retryResponse.ok) {
             throw new Error(`HTTP error! status: ${retryResponse.status}`);
           }
@@ -188,12 +188,12 @@ class ApiService {
     return this.get('/firebase/dashboard/admin/course-popularity');
   }
 
-  async getAdminFilterOptions() {
-    return this.get('/firebase/dashboard/admin/filter-options');
+  async getAdminCampusPerformance() {
+    return this.get('/firebase/dashboard/admin/campus-performance');
   }
 
-  async getAdminCoursePerformance() {
-    return this.get('/firebase/dashboard/admin/course-performance');
+  async getAdminCampusPerformanceTrend() {
+    return this.get('/firebase/dashboard/admin/campus-performance-trend');
   }
 
   async getAdminDepartmentMetrics() {
@@ -262,81 +262,83 @@ class ApiService {
     return result;
   }
 
-  async getInstructorCourseCount() {
-    return this.get('/instructor/dashboard/instructor/course-count');
+  // New endpoint to get instructor unique courses count
+  async getInstructorUniqueCoursesCount() {
+    return this.get('/instructor/dashboard/instructor/unique-courses-count');
   }
 
-  async getInstructorUniqueStudentCount() {
-    return this.get('/instructor/dashboard/instructor/unique-student-count');
-  }
-
-  async getInstructorTotalAssessments() {
-    return this.get('/instructor/dashboard/instructor/total-assessments');
-  }
-
-  async getInstructorAssignmentPassRate() {
-    return this.get('/instructor/dashboard/instructor/assignment-pass-rate');
-  }
-
-  async getInstructorHighPerformanceRate() {
-    return this.get('/instructor/dashboard/instructor/high-performance-rate');
+  // New endpoint to get instructor courses with department information
+  async getInstructorCoursesWithDepartments() {
+    return this.get('/instructor/dashboard/instructor/courses-with-departments');
   }
 
   async getInstructorGradeDistribution() {
-    return this.get('/instructor/dashboard/instructor/grade-distribution');
+    return this.get('/instructor/courses/instructor/grade-distribution');
   }
 
+  // New endpoint to get instructor section-based performance average
+  async getInstructorSectionBasedPerformanceAverage() {
+    return this.get('/instructor/courses/instructor/section-based-performance-average');
+  }
+
+  // New endpoint to get instructor pass rate
+  async getInstructorPassRate() {
+    return this.get('/instructor/courses/instructor/pass-rate');
+  }
+
+  // New endpoint to get instructor at-risk rate
+  async getInstructorAtRiskRate() {
+    const response = await this.get('/instructor/courses/instructor/at-risk-rate');
+    // Handle both old and new response formats
+    if (response.hasOwnProperty('at_risk_courses_count')) {
+      return { at_risk_rate: response.at_risk_courses_count };
+    }
+    return response;
+  }
+
+  // New endpoint to get instructor course performance data
+  async getInstructorCoursePerformance() {
+    return this.get('/instructor/courses/instructor/course-performance');
+  }
+
+  // New endpoint to get instructor at-risk courses data
+  async getInstructorAtRiskCourses() {
+    return this.get('/instructor/courses/instructor/at-risk-courses');
+  }
+
+  // New endpoint to get instructor semester comparison data
+  async getInstructorSemesterComparison() {
+    return this.get('/instructor/courses/instructor/semester-comparison');
+  }
+
+  // New endpoint to get instructor course performance comparison data
   async getInstructorCoursePerformanceComparison() {
-    return this.get('/instructor/dashboard/instructor/course-performance-comparison');
+    return this.get('/instructor/courses/instructor/course-performance-comparison');
   }
 
-  async getInstructorSemesterComparison() {
-    return this.get('/instructor/dashboard/instructor/semester-comparison');
-  }
-
+  // New endpoint to get instructor pass rate comparison data
   async getInstructorPassRateComparison() {
-    return this.get('/instructor/dashboard/instructor/pass-rate-comparison');
+    return this.get('/instructor/courses/instructor/pass-rate-comparison');
   }
 
-  // New endpoint to get instructor courses
-  async getInstructorCourses() {
-    return this.get('/instructor/dashboard/instructor/courses');
+  // New endpoint to get all CRNs for a specific instructor
+  async getInstructorCRNs() {
+    return this.get('/instructor/dashboard/instructor/crns');
   }
 
-  // New endpoint to get instructor students by performance data
-  async getInstructorStudentsByPerformance() {
-    return this.get('/instructor/dashboard/instructor/students-by-performance');
+  // New endpoint to get instructor section count
+  async getInstructorSectionCount() {
+    return this.get('/instructor/courses/instructor/section-count');
   }
 
-  // New endpoint to get instructor performance average
-  async getInstructorPerformanceAverage() {
-    return this.get('/instructor/dashboard/instructor/performance-average');
+  // New endpoint to get instructor course count
+  async getInstructorCourseCount() {
+    return this.get('/instructor/courses/instructor/course-count');
   }
 
-  // New endpoint to get instructor grade improvement percentage
-  async getInstructorGradeImprovement() {
-    return this.get('/instructor/dashboard/instructor/grade-improvement');
-  }
-
-  // New endpoint to get instructor grade improvement percentage
-  async getInstructorGradeImprovement() {
-    return this.get('/instructor/dashboard/instructor/grade-improvement');
-  }
-
-  // New endpoint to get instructor course performance analysis
-  async getInstructorCoursePerformanceAnalysis() {
-    return this.get('/instructor/dashboard/instructor/course-performance-analysis');
-  }
-
-  // New endpoint to get instructor student analysis
-  async getInstructorStudentAnalysis(courseId) {
-    const params = courseId ? { course_id: courseId } : {};
-    return this.get('/instructor/dashboard/instructor/student-analysis', params);
-  }
-
-  // New endpoint to get instructor semester comparison
-  async getInstructorSemesterComparison() {
-    return this.get('/instructor/dashboard/instructor/semester-comparison');
+  // New endpoint to get instructor course pass-fail summary
+  async getInstructorCoursePassFailSummary() {
+    return this.get('/instructor/courses/instructor/course-pass-fail-summary');
   }
 
   // Firebase Instructor Reports endpoints
@@ -355,32 +357,6 @@ class ApiService {
 
   async getInstructorSemesterComparisonReport() {
     return this.get('/firebase/dashboard/instructor/reports/semester-comparison');
-  }
-
-  // New endpoint to get instructor detailed assessment report
-  async getInstructorDetailedAssessmentReport(courseId) {
-    const params = courseId ? { course_id: courseId } : {};
-    return this.get('/firebase/dashboard/instructor/reports/detailed-assessment', params);
-  }
-
-  // Firebase Admin Reports endpoints
-  async getAdminUserAnalytics() {
-    return this.get('/admin/report/user-analytics');
-  }
-
-  async getAdminCourseAnalytics() {
-    return this.get('/admin/report/course-analytics');
-  }
-
-  async getAdminInstructorPerformance() {
-    return this.get('/admin/report/instructor-performance');
-  }
-
-  async generateAdminReport(reportType, format = 'json') {
-    return this.get('/admin/report/generate-report', { 
-      report_type: reportType, 
-      format: format 
-    });
   }
 
   // New function for downloading admin reports
@@ -425,10 +401,6 @@ class ApiService {
         break;
       case 'semester-comparison':
         endpoint = '/firebase/dashboard/instructor/reports/semester-comparison/download';
-        break;
-      case 'detailed-assessment':
-        endpoint = '/firebase/dashboard/instructor/reports/detailed-assessment/download';
-        if (courseId) params.course_id = courseId;
         break;
       default:
         throw new Error('Unknown report type');
@@ -561,6 +533,148 @@ class ApiService {
       window.location.href = '/login';
     }
   }
+
+  // Firebase Department Head endpoints
+  async getDepartmentHeadCourseCount() {
+    return this.get('/firebase/dashboard/department-head/course-count');
+  }
+
+  async getDepartmentHeadInstructorCount() {
+    return this.get('/firebase/dashboard/department-head/instructor-count');
+  }
+
+  async getDepartmentHeadAveragePerformance() {
+    return this.get('/firebase/dashboard/department-head/average-performance');
+  }
+
+  async getDepartmentHeadAtRiskCoursesCount() {
+    return this.get('/firebase/dashboard/department-head/at-risk-courses-count');
+  }
+
+  async getDepartmentHeadPendingApprovalsCount() {
+    return this.get('/firebase/dashboard/department-head/pending-approvals-count');
+  }
+
+  async getDepartmentHeadPerformanceAnalytics() {
+    return this.get('/firebase/dashboard/department-head/performance-analytics');
+  }
+
+  async getDepartmentHeadRiskAnalysis() {
+    return this.get('/firebase/dashboard/department-head/risk-analysis');
+  }
+
+  async getDepartmentHeadTrendAnalysis() {
+    return this.get('/firebase/dashboard/department-head/trend-analysis');
+  }
+
+  async getDepartmentHeadInstructorsList() {
+    return this.get('/firebase/dashboard/department-head/instructors-list');
+  }
+
+  async getDepartmentHeadInstructorPerformanceAnalysis() {
+    return this.get('/firebase/dashboard/department-head/instructor-performance-analysis');
+  }
+
+  // New endpoint to get instructor at-risk courses count
+  async getInstructorAtRiskCoursesCount() {
+    const response = await this.get('/instructor/courses/instructor/at-risk-rate');
+    // Handle both old and new response formats
+    if (response.hasOwnProperty('at_risk_courses_count')) {
+      return { at_risk_rate: response.at_risk_courses_count };
+    }
+    return response;
+  }
+
+  // New endpoint to get instructor sections report
+  async getInstructorSectionsReport() {
+    return this.get('/instructor/report/sections');
+  }
+
+  // New endpoint to get department head unique courses count
+  async getDepartmentHeadUniqueCoursesCount() {
+    return this.get('/department-head/dashboard/department-head/unique-courses-count');
+  }
+
+  // New endpoint to get department head unique instructors count
+  async getDepartmentHeadUniqueInstructorsCount() {
+    return this.get('/department-head/dashboard/department-head/unique-instructors-count');
+  }
+
+  // New endpoint to get department head total sections count
+  async getDepartmentHeadTotalSectionsCount() {
+    return this.get('/department-head/dashboard/department-head/total-sections-count');
+  }
+
+  // New endpoint to get department head average grade
+  async getDepartmentHeadAverageGrade() {
+    return this.get('/department-head/dashboard/department-head/average-grade');
+  }
+
+  // New endpoint to get department head at-risk courses count
+  async getDepartmentHeadAtRiskCoursesCount() {
+    return this.get('/department-head/dashboard/department-head/at-risk-courses-count');
+  }
+
+  // New endpoint to get department head at-risk courses list
+  async getDepartmentHeadAtRiskCourses() {
+    return this.get('/department-head/dashboard/department-head/at-risk-courses');
+  }
+
+  // New endpoint to get department head instructor comparison
+  async getDepartmentHeadInstructorComparison(instructor1Id, instructor2Id, courseCode = null) {
+    const params = {
+      instructor1_id: instructor1Id,
+      instructor2_id: instructor2Id
+    };
+    
+    if (courseCode) {
+      params.course_code = courseCode;
+    }
+    
+    return this.get('/department-head/dashboard/department-head/instructor-comparison', params);
+  }
+
+  // New endpoint to get department head instructor options
+  async getDepartmentHeadInstructorOptions() {
+    return this.get('/department-head/dashboard/department-head/instructor-options');
+  }
+
+  // New endpoint to get department head performance trends
+  async getDepartmentHeadPerformanceTrends() {
+    return this.get('/department-head/dashboard/department-head/performance-trends');
+  }
+
+  // New endpoint to get department head course options
+  async getDepartmentHeadCourseOptions() {
+    return this.get('/department-head/dashboard/department-head/course-options');
+  }
+
+  // New endpoint to get department head grade trends
+  async getDepartmentHeadGradeTrends() {
+    return this.get('/department-head/dashboard/department-head/grade-trends');
+  }
+
+  // New endpoint to get all instructors performance in department
+  async getDepartmentHeadAllInstructorsPerformance() {
+    return this.get('/department-head/dashboard/department-head/all-instructors-performance');
+  }
+
+  async getAdminCampusGradeDistribution() {
+    return this.get('/firebase/dashboard/admin/campus-grade-distribution');
+  }
+
+  async getAdminCampusCoursePerformance() {
+    return this.get('/firebase/dashboard/admin/campus-course-performance');
+  }
+
+  async getAdminCampusUserDetails() {
+    return this.get('/admin/report/campus-user-details');
+  }
+
+  async getAdminInstructorPerformance(timeRange = '30d') {
+    return this.get('/admin/report/instructor-performance', { time_range: timeRange });
+  }
+
 }
 
 // Create and export a singleton instance

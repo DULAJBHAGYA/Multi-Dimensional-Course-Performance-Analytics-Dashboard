@@ -21,7 +21,7 @@ from app.firebase_config import get_firestore_client
 from app.routes.firebase_auth_updated import get_current_user, UserInfo
 
 # Initialize router
-router = APIRouter(prefix="/admin/report", tags=["admin-reports"])
+router = APIRouter(tags=["admin-reports"])
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -300,6 +300,11 @@ async def get_instructor_performance(
         if not db:
             raise HTTPException(status_code=500, detail="Database connection failed")
         
+        # Get admin campus from current_user
+        admin_campus = current_user.campus
+        if not admin_campus:
+            raise HTTPException(status_code=400, detail="Admin campus not found")
+        
         # Calculate date range
         end_date = datetime.now()
         if time_range == "7d":
@@ -313,8 +318,8 @@ async def get_instructor_performance(
         else:
             start_date = end_date - timedelta(days=30)  # Default to 30 days
         
-        # Get all instructors
-        instructors_query = db.collection('instructors').stream()
+        # Get instructors from the admin's campus
+        instructors_query = db.collection('instructors').where('campus', '==', admin_campus).stream()
         instructors = []
         for doc in instructors_query:
             instructor_data = doc.to_dict() or {}
@@ -323,24 +328,99 @@ async def get_instructor_performance(
         
         # Prepare instructor performance data
         instructor_data = []
+        
+        # Get all sections for this campus to calculate performance metrics
+        sections_query = db.collection('sections').where('campus', '==', admin_campus).stream()
+        campus_sections = [section.to_dict() for section in sections_query]
+        
+        # Create a mapping of instructorId to sections
+        instructor_sections = {}
+        for section in campus_sections:
+            instructor_id = section.get('instructorId')
+            if instructor_id:
+                if instructor_id not in instructor_sections:
+                    instructor_sections[instructor_id] = []
+                instructor_sections[instructor_id].append(section)
+        
+        # Calculate performance metrics for each instructor
         for instructor in instructors:
-            # Mock rating data - in a real implementation, this would come from actual performance metrics
-            rating = round(4.0 + (len(instructor.get('courses', [])) * 0.1), 1)
-            rating = min(rating, 5.0)  # Cap at 5.0
+            instructor_id = instructor.get('id')
+            instructor_name = instructor.get('display_name', instructor.get('username', 'Unknown Instructor'))
             
-            status = "Excellent" if rating >= 4.5 else "Good" if rating >= 4.0 else "Normal"
+            # Initialize metrics
+            total_sections = 0
+            total_pass_rate = 0
+            total_average_grade = 0
+            section_count = 0
+            
+            # Get sections for this instructor
+            sections = instructor_sections.get(instructor_id, [])
+            
+            # Calculate metrics from sections
+            total_pass_grades = 0
+            total_grades = 0
+            total_average_grades = 0
+            
+            for section in sections:
+                total_sections += 1
+                
+                # Add average grade
+                if 'averageGrade' in section:
+                    total_average_grades += section['averageGrade']
+                    section_count += 1
+                
+                # Calculate pass/fail rates from assessments
+                assessments = section.get('assessments', {})
+                for assessment_name, assessment_data in assessments.items():
+                    grade_breakdown = assessment_data.get('gradeBreakdown', {})
+                    if grade_breakdown:
+                        # Count grades A, B, C, D, F
+                        a_count = grade_breakdown.get('A', 0)
+                        b_count = grade_breakdown.get('B', 0)
+                        c_count = grade_breakdown.get('C', 0)
+                        d_count = grade_breakdown.get('D', 0)
+                        f_count = grade_breakdown.get('F', 0)
+                        
+                        # Count pass grades (A, B, C, D)
+                        pass_grades = a_count + b_count + c_count + d_count
+                        total_grades_section = a_count + b_count + c_count + d_count + f_count
+                        
+                        total_pass_grades += pass_grades
+                        total_grades += total_grades_section
+            
+            # Calculate final metrics
+            pass_rate = 0
+            if total_grades > 0:
+                pass_rate = (total_pass_grades / total_grades) * 100
+            
+            average_grade = 0
+            if section_count > 0:
+                average_grade = total_average_grades / section_count
+            
+            # Determine status based on performance
+            if average_grade >= 85:
+                status = "Excellent"
+            elif average_grade >= 75:
+                status = "Good"
+            elif average_grade >= 65:
+                status = "Fair"
+            elif average_grade >= 50:
+                status = "Poor"
+            else:
+                status = "Very Poor"
             
             instructor_data.append({
-                "name": instructor.get('display_name', instructor.get('username', 'Unknown Instructor')),
-                "courses": len(instructor.get('courses', [])),
-                "students": instructor.get('students', 0),
-                "rating": rating,
+                "id": instructor_id,
+                "name": instructor_name,
+                "pass_rate": round(pass_rate, 2),
+                "average_grade": round(average_grade, 2),
                 "status": status
             })
         
         return {
             "status": "success",
             "data": instructor_data,
+            "campus": admin_campus,
             "time_range": time_range,
             "generated_at": datetime.now().isoformat()
         }
@@ -348,6 +428,98 @@ async def get_instructor_performance(
     except Exception as e:
         logger.error(f"Error fetching instructor performance: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch instructor performance: {str(e)}")
+
+@router.get("/campus-user-details")
+async def get_campus_user_details(
+    current_user: UserInfo = Depends(get_current_user)
+):
+    """
+    Get detailed user information for the logged-in admin's campus.
+    
+    Args:
+        current_user: Authenticated admin user
+        
+    Returns:
+        List of user details for the admin's campus
+    """
+    try:
+        if current_user.role != "admin":
+            raise HTTPException(status_code=403, detail="Access denied. Admin role required.")
+        
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get admin campus from current_user
+        admin_campus = current_user.campus
+        
+        if not admin_campus:
+            raise HTTPException(status_code=400, detail="Admin campus not found")
+        
+        # Get all users from different collections for this campus
+        instructors_query = db.collection('instructors').where('campus', '==', admin_campus).stream()
+        students_query = db.collection('students').where('campus', '==', admin_campus).stream()
+        admins_query = db.collection('admins').where('campus', '==', admin_campus).stream()
+        department_heads_query = db.collection('departmentHeads').where('campus', '==', admin_campus).stream()
+        
+        # Process users
+        user_details = []
+        
+        # Process instructors
+        for doc in instructors_query:
+            data = doc.to_dict()
+            user_details.append({
+                "role": "Instructor",
+                "id": doc.id,
+                "name": data.get('display_name', data.get('username', 'Unknown')),
+                "email": data.get('email', 'N/A'),
+                "department": data.get('department', 'N/A')
+            })
+        
+        # Process students
+        for doc in students_query:
+            data = doc.to_dict()
+            user_details.append({
+                "role": "Student",
+                "id": doc.id,
+                "name": data.get('studentName', data.get('name', 'Unknown')),
+                "email": data.get('email', 'N/A'),
+                "department": data.get('department', 'N/A')
+            })
+        
+        # Process admins
+        for doc in admins_query:
+            data = doc.to_dict()
+            user_details.append({
+                "role": "Admin",
+                "id": doc.id,
+                "name": data.get('display_name', data.get('username', 'Unknown')),
+                "email": data.get('email', 'N/A'),
+                "department": data.get('department', 'N/A')
+            })
+        
+        # Process department heads
+        for doc in department_heads_query:
+            data = doc.to_dict()
+            user_details.append({
+                "role": "Department Head",
+                "id": doc.id,
+                "name": data.get('display_name', data.get('username', 'Unknown')),
+                "email": data.get('email', 'N/A'),
+                "department": data.get('department', 'N/A')
+            })
+        
+        return {
+            "status": "success",
+            "data": user_details,
+            "campus": admin_campus,
+            "total_users": len(user_details),
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching campus user details: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch campus user details: {str(e)}")
 
 @router.get("/download-report")
 async def download_admin_report(

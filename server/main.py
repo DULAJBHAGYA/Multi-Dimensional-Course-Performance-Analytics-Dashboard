@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from app.routes import firebase_auth, firebase_dashboard, firebase_auth_updated, instructor_dashboard, admin_report
+from app.routes import firebase_auth, firebase_dashboard, firebase_auth_updated, instructor_dashboard, admin_report, instructor_courses, instructor_report, department_head_dashboard
 
 app = FastAPI(
     title="Multi-Dimensional Course Performance Analytics API",
@@ -26,6 +26,10 @@ app.include_router(firebase_auth_updated.router, prefix="/api/firebase/auth/v2",
 app.include_router(firebase_dashboard.router, prefix="/api/firebase/dashboard", tags=["Firebase Dashboard"])
 app.include_router(instructor_dashboard.router, prefix="/api/instructor/dashboard", tags=["Instructor Dashboard"])
 app.include_router(admin_report.router, prefix="/api/admin/report", tags=["Admin Reports"])
+app.include_router(instructor_courses.router, prefix="/api/instructor/courses", tags=["Instructor Courses"])
+app.include_router(instructor_report.router, prefix="/api/instructor/report", tags=["Instructor Reports"])
+app.include_router(department_head_dashboard.router, prefix="/api/department-head/dashboard", tags=["Department Head Dashboard"])
+
 
 # Root endpoint
 @app.get("/")
@@ -41,7 +45,9 @@ async def root():
             "firebase_auth_v2": "/api/firebase/auth/v2", 
             "firebase_dashboard": "/api/firebase/dashboard",
             "instructor_dashboard": "/api/instructor/dashboard",
-            "admin_reports": "/api/admin/report"
+            "admin_reports": "/api/admin/report",
+            "instructor_reports": "/api/instructor/report",
+            "department_head_dashboard": "/api/department-head/dashboard"
         }
     }
 
