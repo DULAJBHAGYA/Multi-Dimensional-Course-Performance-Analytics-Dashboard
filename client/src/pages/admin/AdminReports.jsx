@@ -3,6 +3,12 @@ import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import apiService from '../../services/api';
 
+// Import export libraries
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+
 const AdminReports = () => {
   const { user } = useAuth();
   const [selectedReport, setSelectedReport] = useState('users');
@@ -67,24 +73,69 @@ const AdminReports = () => {
   };
 
   const handleDownloadReport = async () => {
-    if (!generatedReport && selectedReport !== 'course-performance' && selectedReport !== 'users') return;
-    
     try {
       setLoading(true);
+      setError(null);
+      
+      // For campus user details, export the currently displayed data
+      if (selectedReport === 'users' && userDetailsData.length > 0) {
+        if (exportFormat === 'pdf') {
+          await exportUserDetailsToPDF();
+        } else if (exportFormat === 'xlsx') {
+          await exportUserDetailsToExcel();
+        }
+        setLoading(false);
+        return;
+      }
+      
+      // For campus course performance, export the currently displayed data
+      if (selectedReport === 'course-performance' && coursePerformanceData.length > 0) {
+        if (exportFormat === 'pdf') {
+          await exportCoursePerformanceToPDF();
+        } else if (exportFormat === 'xlsx') {
+          await exportCoursePerformanceToExcel();
+        }
+        setLoading(false);
+        return;
+      }
+      
+      // For other reports, use the backend API
+      // Map frontend format to backend format
+      let backendFormat = exportFormat;
+      if (exportFormat === 'xlsx') {
+        backendFormat = 'csv'; // Backend expects CSV for Excel format
+      }
+      
       // Use the download endpoint for actual file download
       const response = await apiService.downloadAdminReport(
         selectedReport,
-        exportFormat === 'pdf' ? 'pdf' : 'csv' // Map to backend format expectations
+        backendFormat
       );
       
       // Create a blob from the response
       const blob = await response.blob();
       
+      // Determine filename based on report type and format
+      let filename = '';
+      switch (selectedReport) {
+        case 'users':
+          filename = `campus-user-details.${exportFormat}`;
+          break;
+        case 'course-performance':
+          filename = `campus-course-performance.${exportFormat}`;
+          break;
+        case 'instructors':
+          filename = `instructor-performance.${exportFormat}`;
+          break;
+        default:
+          filename = `admin-report-${new Date().toISOString().split('T')[0]}.${exportFormat}`;
+      }
+      
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `admin-report-${generatedReport ? generatedReport.generatedAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}.${exportFormat === 'pdf' ? 'pdf' : 'xlsx'}`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       
@@ -97,6 +148,148 @@ const AdminReports = () => {
       console.error('Error downloading report:', err);
       setError('Failed to download report: ' + (err.message || 'Unknown error'));
       setLoading(false);
+    }
+  };
+  
+  // Export campus user details to PDF
+  const exportUserDetailsToPDF = async () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(18);
+      doc.text('Campus User Details Report', 14, 20);
+      doc.setFontSize(12);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+      
+      // Prepare table data
+      const tableData = userDetailsData.map(user => [
+        user.role,
+        user.id,
+        user.name,
+        user.email,
+        user.department
+      ]);
+      
+      // Add table using the autoTable function
+      autoTable(doc, {
+        head: [['Role', 'ID', 'Name', 'Email', 'Department']],
+        body: tableData,
+        startY: 40,
+        styles: {
+          fontSize: 8
+        },
+        headStyles: {
+          fillColor: [110, 99, 229] // #6e63e5
+        }
+      });
+      
+      // Save the PDF
+      doc.save('campus-user-details.pdf');
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      throw new Error('Failed to export to PDF: ' + error.message);
+    }
+  };
+  
+  // Export campus user details to Excel/CSV
+  const exportUserDetailsToExcel = async () => {
+    try {
+      // Prepare worksheet data
+      const wsData = [
+        ['Role', 'ID', 'Name', 'Email', 'Department'],
+        ...userDetailsData.map(user => [
+          user.role,
+          user.id,
+          user.name,
+          user.email,
+          user.department
+        ])
+      ];
+      
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Campus User Details');
+      
+      // Export to file (only XLSX now)
+      XLSX.writeFile(wb, 'campus-user-details.xlsx');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      throw new Error('Failed to export to Excel: ' + error.message);
+    }
+  };
+  
+  // Export campus course performance to PDF
+  const exportCoursePerformanceToPDF = async () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(18);
+      doc.text('Campus Course Performance Report', 14, 20);
+      doc.setFontSize(12);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+      
+      // Prepare table data
+      const tableData = coursePerformanceData.map(course => [
+        course.courseCode,
+        course.courseName,
+        course.department,
+        `${course.passRate}%`,
+        course.averageGrade
+      ]);
+      
+      // Add table using the autoTable function
+      autoTable(doc, {
+        head: [['Course Code', 'Course', 'Department', 'Pass Rate', 'Average Grade']],
+        body: tableData,
+        startY: 40,
+        styles: {
+          fontSize: 8
+        },
+        headStyles: {
+          fillColor: [110, 99, 229] // #6e63e5
+        }
+      });
+      
+      // Save the PDF
+      doc.save('campus-course-performance.pdf');
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      throw new Error('Failed to export to PDF: ' + error.message);
+    }
+  };
+  
+  // Export campus course performance to Excel/CSV
+  const exportCoursePerformanceToExcel = async () => {
+    try {
+      // Prepare worksheet data
+      const wsData = [
+        ['Course Code', 'Course', 'Department', 'Pass Rate', 'Average Grade'],
+        ...coursePerformanceData.map(course => [
+          course.courseCode,
+          course.courseName,
+          course.department,
+          `${course.passRate}%`,
+          course.averageGrade
+        ])
+      ];
+      
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Campus Course Performance');
+      
+      // Export to file (only XLSX now)
+      XLSX.writeFile(wb, 'campus-course-performance.xlsx');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      throw new Error('Failed to export to Excel: ' + error.message);
     }
   };
 
@@ -139,7 +332,7 @@ const AdminReports = () => {
         <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Report Configuration</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Report Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
@@ -151,20 +344,6 @@ const AdminReports = () => {
                 <option value="users">Campus User Details</option>
                 <option value="instructors">Instructor Performance</option>
                 <option value="course-performance">Campus Course Performance</option>
-              </select>
-            </div>
-
-            {/* Export Format */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
-              <select 
-                value={exportFormat} 
-                onChange={(e) => setExportFormat(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-              >
-                <option value="pdf">PDF</option>
-                <option value="xlsx">Excel (XLSX)</option>
-                <option value="csv">CSV</option>
               </select>
             </div>
           </div>
@@ -227,17 +406,33 @@ const AdminReports = () => {
 
         {selectedReport === 'users' && userDetailsData.length > 0 && !loading && (
           <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Campus User Details</h2>
-              <button
-                onClick={handleDownloadReport}
-                className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download Report
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Export Format */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Export Format</label>
+                  <select 
+                    value={exportFormat} 
+                    onChange={(e) => setExportFormat(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                  >
+                    <option value="pdf">PDF</option>
+                    <option value="xlsx">Excel (XLSX)</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleDownloadReport}
+                    className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download Report
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -269,17 +464,33 @@ const AdminReports = () => {
 
         {selectedReport === 'course-performance' && coursePerformanceData.length > 0 && !loading && (
           <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Campus Course Performance</h2>
-              <button
-                onClick={handleDownloadReport}
-                className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download Report
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Export Format */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Export Format</label>
+                  <select 
+                    value={exportFormat} 
+                    onChange={(e) => setExportFormat(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                  >
+                    <option value="pdf">PDF</option>
+                    <option value="xlsx">Excel (XLSX)</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleDownloadReport}
+                    className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download Report
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -311,17 +522,33 @@ const AdminReports = () => {
 
         {generatedReport && !loading && selectedReport !== 'course-performance' && selectedReport !== 'users' && (
           <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Generated Report Content</h2>
-              <button
-                onClick={handleDownloadReport}
-                className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download Report
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Export Format */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Export Format</label>
+                  <select 
+                    value={exportFormat} 
+                    onChange={(e) => setExportFormat(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+                  >
+                    <option value="pdf">PDF</option>
+                    <option value="xlsx">Excel (XLSX)</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleDownloadReport}
+                    className="flex items-center px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] text-white rounded-2xl transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download Report
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Instructor Performance */}
