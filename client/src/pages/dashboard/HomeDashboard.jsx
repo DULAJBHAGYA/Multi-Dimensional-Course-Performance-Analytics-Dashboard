@@ -6,19 +6,17 @@ import { Bar } from 'react-chartjs-2';
 
 const HomeDashboard = () => {
   const { user } = useAuth();
-  const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
   const [selectedSemester, setSelectedSemester] = useState('all');
   const [selectedCourse, setSelectedCourse] = useState('all');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
-  const [selectedCRN, setSelectedCRN] = useState('all');
   const [dashboardData, setDashboardData] = useState(null);
   const [crnComparisonData, setCrnComparisonData] = useState(null);
   const [selectedCrn1, setSelectedCrn1] = useState('');
   const [selectedCrn2, setSelectedCrn2] = useState('');
   const [filterOptions, setFilterOptions] = useState({
     semesters: [],
-    courses: [],
+    courses: [], // This will now be courseCodes
     departments: [],
     campuses: [],
     crns: []
@@ -28,17 +26,26 @@ const HomeDashboard = () => {
   const [courseCount, setCourseCount] = useState(0); // Add state for course count
   const [uniqueStudentCount, setUniqueStudentCount] = useState(0); // Add state for unique student count
   const [performanceAverage, setPerformanceAverage] = useState(0); // Add state for performance average
-  const [gradeImprovement, setGradeImprovement] = useState(0); // Add state for grade improvement
   const [sectionCount, setSectionCount] = useState(0); // Add state for section count
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [crnComparisonLoading, setCrnComparisonLoading] = useState(false); // New loading state for CRN comparison section
+  
+  // New state for filtered performance data
+  const [filteredPerformance, setFilteredPerformance] = useState({
+    averageGrade: 0,
+    passRate: 0,
+    totalSections: 0
+  });
+  const [filtersApplied, setFiltersApplied] = useState(false);
+  const [performanceLoading, setPerformanceLoading] = useState(false); // New loading state for performance section
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         // Fetch all required data in parallel
-        const [data, studentData, instructorCoursesData, uniqueCoursesCountData, coursesWithDepartmentsData, performanceAverageData, sectionCountData, instructorCrnsData] = await Promise.all([
+        const [data, studentData, instructorCoursesData, uniqueCoursesCountData, coursesWithDepartmentsData, performanceAverageData, sectionCountData, instructorCrnsData, filterOptionsData] = await Promise.all([
           apiService.getInstructorDashboard(),
           apiService.getInstructorStudents(), // Use the existing endpoint
           apiService.getInstructorCourses(), // Fetch instructor courses data
@@ -46,7 +53,8 @@ const HomeDashboard = () => {
           apiService.getInstructorCoursesWithDepartments(), // Fetch courses with department info
           apiService.getInstructorSectionBasedPerformanceAverage(), // Fetch section-based performance average
           apiService.getInstructorSectionCount(), // Fetch section count
-          apiService.getInstructorCRNs() // Fetch instructor CRNs
+          apiService.getInstructorCRNs(), // Fetch instructor CRNs
+          apiService.getInstructorFilterOptions() // Fetch new filter options
         ]);
         
         setDashboardData(data);
@@ -62,27 +70,25 @@ const HomeDashboard = () => {
         setUniqueStudentCount(uniqueStudentCount);
         
         setPerformanceAverage(performanceAverageData?.avg_performance || 0); // Set performance average
-        setGradeImprovement(0); // Set grade improvement to 0 since we removed the grade distribution endpoint
         setSectionCount(sectionCountData?.total_sections || 0); // Set section count
         
-        // Extract filter options from the data
-        if (data && data.courses) {
-          const semesters = [...new Set(data.courses.map(course => course.semesterName).filter(Boolean))];
-          const courses = [...new Set(data.courses.map(course => course.courseName).filter(Boolean))];
-          const departments = [...new Set(data.courses.map(course => course.department).filter(Boolean))];
-          const campuses = [...new Set(data.courses.map(course => course.campusName).filter(Boolean))];
-          
-          // Use CRNs from the dedicated endpoint
-          const crns = instructorCrnsData?.crns || [];
-          
-          setFilterOptions({
-            semesters: semesters.sort(),
-            courses: courses.sort(),
-            departments: departments.sort(),
-            campuses: campuses.sort(),
-            crns: crns.sort()
-          });
-        }
+        // Set filter options from the new API
+        console.log('Filter options data:', filterOptionsData);
+        setFilterOptions({
+          semesters: filterOptionsData?.semesters?.sort() || [],
+          courses: filterOptionsData?.courseCodes?.sort() || [], // Now using courseCodes
+          departments: filterOptionsData?.departments?.sort() || [],
+          campuses: filterOptionsData?.campuses?.sort() || [],
+          crns: instructorCrnsData?.crns?.sort() || []
+        });
+        
+        // Fetch initial filtered performance data (no filters applied)
+        const initialPerformanceData = await apiService.getFilteredPerformance();
+        setFilteredPerformance({
+          averageGrade: initialPerformanceData?.averageGrade || 0,
+          passRate: initialPerformanceData?.passRate || 0,
+          totalSections: initialPerformanceData?.totalSections || 0
+        });
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
         setError('Failed to load dashboard data');
@@ -94,6 +100,62 @@ const HomeDashboard = () => {
     fetchDashboardData();
   }, []);
 
+  // Function to apply filters and fetch filtered performance data
+  const applyFilters = async () => {
+    try {
+      setPerformanceLoading(true); // Set loading state for performance section only
+      const courseCode = selectedCourse !== 'all' ? selectedCourse : null;
+      const campus = selectedCampus !== 'all' ? selectedCampus : null;
+      const semester = selectedSemester !== 'all' ? selectedSemester : null;
+      const department = selectedDepartment !== 'all' ? selectedDepartment : null;
+      
+      const performanceData = await apiService.getFilteredPerformance(
+        courseCode,
+        campus,
+        semester,
+        department
+      );
+      
+      setFilteredPerformance({
+        averageGrade: performanceData?.averageGrade || 0,
+        passRate: performanceData?.passRate || 0,
+        totalSections: performanceData?.totalSections || 0
+      });
+      
+      setFiltersApplied(
+        selectedCourse !== 'all' || 
+        selectedCampus !== 'all' || 
+        selectedSemester !== 'all' || 
+        selectedDepartment !== 'all'
+      );
+    } catch (err) {
+      console.error('Error fetching filtered performance data:', err);
+      setError('Failed to load filtered performance data');
+    } finally {
+      setPerformanceLoading(false); // Always reset loading state
+    }
+  };
+
+  // Function to clear all filters
+  const clearFilters = () => {
+    setSelectedSemester('all');
+    setSelectedCourse('all');
+    setSelectedDepartment('all');
+    setSelectedCampus('all');
+    setFiltersApplied(false);
+  };
+
+  // Apply filters when any filter changes
+  useEffect(() => {
+    if (filterOptions.semesters.length > 0) { // Only apply after initial data load
+      const timer = setTimeout(() => {
+        applyFilters();
+      }, 300); // Debounce filter application
+      
+      return () => clearTimeout(timer);
+    }
+  }, [selectedSemester, selectedCourse, selectedDepartment, selectedCampus]);
+
   const handleCrnComparison = async () => {
     if (!selectedCrn1 || !selectedCrn2) {
       setError('Please select two CRNs to compare');
@@ -101,15 +163,16 @@ const HomeDashboard = () => {
     }
     
     try {
-      setLoading(true);
+      setCrnComparisonLoading(true); // Set loading state for CRN comparison section only
+      setError(null); // Clear any previous errors
       const comparisonData = await apiService.getInstructorCRNComparison(selectedCrn1, selectedCrn2);
       setCrnComparisonData(comparisonData);
-      setError(null);
     } catch (err) {
       console.error('Error fetching CRN comparison data:', err);
       setError('Failed to load CRN comparison data');
+      setCrnComparisonData(null); // Clear previous comparison data on error
     } finally {
-      setLoading(false);
+      setCrnComparisonLoading(false); // Always reset loading state
     }
   };
 
@@ -152,7 +215,6 @@ const HomeDashboard = () => {
     if (selectedCourse !== 'all' && course.name !== selectedCourse) return false;
     if (selectedDepartment !== 'all' && course.department !== selectedDepartment) return false;
     if (selectedCampus !== 'all' && course.campusName !== selectedCampus) return false;
-    if (selectedCRN !== 'all' && course.crnCode !== selectedCRN) return false;
     return true;
   }) || [];
 
@@ -160,13 +222,11 @@ const HomeDashboard = () => {
   const kpiData = dashboardData ? {
     totalStudents: sectionCount, // Use the section count instead of student count
     activeCourses: courseCount, // Use the course count from our new API endpoint
-    avgPerformance: performanceAverage, // Use the performance average from our new API endpoint
-    completionRate: gradeImprovement // Use the grade improvement from our new API endpoint and rename the KPI
+    avgPerformance: performanceAverage // Use the performance average from our new API endpoint
   } : {
     totalStudents: sectionCount, // Use the section count instead of student count
     activeCourses: courseCount, // Use the course count from our new API endpoint
-    avgPerformance: performanceAverage, // Use the performance average from our new API endpoint
-    completionRate: gradeImprovement // Use the grade improvement from our new API endpoint and rename the KPI
+    avgPerformance: performanceAverage // Use the performance average from our new API endpoint
   };
 
   // Prepare CRN comparison chart data if available
@@ -186,7 +246,8 @@ const HomeDashboard = () => {
         </div>
 
         {/* KPI Cards - Moved to top */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Changed from 4 cards to 3 cards and updated grid layout */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <div className="flex items-center">
               <div className="p-3 bg-blue-100 rounded-2xl">
@@ -229,51 +290,24 @@ const HomeDashboard = () => {
             </div>
           </div>
           
-          <div className="bg-white p-6 rounded-3xl shadow-sm">
-            <div className="flex items-center">
-              <div className="p-3 bg-[#D3CEFC] rounded-2xl">
-                <svg className="w-6 h-6 text-[#6e63e5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Grade Improvement Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{kpiData.completionRate}%</p>
-              </div>
-            </div>
-          </div>
+          {/* Removed Grade Improvement Rate KPI card as requested */}
         </div>
 
-        {/* Filters Section */}
+        {/* Filter Section with Dropdowns and Bar Chart */}
         <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filter Dashboard Data</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            {/* Semester Filter */}
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Filter</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* Campus Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Campus</label>
               <select 
-                value={selectedSemester} 
-                onChange={(e) => setSelectedSemester(e.target.value)}
+                value={selectedCampus} 
+                onChange={(e) => setSelectedCampus(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
-                <option value="all">All Semesters</option>
-                {filterOptions.semesters.map(semester => (
-                  <option key={semester} value={semester}>{semester}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Course Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Course</label>
-              <select 
-                value={selectedCourse} 
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-              >
-                <option value="all">All Courses</option>
-                {filterOptions.courses.map(course => (
-                  <option key={course} value={course}>{course}</option>
+                <option value="all">All Campuses</option>
+                {filterOptions.campuses.map(campus => (
+                  <option key={campus} value={campus}>{campus}</option>
                 ))}
               </select>
             </div>
@@ -293,87 +327,105 @@ const HomeDashboard = () => {
               </select>
             </div>
 
-            {/* Campus Filter */}
+            {/* Course Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Campus</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Course</label>
               <select 
-                value={selectedCampus} 
-                onChange={(e) => setSelectedCampus(e.target.value)}
+                value={selectedCourse} 
+                onChange={(e) => setSelectedCourse(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
-                <option value="all">All Campuses</option>
-                {filterOptions.campuses.map(campus => (
-                  <option key={campus} value={campus}>{campus}</option>
+                <option value="all">All Courses</option>
+                {filterOptions.courses.map(course => (
+                  <option key={course} value={course}>{course}</option>
                 ))}
               </select>
             </div>
 
-            {/* CRN Filter */}
+            {/* Semester Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">CRN</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
               <select 
-                value={selectedCRN} 
-                onChange={(e) => setSelectedCRN(e.target.value)}
+                value={selectedSemester} 
+                onChange={(e) => setSelectedSemester(e.target.value)}
                 className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
               >
-                <option value="all">All CRNs</option>
-                {filterOptions.crns.map(crn => (
-                  <option key={crn} value={crn}>{crn}</option>
+                <option value="all">All Semesters</option>
+                {console.log('Semesters data:', filterOptions.semesters)}
+                {filterOptions.semesters.map(semester => (
+                  <option key={semester} value={semester}>{semester}</option>
                 ))}
-              </select>
-            </div>
-
-            {/* Time Range Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Time Range</label>
-              <select 
-                value={selectedTimeRange} 
-                onChange={(e) => setSelectedTimeRange(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
-              >
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-                <option value="90d">Last 90 days</option>
-                <option value="1y">Last year</option>
               </select>
             </div>
           </div>
 
-          {/* Filter Actions */}
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">Active Filters:</span>
-              <div className="flex flex-wrap gap-2">
-                {selectedSemester !== 'all' && (
-                  <span className="px-2 py-1 bg-[#6e63e5] text-white text-xs rounded-full">Semester: {selectedSemester}</span>
-                )}
-                {selectedCourse !== 'all' && (
-                  <span className="px-2 py-1 bg-[#6e63e5] text-white text-xs rounded-full">Course: {selectedCourse}</span>
-                )}
-                {selectedDepartment !== 'all' && (
-                  <span className="px-2 py-1 bg-[#6e63e5] text-white text-xs rounded-full">Department: {selectedDepartment}</span>
-                )}
-                {selectedCampus !== 'all' && (
-                  <span className="px-2 py-1 bg-[#6e63e5] text-white text-xs rounded-full">Campus: {selectedCampus}</span>
-                )}
-                {selectedCRN !== 'all' && (
-                  <span className="px-2 py-1 bg-[#6e63e5] text-white text-xs rounded-full">CRN: {selectedCRN}</span>
-                )}
+          {/* Performance Bar Chart or Loader */}
+          <div className="h-80">
+            {performanceLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6e63e5]"></div>
               </div>
-            </div>
-            <button 
-              onClick={() => {
-                setSelectedSemester('all');
-                setSelectedCourse('all');
-                setSelectedDepartment('all');
-                setSelectedCampus('all');
-                setSelectedCRN('all');
-                setSelectedTimeRange('30d');
-              }}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-xl hover:border-gray-400 transition-colors"
+            ) : (
+              <Bar 
+                data={{
+                  labels: ['Average Grade', 'Pass Rate'],
+                  datasets: [
+                    {
+                      label: 'Performance Metrics',
+                      data: [filteredPerformance.averageGrade, filteredPerformance.passRate],
+                      backgroundColor: ['#6e63e5', '#D3CEFC'],
+                      borderColor: ['#6e63e5', '#D3CEFC'],
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      borderSkipped: false,
+                    }
+                  ]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      max: 100,
+                      ticks: {
+                        callback: function(value) {
+                          return value + '%';
+                        }
+                      }
+                    }
+                  },
+                  plugins: {
+                    legend: {
+                      display: false
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: function(context) {
+                          return context.dataset.label + ': ' + context.parsed.y + '%';
+                        }
+                      }
+                    }
+                  }
+                }}
+              />
+            )}
+          </div>
+          
+          {/* Clear Filters Button */}
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={clearFilters}
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl transition-colors"
             >
-              Clear All Filters
+              Clear Filters
             </button>
+          </div>
+          
+          <div className="mt-4 text-center text-sm text-gray-600">
+            {filtersApplied 
+              ? "Showing performance metrics for applied filters" 
+              : "Showing overall performance metrics for all sections"}
           </div>
         </div>
 
@@ -412,19 +464,23 @@ const HomeDashboard = () => {
             <div className="flex items-end">
               <button 
                 onClick={handleCrnComparison}
-                disabled={!selectedCrn1 || !selectedCrn2 || loading}
+                disabled={!selectedCrn1 || !selectedCrn2 || crnComparisonLoading}
                 className="w-full px-4 py-2 bg-[#6e63e5] hover:bg-[#4c46a0] disabled:bg-gray-400 text-white rounded-xl transition-colors"
               >
-                Compare CRNs
+                {crnComparisonLoading ? 'Comparing...' : 'Compare CRNs'}
               </button>
             </div>
           </div>
           
-          {error && (
+          {error && !crnComparisonLoading && (
             <div className="text-red-500 text-sm mb-4">{error}</div>
           )}
           
-          {crnComparisonData && (
+          {crnComparisonLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6e63e5]"></div>
+            </div>
+          ) : crnComparisonData ? (
             <div className="mt-6">
               {/* Average Performance Comparison Bar Chart */}
               <div className="mb-6">
@@ -503,7 +559,7 @@ const HomeDashboard = () => {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Course Overview - Single Column Layout (Removed Students Column) */}

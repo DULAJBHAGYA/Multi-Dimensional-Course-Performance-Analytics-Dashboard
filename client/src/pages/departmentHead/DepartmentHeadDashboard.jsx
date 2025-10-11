@@ -122,6 +122,7 @@ const DepartmentHeadDashboard = () => {
     try {
       setComparisonLoading(true);
       setComparisonError(null);
+      setComparisonData(null); // Clear previous comparison data
       
       const response = await apiService.getDepartmentHeadInstructorComparison(
         selectedInstructor1,
@@ -133,6 +134,7 @@ const DepartmentHeadDashboard = () => {
     } catch (err) {
       console.error('Error fetching comparison data:', err);
       setComparisonError('Failed to load comparison data');
+      setComparisonData(null); // Clear comparison data on error
     } finally {
       setComparisonLoading(false);
     }
@@ -423,7 +425,11 @@ const DepartmentHeadDashboard = () => {
             </div>
           )}
           
-          {comparisonData && (
+          {comparisonLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6e63e5]"></div>
+            </div>
+          ) : comparisonData ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -509,9 +515,7 @@ const DepartmentHeadDashboard = () => {
                 </tbody>
               </table>
             </div>
-          )}
-          
-          {!comparisonData && !comparisonLoading && (
+          ) : (
             <div className="text-center py-8 text-gray-500">
               <p>Select two instructors and click "Compare" to see their performance comparison</p>
             </div>

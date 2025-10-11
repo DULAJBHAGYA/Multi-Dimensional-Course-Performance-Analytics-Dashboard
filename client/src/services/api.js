@@ -341,6 +341,27 @@ class ApiService {
     return this.get('/instructor/courses/instructor/course-pass-fail-summary');
   }
 
+  // New endpoint to get instructor filter options
+  async getInstructorFilterOptions() {
+    return this.get('/instructor/dashboard/instructor/filter-options');
+  }
+
+  // New endpoint to get filtered performance data
+  async getFilteredPerformance(courseCode = null, campus = null, semester = null, department = null) {
+    const params = {};
+    if (courseCode) params.course_code = courseCode;
+    if (campus) params.campus = campus;
+    if (semester) params.semester = semester;
+    if (department) params.department = department;
+    
+    return this.get('/instructor/dashboard/instructor/filtered-performance', params);
+  }
+
+  // New endpoint to get all sections grades for bar chart
+  async getAllSectionsGrades() {
+    return this.get('/instructor/dashboard/instructor/all-sections-grades');
+  }
+
   // Firebase Instructor Reports endpoints
   async getInstructorCoursePerformanceReport() {
     return this.get('/firebase/dashboard/instructor/reports/course-performance');

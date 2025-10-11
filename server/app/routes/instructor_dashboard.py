@@ -55,6 +55,18 @@ class StudentData(BaseModel):
     grade: float
     status: str
 
+# New data models for the filter API
+class InstructorFilterOptions(BaseModel):
+    courseCodes: List[str]
+    campuses: List[str]
+    semesters: List[str]
+    departments: List[str]
+
+class FilteredPerformanceData(BaseModel):
+    averageGrade: float
+    passRate: float
+    totalSections: int
+
 # New data model for instructor courses
 class InstructorCourseData(BaseModel):
     course_id: str
@@ -91,7 +103,288 @@ class InstructorCourseWithDepartment(BaseModel):
 class InstructorCoursesWithDepartmentsData(BaseModel):
     courses: List[InstructorCourseWithDepartment]
 
-# API Endpoints
+# New data model for section grades
+class SectionGradeData(BaseModel):
+    sectionId: str
+    courseCode: str
+    semester: str
+    campus: str
+    averageGrade: float
+
+class AllSectionsGradesData(BaseModel):
+    sections: List[SectionGradeData]
+
+# New endpoint to get filter options for instructor dashboard
+@router.get("/instructor/filter-options", response_model=InstructorFilterOptions)
+async def get_instructor_filter_options(
+    current_user: dict = Depends(verify_token)
+):
+    """Get filter options for dropdowns: courseCodes, campuses, semesters, and departments.
+    
+    This endpoint identifies the instructor's ID and queries the sections collection
+    to extract all unique values for courseCode, campus, semesterId, and department
+    that are associated with that instructor's sections.
+    """
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get sections assigned to this instructor
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section.to_dict() for section in sections_query]
+        
+        # Extract unique values for each filter option
+        course_codes = set()
+        campuses = set()
+        semesters = set()
+        departments = set()
+        
+        # Get campus names from campus IDs
+        campus_cache = {}
+        
+        # Get semester names from semester IDs
+        semester_cache = {}
+        
+        for section in instructor_sections:
+            # Course code - get from course document
+            course_id = section.get('courseId')
+            if course_id:
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict() or {}
+                    course_code = course_data.get('courseCode')
+                    if course_code:
+                        course_codes.add(course_code)
+            
+            # Campus - get from campus document using campusId
+            campus_id = section.get('campusId')
+            if campus_id:
+                if campus_id in campus_cache:
+                    campus_name = campus_cache[campus_id]
+                else:
+                    campus_doc = db.collection('campuses').document(campus_id).get()
+                    if campus_doc.exists:
+                        campus_data = campus_doc.to_dict() or {}
+                        campus_name = campus_data.get('campus', campus_id)
+                        campus_cache[campus_id] = campus_name
+                    else:
+                        campus_name = campus_id
+                        campus_cache[campus_id] = campus_name
+                campuses.add(campus_name)
+            
+            # Semester - get from semesterName field or resolve semesterId
+            semester_name = section.get('semesterName')
+            if semester_name:
+                semesters.add(semester_name)
+            else:
+                # Try to resolve semesterId to semesterName
+                semester_id = section.get('semesterId')
+                if semester_id:
+                    if semester_id in semester_cache:
+                        semester_name = semester_cache[semester_id]
+                    else:
+                        semester_doc = db.collection('semesters').document(semester_id).get()
+                        if semester_doc.exists:
+                            semester_data = semester_doc.to_dict() or {}
+                            semester_name = semester_data.get('semesterName', semester_id)
+                            semester_cache[semester_id] = semester_name
+                        else:
+                            semester_name = semester_id
+                            semester_cache[semester_id] = semester_name
+                    semesters.add(semester_name)
+            
+            # Department - get from department field
+            department = section.get('department')
+            if department:
+                departments.add(department)
+        
+        # Convert sets to sorted lists
+        sorted_course_codes = sorted(list(course_codes))
+        sorted_campuses = sorted(list(campuses))
+        sorted_semesters = sorted(list(semesters))
+        sorted_departments = sorted(list(departments))
+        
+        return {
+            "courseCodes": sorted_course_codes,
+            "campuses": sorted_campuses,
+            "semesters": sorted_semesters,
+            "departments": sorted_departments
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching instructor filter options: {str(e)}")
+
+# New endpoint to get filtered performance data
+@router.get("/instructor/filtered-performance", response_model=FilteredPerformanceData)
+async def get_filtered_performance(
+    course_code: Optional[str] = Query(None),
+    campus: Optional[str] = Query(None),
+    semester: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
+    current_user: dict = Depends(verify_token)
+):
+    """Calculate average grade and pass rate based on selected filters.
+    
+    This endpoint applies the selected filters to query the sections collection,
+    then calculates the average grade (mean of all averageGrade fields) and
+    pass rate (A, B, C, D count as pass; F counts as fail).
+    """
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Start with all sections for this instructor
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id)
+        
+        # Apply filters if provided
+        filtered_sections = []
+        sections_stream = sections_query.stream()
+        
+        # Create a cache for campus lookups
+        campus_cache = {}
+        
+        # Create a cache for semester lookups
+        semester_cache = {}
+        
+        for section_doc in sections_stream:
+            section = section_doc.to_dict()
+            include_section = True
+            
+            # Apply course code filter
+            if course_code:
+                course_id = section.get('courseId')
+                if course_id:
+                    course_doc = db.collection('courses').document(course_id).get()
+                    if course_doc.exists:
+                        course_data = course_doc.to_dict() or {}
+                        if course_data.get('courseCode') != course_code:
+                            include_section = False
+                    else:
+                        include_section = False
+                else:
+                    include_section = False
+            
+            # Apply campus filter
+            if campus and include_section:
+                campus_id = section.get('campusId')
+                if campus_id:
+                    # Look up campus name
+                    if campus_id in campus_cache:
+                        campus_name = campus_cache[campus_id]
+                    else:
+                        campus_doc = db.collection('campuses').document(campus_id).get()
+                        if campus_doc.exists:
+                            campus_data = campus_doc.to_dict() or {}
+                            campus_name = campus_data.get('campus', campus_id)
+                            campus_cache[campus_id] = campus_name
+                        else:
+                            campus_name = campus_id
+                            campus_cache[campus_id] = campus_name
+                    
+                    if campus_name != campus:
+                        include_section = False
+                else:
+                    include_section = False
+            
+            # Apply semester filter
+            if semester and include_section:
+                section_semester_name = section.get('semesterName')
+                if not section_semester_name:
+                    # Try to resolve semesterId to semesterName
+                    semester_id = section.get('semesterId')
+                    if semester_id:
+                        if semester_id in semester_cache:
+                            section_semester_name = semester_cache[semester_id]
+                        else:
+                            semester_doc = db.collection('semesters').document(semester_id).get()
+                            if semester_doc.exists:
+                                semester_data = semester_doc.to_dict() or {}
+                                section_semester_name = semester_data.get('semesterName', semester_id)
+                                semester_cache[semester_id] = section_semester_name
+                            else:
+                                section_semester_name = semester_id
+                                semester_cache[semester_id] = section_semester_name
+                
+                if section_semester_name != semester:
+                    include_section = False
+            
+            # Apply department filter
+            if department and include_section:
+                if section.get('department') != department:
+                    include_section = False
+            
+            if include_section:
+                filtered_sections.append(section)
+        
+        # Calculate average grade and pass rate
+        total_average_grade = 0
+        total_pass_count = 0
+        total_fail_count = 0
+        valid_sections_count = 0
+        total_grade_count = 0  # Total count of all grades
+        
+        for section in filtered_sections:
+            # Get average grade
+            average_grade = section.get('averageGrade')
+            if isinstance(average_grade, (int, float)):
+                total_average_grade += average_grade
+                valid_sections_count += 1
+            
+            # Calculate pass/fail from all assessments in the section
+            assessments = section.get('assessments', {})
+            if assessments:
+                # Iterate through each assessment in the section
+                for assessment_name, assessment_data in assessments.items():
+                    grade_breakdown = assessment_data.get('gradeBreakdown', {})
+                    if grade_breakdown:
+                        # Pass grades: A, B, C, D
+                        pass_count = (
+                            grade_breakdown.get('A', 0) +
+                            grade_breakdown.get('B', 0) +
+                            grade_breakdown.get('C', 0) +
+                            grade_breakdown.get('D', 0)
+                        )
+                        
+                        # Fail grade: F
+                        fail_count = grade_breakdown.get('F', 0)
+                        
+                        # Total grade count
+                        section_total = pass_count + fail_count
+                        total_grade_count += section_total
+                        
+                        total_pass_count += pass_count
+                        total_fail_count += fail_count
+        
+        # Calculate final metrics
+        if valid_sections_count > 0:
+            average_grade = total_average_grade / valid_sections_count
+        else:
+            average_grade = 0.0
+        
+        # Calculate pass rate based on total grade counts across all sections and assessments
+        if total_grade_count > 0:
+            pass_rate = (total_pass_count / total_grade_count) * 100
+        else:
+            pass_rate = 0.0
+        
+        return {
+            "averageGrade": round(average_grade, 2),
+            "passRate": round(pass_rate, 2),
+            "totalSections": len(filtered_sections)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating filtered performance data: {str(e)}")
 
 # New endpoint to get instructor's average performance based on sections
 @router.get("/instructor/section-based-performance-average", response_model=InstructorAveragePerformanceData)
@@ -531,6 +824,79 @@ async def get_instructor_crns(
     except Exception as e:
         print(f"Error in get_instructor_crns: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching instructor CRNs: {str(e)}")
+
+# New endpoint to get all sections grades for bar chart visualization
+@router.get("/instructor/all-sections-grades", response_model=AllSectionsGradesData)
+async def get_all_sections_grades(
+    current_user: dict = Depends(verify_token)
+):
+    """Get all sections grades for bar chart visualization.
+    
+    This endpoint fetches all sections for the instructor with their average grades
+    to display in a bar chart when no filters are applied.
+    """
+    try:
+        db = get_firestore_client()
+        if not db:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        instructor_id = current_user.get('instructorId')
+        if not instructor_id:
+            raise HTTPException(status_code=400, detail="Instructor ID not found")
+        
+        # Get all sections assigned to this instructor
+        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
+        instructor_sections = [section_doc.to_dict() for section_doc in sections_query]
+        
+        # Create a cache for campus lookups
+        campus_cache = {}
+        
+        # Process sections to extract grade data
+        sections_data = []
+        for section in instructor_sections:
+            section_id = section.get('sectionId') or section.get('id')
+            average_grade = section.get('averageGrade', 0)
+            semester = section.get('semesterName', 'Unknown')
+            
+            # Get course code
+            course_code = 'Unknown Course'
+            course_id = section.get('courseId')
+            if course_id:
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict() or {}
+                    course_code = course_data.get('courseCode', 'Unknown Course')
+            
+            # Get campus name
+            campus_name = 'Unknown Campus'
+            campus_id = section.get('campusId')
+            if campus_id:
+                if campus_id in campus_cache:
+                    campus_name = campus_cache[campus_id]
+                else:
+                    campus_doc = db.collection('campuses').document(campus_id).get()
+                    if campus_doc.exists:
+                        campus_data = campus_doc.to_dict() or {}
+                        campus_name = campus_data.get('campus', campus_id)
+                        campus_cache[campus_id] = campus_name
+                    else:
+                        campus_name = campus_id
+                        campus_cache[campus_id] = campus_name
+            
+            sections_data.append({
+                "sectionId": section_id or 'Unknown',
+                "courseCode": course_code,
+                "semester": semester,
+                "campus": campus_name,
+                "averageGrade": average_grade if isinstance(average_grade, (int, float)) else 0
+            })
+        
+        return {
+            "sections": sections_data
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching all sections grades: {str(e)}")
 
 
 
