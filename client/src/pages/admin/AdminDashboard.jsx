@@ -380,34 +380,19 @@ const AdminDashboard = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white p-4 rounded-2xl">
-                  <p className="text-sm text-gray-600">Next Semester Projection</p>
+                  <p className="text-sm text-gray-600">Predictive Average Grade</p>
                   <p className="text-2xl font-bold text-gray-900">{aiPredictions.nextSemesterProjection}%</p>
-                  <p className="text-xs text-gray-500">Pass Rate</p>
                 </div>
                 <div className="bg-white p-4 rounded-2xl">
-                  <p className="text-sm text-gray-600">At-Risk Students</p>
-                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.atRiskStudentsNextSemester}</p>
-                  <p className="text-xs text-gray-500">Projected</p>
+                  <p className="text-sm text-gray-600">Predictive Pass Rate</p>
+                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.nextSemesterProjection}%</p>
                 </div>
                 <div className="bg-white p-4 rounded-2xl">
-                  <p className="text-sm text-gray-600">Expected Enrollment</p>
-                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.expectedEnrollment.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">Students</p>
+                  <p className="text-sm text-gray-600">Predicted Course Count Performance Index</p>
+                  <p className="text-2xl font-bold text-gray-900">{Math.round(aiPredictions.nextSemesterProjection * 10)}</p>
                 </div>
               </div>
-              <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Recommended Interventions</h4>
-                <ul className="space-y-2">
-                  {aiPredictions.recommendedInterventions.map((intervention, index) => (
-                    <li key={index} className="flex items-start">
-                      <svg className="w-4 h-4 text-[#6e63e5] mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-sm text-gray-700">{intervention}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+
             </div>
           </div>
         </div>
