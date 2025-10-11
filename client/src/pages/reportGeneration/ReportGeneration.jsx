@@ -3,6 +3,11 @@ import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import apiService from '../../services/api';
 
+// Import export libraries
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+
 const ReportGeneration = () => {
   const { user } = useAuth();
   const [activeReport, setActiveReport] = useState('course-performance');
@@ -128,7 +133,40 @@ const ReportGeneration = () => {
     try {
       setLoading(true);
       
-      // Download the report using the API service
+      // For course performance report, export the currently displayed data
+      if (activeReport === 'course-performance' && coursePerformanceReport) {
+        if (exportFormat === 'pdf') {
+          await exportCoursePerformanceToPDF();
+        } else if (exportFormat === 'xlsx') {
+          await exportCoursePerformanceToExcel();
+        }
+        setLoading(false);
+        return;
+      }
+      
+      // For predictive risk report, export the currently displayed data
+      if (activeReport === 'predictive-risk' && predictiveRiskReport) {
+        if (exportFormat === 'pdf') {
+          await exportPredictiveRiskToPDF();
+        } else if (exportFormat === 'xlsx') {
+          await exportPredictiveRiskToExcel();
+        }
+        setLoading(false);
+        return;
+      }
+      
+      // For sections analysis report, export the currently displayed data
+      if (activeReport === 'sections-analysis' && studentAnalyticsReport) {
+        if (exportFormat === 'pdf') {
+          await exportSectionsAnalysisToPDF();
+        } else if (exportFormat === 'xlsx') {
+          await exportSectionsAnalysisToExcel();
+        }
+        setLoading(false);
+        return;
+      }
+      
+      // For other reports, use the backend API
       const response = await apiService.downloadInstructorReport(
         activeReport, 
         exportFormat, 
@@ -163,46 +201,41 @@ const ReportGeneration = () => {
       setLoading(false);
     }
   };
-
-  // Function to generate reports on the client side
-  const generateClientSideReport = async (reportData, reportType, format) => {
-    if (format === 'pdf') {
-      // For PDF generation, we'll use jsPDF
-      const jsPDF = await import('jspdf');
-      const autoTable = await import('jspdf-autotable');
-      const doc = new jsPDF.default();
+  
+  // Export course performance report to PDF
+  const exportCoursePerformanceToPDF = async () => {
+    try {
+      const doc = new jsPDF();
       
       // Add title
       doc.setFontSize(18);
       doc.text('Course Performance Analysis Report', 14, 20);
-      
-      // Add generated date
       doc.setFontSize(12);
-      doc.text(`Generated: ${new Date(reportData.generatedAt).toLocaleDateString()}`, 14, 30);
+      doc.text(`Generated: ${new Date(coursePerformanceReport.generatedAt).toLocaleDateString()}`, 14, 30);
       
       // Add summary cards
       doc.setFontSize(14);
       doc.text('Summary', 14, 45);
       
       doc.setFontSize(12);
-      doc.text(`Total Courses: ${reportData.summary.totalCourses}`, 14, 55);
-      doc.text(`At Risk Courses: ${reportData.summary.atRiskCourses}`, 14, 65);
-      doc.text(`Average Performance: ${reportData.summary.avgPerformance}%`, 14, 75);
-      doc.text(`Pass Rate: ${reportData.summary.passRate}%`, 14, 85);
+      doc.text(`Total Courses: ${coursePerformanceReport.summary.totalCourses}`, 14, 55);
+      doc.text(`At Risk Courses: ${coursePerformanceReport.summary.atRiskCourses}`, 14, 65);
+      doc.text(`Average Performance: ${coursePerformanceReport.summary.avgPerformance}%`, 14, 75);
+      doc.text(`Pass Rate: ${coursePerformanceReport.summary.passRate}%`, 14, 85);
       
       // Add course data table
-      if (reportData.courses && reportData.courses.length > 0) {
+      if (coursePerformanceReport.courses && coursePerformanceReport.courses.length > 0) {
         doc.setFontSize(14);
         doc.text('Course Details', 14, 100);
         
-        const tableData = reportData.courses.map(course => [
+        const tableData = coursePerformanceReport.courses.map(course => [
           `${course.courseCode} - ${course.courseName}`,
           course.campus,
           `${course.passRate}%`,
           `${course.avgGrade}%`
         ]);
         
-        autoTable.default(doc, {
+        autoTable(doc, {
           startY: 110,
           head: [['Course', 'Campus', 'Pass Rate', 'Average Grade']],
           body: tableData,
@@ -213,32 +246,37 @@ const ReportGeneration = () => {
       
       // Save the PDF
       doc.save(`course-performance-analysis-report-${new Date().toISOString().split('T')[0]}.pdf`);
-    } else if (format === 'xlsx' || format === 'csv') {
-      // For Excel/CSV generation, we'll use SheetJS
-      const XLSX = await import('xlsx');
-      
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      throw new Error('Failed to export to PDF: ' + error.message);
+    }
+  };
+  
+  // Export course performance report to Excel/CSV
+  const exportCoursePerformanceToExcel = async () => {
+    try {
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       
       // Summary data
       const summaryData = [
         ['Metric', 'Value'],
-        ['Total Courses', reportData.summary.totalCourses],
-        ['At Risk Courses', reportData.summary.atRiskCourses],
-        ['Average Performance', `${reportData.summary.avgPerformance}%`],
-        ['Pass Rate', `${reportData.summary.passRate}%`]
+        ['Total Courses', coursePerformanceReport.summary.totalCourses],
+        ['At Risk Courses', coursePerformanceReport.summary.atRiskCourses],
+        ['Average Performance', `${coursePerformanceReport.summary.avgPerformance}%`],
+        ['Pass Rate', `${coursePerformanceReport.summary.passRate}%`]
       ];
       
       const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
       
       // Course data
-      if (reportData.courses && reportData.courses.length > 0) {
+      if (coursePerformanceReport.courses && coursePerformanceReport.courses.length > 0) {
         const courseData = [
           ['Course Code', 'Course Name', 'Campus', 'Pass Rate', 'Average Grade']
         ];
         
-        reportData.courses.forEach(course => {
+        coursePerformanceReport.courses.forEach(course => {
           courseData.push([
             course.courseCode,
             course.courseName,
@@ -253,8 +291,191 @@ const ReportGeneration = () => {
       }
       
       // Export file
-      const filename = `course-performance-analysis-report-${new Date().toISOString().split('T')[0]}.${format}`;
+      const filename = `course-performance-analysis-report-${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(wb, filename);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      throw new Error('Failed to export to Excel: ' + error.message);
+    }
+  };
+  
+  // Export predictive risk report to PDF
+  const exportPredictiveRiskToPDF = async () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(18);
+      doc.text('Predictive Risk Report', 14, 20);
+      doc.setFontSize(12);
+      doc.text(`Generated: ${new Date(predictiveRiskReport.generatedAt).toLocaleDateString()}`, 14, 30);
+      
+      // Add summary cards
+      doc.setFontSize(14);
+      doc.text('Summary', 14, 45);
+      
+      doc.setFontSize(12);
+      doc.text(`At-Risk Students: ${predictiveRiskReport.summary.totalAtRiskStudents}`, 14, 55);
+      doc.text(`High Risk: ${predictiveRiskReport.summary.highRisk}`, 14, 65);
+      doc.text(`Medium Risk: ${predictiveRiskReport.summary.mediumRisk}`, 14, 75);
+      doc.text(`Low Risk: ${predictiveRiskReport.summary.lowRisk}`, 14, 85);
+      
+      // Add at-risk students table
+      if (predictiveRiskReport.atRiskStudents && predictiveRiskReport.atRiskStudents.length > 0) {
+        doc.setFontSize(14);
+        doc.text('At-Risk Students', 14, 100);
+        
+        const tableData = predictiveRiskReport.atRiskStudents.map(student => [
+          student.studentName,
+          `${student.riskLevel} Risk`,
+          `${student.predictedDropoutProbability}%`,
+          student.riskFactors.join(', '),
+          student.lastActive,
+          student.recommendedInterventions.slice(0, 2).join(', ')
+        ]);
+        
+        autoTable(doc, {
+          startY: 110,
+          head: [['Student', 'Risk Level', 'Dropout Probability', 'Risk Factors', 'Last Active', 'Interventions']],
+          body: tableData,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [110, 99, 229] }
+        });
+      }
+      
+      // Save the PDF
+      doc.save(`predictive-risk-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      throw new Error('Failed to export to PDF: ' + error.message);
+    }
+  };
+  
+  // Export predictive risk report to Excel/CSV
+  const exportPredictiveRiskToExcel = async () => {
+    try {
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      
+      // Summary data
+      const summaryData = [
+        ['Metric', 'Value'],
+        ['At-Risk Students', predictiveRiskReport.summary.totalAtRiskStudents],
+        ['High Risk', predictiveRiskReport.summary.highRisk],
+        ['Medium Risk', predictiveRiskReport.summary.mediumRisk],
+        ['Low Risk', predictiveRiskReport.summary.lowRisk]
+      ];
+      
+      const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+      
+      // At-risk students data
+      if (predictiveRiskReport.atRiskStudents && predictiveRiskReport.atRiskStudents.length > 0) {
+        const studentData = [
+          ['Student Name', 'Email', 'Risk Level', 'Dropout Probability', 'Risk Factors', 'Last Active', 'Interventions']
+        ];
+        
+        predictiveRiskReport.atRiskStudents.forEach(student => {
+          studentData.push([
+            student.studentName,
+            student.email,
+            `${student.riskLevel} Risk`,
+            `${student.predictedDropoutProbability}%`,
+            student.riskFactors.join(', '),
+            student.lastActive,
+            student.recommendedInterventions.slice(0, 2).join(', ')
+          ]);
+        });
+        
+        const studentWs = XLSX.utils.aoa_to_sheet(studentData);
+        XLSX.utils.book_append_sheet(wb, studentWs, 'At-Risk Students');
+      }
+      
+      // Export file
+      const filename = `predictive-risk-report-${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, filename);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      throw new Error('Failed to export to Excel: ' + error.message);
+    }
+  };
+  
+  // Export sections analysis report to PDF
+  const exportSectionsAnalysisToPDF = async () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(18);
+      doc.text('Sections Analysis Report', 14, 20);
+      doc.setFontSize(12);
+      doc.text(`Generated: ${new Date(studentAnalyticsReport.generatedAt).toLocaleDateString()}`, 14, 30);
+      
+      // Add sections data table
+      if (studentAnalyticsReport.sections && studentAnalyticsReport.sections.length > 0) {
+        doc.setFontSize(14);
+        doc.text('Sections Data', 14, 45);
+        
+        const tableData = studentAnalyticsReport.sections.map(section => [
+          section.crn,
+          `${section.course_code} - ${section.course_name}`,
+          section.semester,
+          section.campus,
+          `${section.avg_grade}%`,
+          section.status
+        ]);
+        
+        autoTable(doc, {
+          startY: 55,
+          head: [['CRN', 'Course', 'Semester', 'Campus', 'Average Grade', 'Status']],
+          body: tableData,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [110, 99, 229] }
+        });
+      }
+      
+      // Save the PDF
+      doc.save(`sections-analysis-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      throw new Error('Failed to export to PDF: ' + error.message);
+    }
+  };
+  
+  // Export sections analysis report to Excel/CSV
+  const exportSectionsAnalysisToExcel = async () => {
+    try {
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      
+      // Sections data
+      if (studentAnalyticsReport.sections && studentAnalyticsReport.sections.length > 0) {
+        const sectionData = [
+          ['CRN', 'Course Code', 'Course Name', 'Semester', 'Campus', 'Average Grade', 'Status']
+        ];
+        
+        studentAnalyticsReport.sections.forEach(section => {
+          sectionData.push([
+            section.crn,
+            section.course_code,
+            section.course_name,
+            section.semester,
+            section.campus,
+            `${section.avg_grade}%`,
+            section.status
+          ]);
+        });
+        
+        const sectionWs = XLSX.utils.aoa_to_sheet(sectionData);
+        XLSX.utils.book_append_sheet(wb, sectionWs, 'Sections');
+      }
+      
+      // Export file
+      const filename = `sections-analysis-report-${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, filename);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      throw new Error('Failed to export to Excel: ' + error.message);
     }
   };
 
@@ -649,7 +870,6 @@ const ReportGeneration = () => {
                 >
                   <option value="pdf">PDF</option>
                   <option value="xlsx">Excel</option>
-                  <option value="csv">CSV</option>
                 </select>
               </div>
             </div>
