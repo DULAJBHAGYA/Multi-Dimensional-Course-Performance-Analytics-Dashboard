@@ -538,7 +538,7 @@ async def get_admin_campus_performance_trend(
         semester_names = {}
         for semester_doc in semesters_query:
             semester_data = semester_doc.to_dict() or {}
-            semester_names[semester_doc.id] = semester_data.get('semesterName', f'Semester {semester_doc.id}')
+            semester_names[semester_doc.id] = semester_data.get('semester', f'Semester {semester_doc.id}')
         
         # Calculate average grades for each semester and add semester names
         performance_trend = []
@@ -1271,7 +1271,7 @@ async def get_instructor_course_performance_report(
                         semester_doc = db.collection('semesters').document(semester_id).get()
                         if semester_doc.exists:
                             semester_data = semester_doc.to_dict() or {}
-                            semester_name = semester_data.get('semesterName', semester_name)
+                            semester_name = semester_data.get('semester', semester_name)
                     
                     # Get course-specific performance data
                     course_section_id = related_section.get('sectionId') or related_section.get('id')
@@ -1448,7 +1448,7 @@ async def get_instructor_course_performance_analysis(
                         semester_doc = db.collection('semesters').document(semester_id).get()
                         if semester_doc.exists:
                             semester_data = semester_doc.to_dict() or {}
-                            semester_name = semester_data.get('semesterName', 'Unknown Semester')
+                            semester_name = semester_data.get('semester', 'Unknown Semester')
                     
                     # Get course-specific performance data
                     course_section_ids = [s.get('sectionId') or s.get('id') for s in related_sections 
@@ -1756,7 +1756,7 @@ async def get_instructor_semester_comparison_report(
                 if semester_doc.exists:
                     semester_data = semester_doc.to_dict() or {}
                     semester_details[semester_id] = {
-                        'semesterName': semester_data.get('semesterName', f'Semester {semester_id}'),
+                        'semesterName': semester_data.get('semester', f'Semester {semester_id}'),
                         'startDate': semester_data.get('startDate', ''),
                         'endDate': semester_data.get('endDate', '')
                     }
@@ -1964,7 +1964,7 @@ async def get_instructor_student_analytics_report(  # pyright: ignore[reportRede
                         semester_doc = db.collection('semesters').document(semester_id).get()
                         if semester_doc.exists:
                             semester_data = semester_doc.to_dict() or {}
-                            semester_name = semester_data.get('semesterName', 'Unknown Semester')
+                            semester_name = semester_data.get('semester', 'Unknown Semester')
                     
                     # Get course-specific performance data
                     course_section_ids = [s.get('sectionId') or s.get('id') for s in related_sections 
@@ -2254,7 +2254,7 @@ async def get_instructor_detailed_assessment_report(
                 if semester_doc.exists:
                     semester_data = semester_doc.to_dict() or {}
                     semester_details[semester_id] = {
-                        'semesterName': semester_data.get('semesterName', f'Semester {semester_id}'),
+                        'semesterName': semester_data.get('semester', f'Semester {semester_id}'),
                         'startDate': semester_data.get('startDate', ''),
                         'endDate': semester_data.get('endDate', '')
                     }
@@ -3074,7 +3074,7 @@ async def get_admin_filter_options(
             semester_data = semester_doc.to_dict() or {}
             semesters.append({
                 "id": semester_doc.id,
-                "name": semester_data.get('semesterName', 'Unknown Semester')
+                "name": semester_data.get('semester', 'Unknown Semester')
             })
         
         # Fetch campuses with limit

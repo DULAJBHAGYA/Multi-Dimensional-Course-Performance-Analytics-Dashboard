@@ -162,15 +162,13 @@ const DepartmentHeadReports = () => {
           const tableData = allInstructorsPerformanceReport.instructors.map(instructor => [
             instructor.instructor_name,
             instructor.courses_taught.join(', '),
-            instructor.total_students,
-            `${instructor.pass_rate}%`,
             `${instructor.average_grade}%`,
             instructor.sections_count
           ]);
           
           autoTable.default(doc, {
             startY: 95,
-            head: [['Instructor', 'Courses Taught', 'Students', 'Pass Rate', 'Average Grade', 'Sections']],
+            head: [['Instructor', 'Courses Taught', 'Average Grade', 'CRNs']],
             body: tableData,
             styles: { fontSize: 8 },
             headStyles: { fillColor: [110, 99, 229] }
@@ -245,15 +243,13 @@ const DepartmentHeadReports = () => {
         // All instructors performance data
         if (allInstructorsPerformanceReport.instructors.length > 0) {
           const instructorsData = [
-            ['Instructor', 'Courses Taught', 'Students', 'Pass Rate', 'Average Grade', 'Sections']
+            ['Instructor', 'Courses Taught', 'Average Grade', 'CRNs']
           ];
           
           allInstructorsPerformanceReport.instructors.forEach(instructor => {
             instructorsData.push([
               instructor.instructor_name,
               instructor.courses_taught.join(', '),
-              instructor.total_students,
-              `${instructor.pass_rate}%`,
               `${instructor.average_grade}%`,
               instructor.sections_count
             ]);
@@ -287,9 +283,7 @@ const DepartmentHeadReports = () => {
 
   const getStatusColor = (value, isGrade = true) => {
     if (isGrade) {
-      if (value >= 90) return 'text-green-600 bg-green-100';
-      if (value >= 70) return 'text-blue-600 bg-blue-100';
-      if (value >= 40) return 'text-yellow-600 bg-yellow-100';
+      if (value >= 70) return 'text-green-600 bg-green-100';
       return 'text-red-600 bg-red-100';
     } else {
       // For non-grade values, we can't determine good/bad without context
@@ -433,9 +427,9 @@ const DepartmentHeadReports = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{trend.average_grade}%</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(trend.average_grade)}`}>
-                          {trend.average_grade >= 90 ? 'Excellent' : 
+                          { 
                            trend.average_grade >= 70 ? 'Good' : 
-                           trend.average_grade >= 40 ? 'Fair' : 'Needs Improvement'}
+                           trend.average_grade < 70 ? 'At Risk' : 'Needs Improvement'}
                         </span>
                       </td>
                     </tr>
@@ -473,16 +467,10 @@ const DepartmentHeadReports = () => {
                       Courses Taught
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Students
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Pass Rate
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Average Grade
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Sections
+                      CRNs
                     </th>
                   </tr>
                 </thead>
@@ -497,20 +485,9 @@ const DepartmentHeadReports = () => {
                           {instructor.courses_taught.join(', ')}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {instructor.total_students}
-                      </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                        instructor.pass_rate >= 90 ? 'text-green-600' : 
-                        instructor.pass_rate >= 70 ? 'text-blue-600' : 
-                        instructor.pass_rate >= 40 ? 'text-yellow-600' : 'text-red-600'
-                      }`}>
-                        {instructor.pass_rate}%
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                        instructor.average_grade >= 90 ? 'text-green-600' : 
-                        instructor.average_grade >= 70 ? 'text-blue-600' : 
-                        instructor.average_grade >= 40 ? 'text-yellow-600' : 'text-red-600'
+                        instructor.average_grade >= 70 ? 'text-green-600' : 
+                        instructor.average_grade < 40 ? 'text-red-600' : 'text-red-600'
                       }`}>
                         {instructor.average_grade}%
                       </td>
@@ -558,9 +535,8 @@ const DepartmentHeadReports = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{trend.average_grade}%</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(trend.average_grade)}`}>
-                          {trend.average_grade >= 90 ? 'Excellent' : 
-                           trend.average_grade >= 70 ? 'Good' : 
-                           trend.average_grade >= 40 ? 'Fair' : 'Needs Improvement'}
+                          {trend.average_grade >= 70 ? 'Good' : 
+                           trend.average_grade < 70 ? 'At Risk' : 'Needs Improvement'}
                         </span>
                       </td>
                     </tr>

@@ -278,7 +278,6 @@ const AdminDashboard = () => {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Rate</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
                     </tr>
                   </thead>
@@ -288,7 +287,6 @@ const AdminDashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.courseCode}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseName}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.department}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.passRate}%</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.averageGrade}</td>
                       </tr>
                     ))}

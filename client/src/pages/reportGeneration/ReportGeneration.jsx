@@ -231,13 +231,12 @@ const ReportGeneration = () => {
         const tableData = coursePerformanceReport.courses.map(course => [
           `${course.courseCode} - ${course.courseName}`,
           course.campus,
-          `${course.passRate}%`,
           `${course.avgGrade}%`
         ]);
         
         autoTable(doc, {
           startY: 110,
-          head: [['Course', 'Campus', 'Pass Rate', 'Average Grade']],
+          head: [['Course', 'Campus', 'Average Grade']],
           body: tableData,
           styles: { fontSize: 8 },
           headStyles: { fillColor: [110, 99, 229] }
@@ -263,8 +262,7 @@ const ReportGeneration = () => {
         ['Metric', 'Value'],
         ['Total Courses', coursePerformanceReport.summary.totalCourses],
         ['At Risk Courses', coursePerformanceReport.summary.atRiskCourses],
-        ['Average Performance', `${coursePerformanceReport.summary.avgPerformance}%`],
-        ['Pass Rate', `${coursePerformanceReport.summary.passRate}%`]
+        ['Average Performance', `${coursePerformanceReport.summary.avgPerformance}%`]
       ];
       
       const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
@@ -273,7 +271,7 @@ const ReportGeneration = () => {
       // Course data
       if (coursePerformanceReport.courses && coursePerformanceReport.courses.length > 0) {
         const courseData = [
-          ['Course Code', 'Course Name', 'Campus', 'Pass Rate', 'Average Grade']
+          ['Course Code', 'Course Name', 'Campus', 'Average Grade']
         ];
         
         coursePerformanceReport.courses.forEach(course => {
@@ -281,7 +279,6 @@ const ReportGeneration = () => {
             course.courseCode,
             course.courseName,
             course.campus,
-            `${course.passRate}%`,
             `${course.avgGrade}%`
           ]);
         });
@@ -407,7 +404,7 @@ const ReportGeneration = () => {
       
       // Add title
       doc.setFontSize(18);
-      doc.text('Sections Analysis Report', 14, 20);
+      doc.text('CRNs Performance Report', 14, 20);
       doc.setFontSize(12);
       doc.text(`Generated: ${new Date(studentAnalyticsReport.generatedAt).toLocaleDateString()}`, 14, 30);
       
@@ -482,7 +479,7 @@ const ReportGeneration = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'Excellent': return 'text-green-600 bg-green-100';
-      case 'Good': return 'text-blue-600 bg-blue-100';
+      case 'Good': return 'text-green-600 bg-green-100';
       case 'Fair': return 'text-yellow-600 bg-yellow-100';
       case 'Needs Improvement': return 'text-red-600 bg-red-100';
       case 'At Risk': 
@@ -550,8 +547,8 @@ const ReportGeneration = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <div className="font-medium">Sections Analysis</div>
-              <div className="text-sm mt-1">Section performance insights</div>
+              <div className="font-medium">CRNs</div>
+              <div className="text-sm mt-1">CRN performance insight</div>
             </button>
           </div>
         </div>
@@ -590,7 +587,7 @@ const ReportGeneration = () => {
             </div>
             
             {/* Summary Cards - Matching KPIs from CourseAnalytics page */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               <div className="text-center p-4 bg-blue-100 rounded-3xl">
                 <div className="text-2xl font-bold text-blue-400">{coursePerformanceReport.summary.totalCourses}</div>
                 <div className="text-sm text-gray-600">Total Courses</div>
@@ -605,11 +602,6 @@ const ReportGeneration = () => {
                 <div className="text-2xl font-bold text-green-400">{coursePerformanceReport.summary.avgPerformance}%</div>
                 <div className="text-sm text-gray-600">Average Performance</div>
               </div>
-              
-              <div className="text-center p-4 bg-yellow-100 rounded-3xl">
-                <div className="text-2xl font-bold text-yellow-400">{coursePerformanceReport.summary.passRate}%</div>
-                <div className="text-sm text-gray-600">Pass Rate</div>
-              </div>
             </div>
             
             {/* Course Data Table */}
@@ -619,7 +611,6 @@ const ReportGeneration = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campus</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Rate</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   </tr>
@@ -632,20 +623,16 @@ const ReportGeneration = () => {
                         <div className="text-sm text-gray-500">{course.courseName}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.campus}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {/* Using course-specific pass rate from pass-fail summary */}
-                        {course.passRate}%
-                      </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                        course.avgGrade < 40 ? 'text-red-600' : 'text-gray-900'
+                        course.avgGrade < 70 ? 'text-red-600' : 'text-gray-900'
                       }`}>
                         {course.avgGrade}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs rounded-full ${
-                          course.avgGrade < 40 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                          course.avgGrade < 70 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                         }`}>
-                          {course.avgGrade < 40 ? 'At Risk' : 'Good'}
+                          {course.avgGrade < 70 ? 'At Risk' : 'Good'}
                         </span>
                       </td>
                     </tr>
@@ -745,7 +732,7 @@ const ReportGeneration = () => {
         {activeReport === 'sections-analysis' && studentAnalyticsReport && (
           <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Sections Analysis Report</h2>
+              <h2 className="text-xl font-semibold text-gray-900">CRNs Performance Report</h2>
               <div className="text-sm text-gray-500">
                 Generated: {new Date(studentAnalyticsReport.generatedAt).toLocaleDateString()}
               </div>
@@ -775,9 +762,8 @@ const ReportGeneration = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{section.semester}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{section.campus}</td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                        section.avg_grade >= 90 ? 'text-green-600' : 
-                        section.avg_grade >= 70 ? 'text-blue-600' : 
-                        section.avg_grade >= 40 ? 'text-yellow-600' : 'text-red-600'
+                        section.avg_grade >= 70 ? 'text-green-600' : 
+                        section.avg_grade < 70 ? 'text-red-600' : 'text-red-600'
                       }`}>
                         {section.avg_grade}%
                       </td>
@@ -798,19 +784,11 @@ const ReportGeneration = () => {
               <div className="flex flex-wrap gap-4 text-sm">
                 <div key="excellent" className="flex items-center">
                   <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
-                  <span>90-100 (Excellent)</span>
-                </div>
-                <div key="good" className="flex items-center">
-                  <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
-                  <span>70-89 (Good)</span>
-                </div>
-                <div key="fair" className="flex items-center">
-                  <div className="w-3 h-3 bg-yellow-600 rounded-full mr-2"></div>
-                  <span>40-69 (Fair)</span>
+                  <span>70-100 (Good)</span>
                 </div>
                 <div key="needs-improvement" className="flex items-center">
                   <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
-                  <span>Below 40 (Needs Improvement)</span>
+                  <span>Below 70 (Needs Improvement)</span>
                 </div>
               </div>
             </div>

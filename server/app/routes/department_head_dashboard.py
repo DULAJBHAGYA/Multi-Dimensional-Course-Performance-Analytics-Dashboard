@@ -294,7 +294,7 @@ async def get_department_head_at_risk_courses_count(current_user: dict = Depends
                 # Calculate average of section averageGrade values for this course
                 course_average = sum(grades) / len(grades)
                 # If course average is less than 40, it's at-risk
-                if course_average < 40:
+                if course_average < 70:
                     at_risk_courses_count += 1
         
         # Return the count of at-risk courses
@@ -378,7 +378,7 @@ async def get_department_head_at_risk_courses(current_user: dict = Depends(verif
                 # Calculate average of section averageGrade values for this course
                 course_average = sum(data['grades']) / len(data['grades'])
                 # If course average is less than 40, it's at-risk
-                if course_average < 40:
+                if course_average < 70:
                     # Get instructor names
                     instructor_names = []
                     for instructor_id in data['instructor_ids']:
@@ -386,7 +386,7 @@ async def get_department_head_at_risk_courses(current_user: dict = Depends(verif
                         if instructor_doc and instructor_doc.exists:
                             instructor_data = instructor_doc.to_dict()
                             if instructor_data:
-                                instructor_names.append(instructor_data.get('name', instructor_id))
+                                instructor_names.append(instructor_data.get('username') or instructor_data.get('display_name') or instructor_data.get('email') or instructor_id)
                             else:
                                 instructor_names.append(instructor_id)
                         else:
@@ -562,8 +562,18 @@ async def get_department_head_instructor_comparison(
         instructor1_data = instructor1_doc.to_dict() if instructor1_doc.exists else {}
         instructor2_data = instructor2_doc.to_dict() if instructor2_doc.exists else {}
         
-        instructor1_name = instructor1_data.get('name', instructor1_id) if instructor1_data else instructor1_id
-        instructor2_name = instructor2_data.get('name', instructor2_id) if instructor2_data else instructor2_id
+        instructor1_name = instructor1_data.get('username') or instructor1_data.get('display_name') or instructor1_data.get('email') or instructor1_id if instructor1_data else instructor1_id
+        instructor2_name = instructor2_data.get('username') or instructor2_data.get('display_name') or instructor2_data.get('email') or instructor2_id if instructor2_data else instructor2_id
+        
+        # Get course name from courses collection if course_code is provided
+        course_name = None
+        if course_code:
+            # Query the courses collection to get the course name
+            course_query = db.collection('courses').where('courseCode', '==', course_code).limit(1).stream()
+            course_docs = list(course_query)
+            if course_docs:
+                course_data = course_docs[0].to_dict() or {}
+                course_name = course_data.get('courseName', course_code)
         
         # Return comparison data
         return {
@@ -579,6 +589,7 @@ async def get_department_head_instructor_comparison(
                     "metrics": instructor2_metrics
                 },
                 "course_code": course_code,
+                "course_name": course_name,  # Added course name to the response
                 "department": department_name,
                 "campus": campus_name
             }
@@ -627,7 +638,7 @@ async def get_department_head_instructor_options(current_user: dict = Depends(ve
             instructor_doc = db.collection('instructors').document(instructor_id).get()
             # Handle potential None values from to_dict()
             instructor_data = instructor_doc.to_dict() if instructor_doc.exists else {}
-            instructor_name = instructor_data.get('name', instructor_id) if instructor_data else instructor_id
+            instructor_name = instructor_data.get('username') or instructor_data.get('display_name') or instructor_data.get('email') or instructor_id if instructor_data else instructor_id
             instructor_options.append({
                 "id": instructor_id,
                 "name": instructor_name
@@ -870,7 +881,7 @@ async def get_department_head_grade_trends(current_user: dict = Depends(verify_t
                 # Get semester name from semesters collection
                 semester_doc = db.collection('semesters').document(semester_id).get()
                 semester_data = semester_doc.to_dict() if semester_doc.exists else {}
-                semester_name = semester_data.get('name', semester_id) if semester_data else semester_id
+                semester_name = semester_data.get('semester', semester_id) if semester_data else semester_id
                 
                 trend_data.append({
                     'semester_id': semester_id,
@@ -987,7 +998,7 @@ async def get_department_head_all_instructors_performance(current_user: dict = D
             instructor_doc = db.collection('instructors').document(instructor_id).get()
             if instructor_doc and instructor_doc.exists:
                 instructor_data = instructor_doc.to_dict()
-                instructor_name = instructor_data.get('name', instructor_id) if instructor_data else instructor_id
+                instructor_name = instructor_data.get('username') or instructor_data.get('display_name') or instructor_data.get('email') or instructor_id if instructor_data else instructor_id
             else:
                 instructor_name = instructor_id
             

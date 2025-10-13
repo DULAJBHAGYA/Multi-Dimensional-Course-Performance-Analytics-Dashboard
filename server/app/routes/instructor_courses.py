@@ -348,7 +348,7 @@ async def get_instructor_at_risk_rate(
             if grades:
                 avg_grade = sum(grades) / len(grades)
                 # Count courses where average grade is less than 40
-                if avg_grade < 40:
+                if avg_grade < 70:
                     at_risk_courses_count += 1
         
         return {
@@ -569,7 +569,7 @@ async def get_instructor_at_risk_courses(
                 avg_grade = 0
             
             # Only include courses where average grade is less than 40
-            if avg_grade < 40:
+            if avg_grade < 70:
                 # Get campus name
                 campusId = data['campusId']
                 campus_name = campus_names.get(campusId, 'Unknown Campus') if campusId else 'Unknown Campus'
@@ -655,8 +655,8 @@ async def get_instructor_semester_comparison(
         semesters_query = db.collection('semesters').stream()
         for semester_doc in semesters_query:
             semester_data = semester_doc.to_dict() or {}
-            # Use semesterId as fallback if semesterName is not available
-            semester_names[semester_doc.id] = semester_data.get('semesterName', semester_doc.id)
+            # Use semesterId as fallback if semester is not available
+            semester_names[semester_doc.id] = semester_data.get('semester', semester_doc.id)
         
         # Calculate semester-level statistics
         semester_stats = {}
