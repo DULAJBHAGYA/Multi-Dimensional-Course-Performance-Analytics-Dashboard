@@ -256,7 +256,7 @@ const HomeDashboard = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Sections</p>
+                <p className="text-sm font-medium text-gray-600">Total CRNs</p>
                 <p className="text-2xl font-bold text-gray-900">{kpiData.totalStudents.toLocaleString()}</p>
               </div>
             </div>
@@ -573,7 +573,7 @@ const HomeDashboard = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course ID</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Name</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                     </tr>
@@ -581,7 +581,7 @@ const HomeDashboard = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {instructorCourses.map((course, index) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{course.course_id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{course.course_code || course.course_id}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{course.course_name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{course.department}</td>
                       </tr>

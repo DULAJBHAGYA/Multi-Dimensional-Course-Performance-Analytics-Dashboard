@@ -446,6 +446,17 @@ const DepartmentHeadDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
+                  {/* Display course name if available */}
+                  {comparisonData.course_name && (
+                    <tr className="bg-blue-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        Course
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" colSpan="2">
+                        {comparisonData.course_name} ({comparisonData.course_code})
+                      </td>
+                    </tr>
+                  )}
                   <tr>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       Number of Students
@@ -534,7 +545,7 @@ const DepartmentHeadDashboard = () => {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instructors</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sections</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CRNs</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">

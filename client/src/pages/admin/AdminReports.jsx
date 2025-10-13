@@ -238,13 +238,12 @@ const AdminReports = () => {
         course.courseCode,
         course.courseName,
         course.department,
-        `${course.passRate}%`,
         course.averageGrade
       ]);
       
       // Add table using the autoTable function
       autoTable(doc, {
-        head: [['Course Code', 'Course', 'Department', 'Pass Rate', 'Average Grade']],
+        head: [['Course Code', 'Course', 'Department', 'Average Grade']],
         body: tableData,
         startY: 40,
         styles: {
@@ -268,12 +267,11 @@ const AdminReports = () => {
     try {
       // Prepare worksheet data
       const wsData = [
-        ['Course Code', 'Course', 'Department', 'Pass Rate', 'Average Grade'],
+        ['Course Code', 'Course', 'Department', 'Average Grade'],
         ...coursePerformanceData.map(course => [
           course.courseCode,
           course.courseName,
           course.department,
-          `${course.passRate}%`,
           course.averageGrade
         ])
       ];
@@ -295,11 +293,10 @@ const AdminReports = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Excellent': return 'text-green-600 bg-green-100';
       case 'Good': return 'text-blue-600 bg-blue-100';
       case 'Fair': return 'text-yellow-600 bg-yellow-100';
       case 'Poor': return 'text-orange-600 bg-orange-100';
-      case 'Very Poor': return 'text-red-600 bg-red-100';
+      case 'At Risk': return 'text-red-600 bg-red-100';
       case 'Normal': return 'text-gray-600 bg-gray-100';
       case 'Open': return 'text-red-400 bg-red-50';
       case 'In Progress': return 'text-yellow-600 bg-yellow-100';
@@ -500,7 +497,6 @@ const AdminReports = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Rate</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
                   </tr>
                 </thead>
@@ -510,7 +506,6 @@ const AdminReports = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.courseCode}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseName}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.department}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.passRate}%</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.averageGrade}</td>
                     </tr>
                   ))}
@@ -561,7 +556,6 @@ const AdminReports = () => {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instructor ID</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Rate</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Grade</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       </tr>
@@ -571,7 +565,6 @@ const AdminReports = () => {
                         <tr key={index}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{instructor.id}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.pass_rate}%</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{instructor.average_grade}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(instructor.status)}`}>

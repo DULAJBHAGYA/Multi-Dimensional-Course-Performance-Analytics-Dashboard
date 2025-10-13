@@ -78,14 +78,11 @@ async def get_instructor_sections_report(current_user: dict = Depends(verify_tok
                         semester_name = semester_data.get('semesterName', 'Unknown Semester')
             
             # Determine status based on average grade
-            if average_grade >= 90:
-                status = 'Excellent'
-            elif average_grade >= 70:
+            if average_grade >= 70:
                 status = 'Good'
-            elif average_grade >= 40:
-                status = 'Fair'
             else:
-                status = 'Needs Improvement'
+                status = 'At Risk'
+            
             
             sections_data.append({
                 'crn': crn,

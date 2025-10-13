@@ -97,6 +97,7 @@ class UniqueCoursesCountData(BaseModel):
 # New data model for instructor courses with department info
 class InstructorCourseWithDepartment(BaseModel):
     course_id: str
+    course_code: str
     course_name: str
     department: str
 
@@ -191,7 +192,7 @@ async def get_instructor_filter_options(
                         semester_doc = db.collection('semesters').document(semester_id).get()
                         if semester_doc.exists:
                             semester_data = semester_doc.to_dict() or {}
-                            semester_name = semester_data.get('semesterName', semester_id)
+                            semester_name = semester_data.get('semester', semester_id)
                             semester_cache[semester_id] = semester_name
                         else:
                             semester_name = semester_id
@@ -309,7 +310,7 @@ async def get_filtered_performance(
                             semester_doc = db.collection('semesters').document(semester_id).get()
                             if semester_doc.exists:
                                 semester_data = semester_doc.to_dict() or {}
-                                section_semester_name = semester_data.get('semesterName', semester_id)
+                                section_semester_name = semester_data.get('semester', semester_id)
                                 semester_cache[semester_id] = section_semester_name
                             else:
                                 section_semester_name = semester_id
@@ -485,7 +486,7 @@ async def get_instructor_filters(
         instructor_sections = [section.to_dict() for section in sections_query]
         
         # Extract unique semesters, courses, and departments
-        semesters = list(set([section.get('semesterName', 'Unknown') for section in instructor_sections]))
+        semesters = list(set([section.get('semester', 'Unknown') for section in instructor_sections]))
         departments = list(set([section.get('department', 'Unknown') for section in instructor_sections]))
         
         # Get courses for these sections
@@ -504,7 +505,7 @@ async def get_instructor_filters(
                         "id": course_id,
                         "courseName": course_data.get('courseName', 'Unknown Course'),
                         "crnCode": related_section.get('crnCode', 'N/A'),
-                        "semesterName": related_section.get('semesterName', 'Unknown'),
+                        "semesterName": related_section.get('semester', 'Unknown'),
                         "department": related_section.get('department', 'Unknown')
                     })
         
@@ -606,7 +607,7 @@ async def compare_crns(
                 "courseCode": course1_code,
                 "department": department1,
                 "campus": campus1,
-                "semester": section1.get('semesterName', 'Unknown Semester'),
+                "semester": section1.get('semester', 'Unknown Semester'),
                 "averageGrade": avg_grade1
             },
             "crn2": {
@@ -616,7 +617,7 @@ async def compare_crns(
                 "courseCode": course2_code,
                 "department": department2,
                 "campus": campus2,
-                "semester": section2.get('semesterName', 'Unknown Semester'),
+                "semester": section2.get('semester', 'Unknown Semester'),
                 "averageGrade": avg_grade2
             },
             "comparison": {
@@ -709,6 +710,7 @@ async def get_instructor_courses_with_departments(
                     
                     courses_with_departments.append({
                         "course_id": course_id,
+                        "course_code": course_data.get('courseCode', 'Unknown Code'),
                         "course_name": course_data.get('courseName', 'Unknown Course'),
                         "department": related_section.get('department', 'Unknown Department')
                     })
@@ -738,15 +740,34 @@ async def get_performance_trend(
         sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
         instructor_sections = [section.to_dict() for section in sections_query]
         
+        # Create a cache for semester lookups
+        semester_cache = {}
+        
         # Group by semester
         semester_data = {}
         for section in instructor_sections:
-            semester = section.get('semesterName', 'Unknown')
+            # Get semesterId and look up the human-readable semester name
+            semester_id = section.get('semesterId')
+            if semester_id:
+                if semester_id in semester_cache:
+                    semester_name = semester_cache[semester_id]
+                else:
+                    semester_doc = db.collection('semesters').document(semester_id).get()
+                    if semester_doc.exists:
+                        semester_data = semester_doc.to_dict() or {}
+                        semester_name = semester_data.get('semester', semester_id)
+                        semester_cache[semester_id] = semester_name
+                    else:
+                        semester_name = semester_id
+                        semester_cache[semester_id] = semester_name
+            else:
+                semester_name = 'Unknown'
+            
             course_id = section.get('courseId')
             
-            if course_id and semester != 'Unknown':
-                if semester not in semester_data:
-                    semester_data[semester] = {
+            if course_id and semester_name != 'Unknown':
+                if semester_name not in semester_data:
+                    semester_data[semester_name] = {
                         "courses": 0,
                         "totalStudents": 0,
                         "totalCompletionRate": 0,
@@ -757,10 +778,10 @@ async def get_performance_trend(
                 course_doc = db.collection('courses').document(course_id).get()
                 if course_doc.exists:
                     course_data = course_doc.to_dict() or {}
-                    semester_data[semester]["courses"] += 1
-                    semester_data[semester]["totalStudents"] += course_data.get('totalEnrollments', 0)
-                    semester_data[semester]["totalCompletionRate"] += course_data.get('completionRate', 0)
-                    semester_data[semester]["totalGrades"] += course_data.get('averageRating', 0)
+                    semester_data[semester_name]["courses"] += 1
+                    semester_data[semester_name]["totalStudents"] += course_data.get('totalEnrollments', 0)
+                    semester_data[semester_name]["totalCompletionRate"] += course_data.get('completionRate', 0)
+                    semester_data[semester_name]["totalGrades"] += course_data.get('averageRating', 0)
         
         # Calculate averages and prepare trend data
         trend_data = []
@@ -856,7 +877,7 @@ async def get_all_sections_grades(
         for section in instructor_sections:
             section_id = section.get('sectionId') or section.get('id')
             average_grade = section.get('averageGrade', 0)
-            semester = section.get('semesterName', 'Unknown')
+            semester = section.get('semester', 'Unknown')
             
             # Get course code
             course_code = 'Unknown Course'

@@ -398,16 +398,10 @@ async def get_instructor_performance(
                 average_grade = total_average_grades / section_count
             
             # Determine status based on performance
-            if average_grade >= 85:
-                status = "Excellent"
-            elif average_grade >= 75:
+            if average_grade >= 70:
                 status = "Good"
-            elif average_grade >= 65:
-                status = "Fair"
-            elif average_grade >= 50:
-                status = "Poor"
             else:
-                status = "Very Poor"
+                status = "At Risk"
             
             instructor_data.append({
                 "id": instructor_id,
