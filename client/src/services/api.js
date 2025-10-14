@@ -696,6 +696,11 @@ class ApiService {
     return this.get('/admin/report/instructor-performance', { time_range: timeRange });
   }
 
+  // New endpoint for admin predictions
+  async getAdminPredictions() {
+    return this.get('/admin/predict/campus-performance');
+  }
+
 }
 
 // Create and export a singleton instance

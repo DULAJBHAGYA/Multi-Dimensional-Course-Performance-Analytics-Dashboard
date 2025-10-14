@@ -12,6 +12,7 @@ const AdminDashboard = () => {
   const [campusPerformanceTrend, setCampusPerformanceTrend] = useState(null);
   const [campusGradeDistribution, setCampusGradeDistribution] = useState(null);
   const [campusCoursePerformance, setCampusCoursePerformance] = useState([]); // New state for campus course performance
+  const [predictiveInsights, setPredictiveInsights] = useState(null); // New state for predictive insights
   const [currentPage, setCurrentPage] = useState(1);
   const [coursesPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
@@ -28,13 +29,14 @@ const AdminDashboard = () => {
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       try {
-        const [dashboardResult, departmentMetricsResult, departmentInstructorsResult, campusPerformanceTrendResult, campusGradeDistributionResult, campusCoursePerformanceResult] = await Promise.all([
+        const [dashboardResult, departmentMetricsResult, departmentInstructorsResult, campusPerformanceTrendResult, campusGradeDistributionResult, campusCoursePerformanceResult, predictiveInsightsResult] = await Promise.all([
           apiService.getAdminDashboard(),
           apiService.getAdminDepartmentMetrics(),
           apiService.getAdminDepartmentInstructors(),
           apiService.getAdminCampusPerformanceTrend(),
           apiService.getAdminCampusGradeDistribution(),
-          apiService.getAdminCampusCoursePerformance()
+          apiService.getAdminCampusCoursePerformance(),
+          apiService.getAdminPredictions()
         ]);
         
         clearTimeout(timeoutId);
@@ -42,6 +44,7 @@ const AdminDashboard = () => {
         setCampusPerformanceTrend(campusPerformanceTrendResult);
         setCampusGradeDistribution(campusGradeDistributionResult);
         setCampusCoursePerformance(campusCoursePerformanceResult || []);
+        setPredictiveInsights(predictiveInsightsResult); // Set predictive insights data
         
         // Use the campus-specific instructor count while keeping other metrics
         setDepartmentMetrics({
@@ -114,6 +117,7 @@ const AdminDashboard = () => {
   console.log('Campus Performance Trend:', campusPerformanceTrend);
   console.log('Campus Grade Distribution:', campusGradeDistribution);
   console.log('Campus Course Performance:', campusCoursePerformance);
+  console.log('Predictive Insights:', predictiveInsights);
 
   // Performance over time data - now using campus performance trend data
   const performanceOverTime = campusPerformanceTrend?.map(item => ({
@@ -164,16 +168,11 @@ const AdminDashboard = () => {
   const campusPerformanceChartData = generateBarChartData(campusPerformance, 'campus', 'passRate', 'Pass Rate');
   const gradeDistributionChartData = generatePieChartData(gradeDistribution, 'grade', 'count');
 
-  // AI Predictive Insights
-  const aiPredictions = {
-    nextSemesterProjection: 80.2,
-    atRiskStudentsNextSemester: 142,
-    expectedEnrollment: 1280,
-    recommendedInterventions: [
-      'Focus on Mathematics courses - 15% improvement potential',
-      'Implement additional tutoring for Engineering students',
-      'Consider course restructuring for Business programs'
-    ]
+  // AI Predictive Insights - now using real data from API
+  const aiPredictions = predictiveInsights?.campus_predictions?.[0] || {
+    predicted_average_grade: 0,
+    predicted_pass_rate: 0,
+    at_risk_sections_count: 0
   };
 
   return (
@@ -378,19 +377,18 @@ const AdminDashboard = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white p-4 rounded-2xl">
-                  <p className="text-sm text-gray-600">Predictive Average Grade</p>
-                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.nextSemesterProjection}%</p>
+                  <p className="text-sm text-gray-600">Predicted Average Grade for Campus</p>
+                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.predicted_average_grade.toFixed(2)}%</p>
                 </div>
                 <div className="bg-white p-4 rounded-2xl">
-                  <p className="text-sm text-gray-600">Predictive Pass Rate</p>
-                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.nextSemesterProjection}%</p>
+                  <p className="text-sm text-gray-600">Predicted Pass Rate for Campus</p>
+                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.predicted_pass_rate.toFixed(2)}%</p>
                 </div>
                 <div className="bg-white p-4 rounded-2xl">
-                  <p className="text-sm text-gray-600">Predicted Course Count Performance Index</p>
-                  <p className="text-2xl font-bold text-gray-900">{Math.round(aiPredictions.nextSemesterProjection * 10)}</p>
+                  <p className="text-sm text-gray-600">Predicted At Risk CRNs for Campus</p>
+                  <p className="text-2xl font-bold text-gray-900">{aiPredictions.at_risk_sections_count}</p>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
