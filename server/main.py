@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from app.routes import firebase_auth, firebase_dashboard, firebase_auth_updated, instructor_dashboard, admin_report, instructor_courses, instructor_report, department_head_dashboard, admin_predict, deptheadpredictives
+from app.routes import firebase_auth, firebase_dashboard, firebase_auth_updated, instructor_dashboard, admin_report, instructor_courses, instructor_report, department_head_dashboard, admin_predict, deptheadpredictives, instructor_predictive_rag
 
 app = FastAPI(
     title="Multi-Dimensional Course Performance Analytics API",
@@ -31,6 +31,7 @@ app.include_router(instructor_report.router, prefix="/api/instructor/report", ta
 app.include_router(department_head_dashboard.router, prefix="/api/department-head/dashboard", tags=["Department Head Dashboard"])
 app.include_router(admin_predict.router, prefix="/api/admin/predict", tags=["Admin Predictions"])
 app.include_router(deptheadpredictives.router, prefix="/api/department-head", tags=["Department Head Predictives"])
+app.include_router(instructor_predictive_rag.router, prefix="/api/instructor", tags=["Instructor Predictive RAG"])
 
 
 # Root endpoint
