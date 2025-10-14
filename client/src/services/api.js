@@ -417,8 +417,8 @@ class ApiService {
         endpoint = '/firebase/dashboard/instructor/reports/student-analytics/download';
         if (courseId) params.course_id = courseId;
         break;
-      case 'predictive-risk':
-        endpoint = '/firebase/dashboard/instructor/reports/predictive-risk/download';
+      case 'predictive-analytics':
+        endpoint = '/instructor/predictive-analytics/report/download';
         break;
       case 'semester-comparison':
         endpoint = '/firebase/dashboard/instructor/reports/semester-comparison/download';
@@ -713,6 +713,17 @@ class ApiService {
 
   async getInstructorRiskMatrix() {
     return this.get('/instructor/risk-matrix');
+  }
+
+  // New endpoint for instructor predictive analytics report
+  async getInstructorPredictiveAnalyticsReport() {
+    return this.get('/instructor/predictive-analytics/report');
+  }
+
+  // New endpoint for RAG-based chat
+  async getInstructorChatRagResponse(question) {
+    const params = { question };
+    return this.get('/instructor/chat-rag', params);
   }
 }
 
