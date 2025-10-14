@@ -680,6 +680,11 @@ class ApiService {
     return this.get('/department-head/dashboard/department-head/all-instructors-performance');
   }
 
+  // New endpoint for department head predictive analytics
+  async getDepartmentHeadPredictiveAnalytics() {
+    return this.get('/department-head/predictive-analytics');
+  }
+
   async getAdminCampusGradeDistribution() {
     return this.get('/firebase/dashboard/admin/campus-grade-distribution');
   }
