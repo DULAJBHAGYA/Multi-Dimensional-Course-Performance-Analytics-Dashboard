@@ -99,48 +99,56 @@ const PredictiveAnalytics = () => {
   }, [user, fetchInstructorPredictiveData]);
 
   // AI Chat functionality
-  const generateAIResponse = (userMessage) => {
+  const generateAIResponse = async (userMessage) => {
     const message = userMessage.toLowerCase();
     
-    if (message.includes('completion') || message.includes('finish')) {
-      return `I can help you analyze completion rates based on your course data. For specific predictions, please check the predictive analytics section.`;
-    }
-    
-    if (message.includes('dropout') || message.includes('risk') || message.includes('at-risk')) {
-      return `I can help identify at-risk students based on their performance data. The risk matrix visualization shows courses with potential issues.`;
-    }
-    
-    if (message.includes('enrollment') || message.includes('future') || message.includes('forecast')) {
-      return `I can provide insights on enrollment trends and forecasts based on historical data. Please check the analytics dashboard for detailed information.`;
-    }
-    
-    if (message.includes('certification') || message.includes('certificate') || message.includes('completion')) {
-      return `I can analyze certification completion rates based on your course data. Check the predictive analytics section for detailed insights.`;
-    }
-    
-    if (message.includes('content') || message.includes('lesson') || message.includes('engagement')) {
-      return `I can help analyze content performance and engagement metrics. Please refer to the course analytics section for detailed information.`;
-    }
-    
-    if (message.includes('help') || message.includes('what can you do')) {
-      return `I can help you with:
-      • Analyzing completion and dropout predictions
-      • Identifying at-risk students and their specific issues
-      • Providing content optimization suggestions
-      • Explaining enrollment and certification forecasts
-      • Generating personalized intervention strategies
+    // Use RAG endpoint for more intelligent responses
+    try {
+      const response = await apiService.getInstructorChatRagResponse(userMessage);
+      return response.response;
+    } catch (error) {
+      console.error('Error getting RAG response:', error);
+      // Fallback to static responses if RAG fails
+      if (message.includes('completion') || message.includes('finish')) {
+        return `I can help you analyze completion rates based on your course data. For specific predictions, please check the predictive analytics section.`;
+      }
       
-      Just ask me about any aspect of your course analytics!`;
+      if (message.includes('dropout') || message.includes('risk') || message.includes('at-risk')) {
+        return `I can help identify at-risk students based on their performance data. The risk matrix visualization shows courses with potential issues.`;
+      }
+      
+      if (message.includes('enrollment') || message.includes('future') || message.includes('forecast')) {
+        return `I can provide insights on enrollment trends and forecasts based on historical data. Please check the analytics dashboard for detailed information.`;
+      }
+      
+      if (message.includes('certification') || message.includes('certificate') || message.includes('completion')) {
+        return `I can analyze certification completion rates based on your course data. Check the predictive analytics section for detailed insights.`;
+      }
+      
+      if (message.includes('content') || message.includes('lesson') || message.includes('engagement')) {
+        return `I can help analyze content performance and engagement metrics. Please refer to the course analytics section for detailed information.`;
+      }
+      
+      if (message.includes('help') || message.includes('what can you do')) {
+        return `I can help you with:
+        • Analyzing completion and dropout predictions
+        • Identifying at-risk students and their specific issues
+        • Providing content optimization suggestions
+        • Explaining enrollment and certification forecasts
+        • Generating personalized intervention strategies
+        
+        Just ask me about any aspect of your course analytics!`;
+      }
+      
+      if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
+        return `Hello! I'm here to help you make sense of your predictive analytics. I can explain any of the predictions, suggest improvements, or help you understand what the data means for your course. What would you like to explore?`;
+      }
+      
+      return `I understand you're asking about "${userMessage}". I can provide insights on completion rates, student engagement, content performance, or enrollment forecasts based on your course data. Could you be more specific about what aspect you'd like me to analyze?`;
     }
-    
-    if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
-      return `Hello! I'm here to help you make sense of your predictive analytics. I can explain any of the predictions, suggest improvements, or help you understand what the data means for your course. What would you like to explore?`;
-    }
-    
-    return `I understand you're asking about "${userMessage}". I can provide insights on completion rates, student engagement, content performance, or enrollment forecasts based on your course data. Could you be more specific about what aspect you'd like me to analyze?`;
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
 
@@ -154,16 +162,35 @@ const PredictiveAnalytics = () => {
     setChatMessages(prev => [...prev, userMessage]);
     setChatInput('');
 
-    // Simulate AI thinking delay
-    setTimeout(() => {
+    // Show typing indicator
+    const typingMessage = {
+      id: Date.now() + 1,
+      type: 'ai',
+      message: 'typing',
+      timestamp: new Date()
+    };
+    setChatMessages(prev => [...prev, typingMessage]);
+
+    try {
       const aiResponse = {
-        id: Date.now() + 1,
+        id: Date.now() + 2,
         type: 'ai',
-        message: generateAIResponse(chatInput),
+        message: await generateAIResponse(chatInput),
         timestamp: new Date()
       };
-      setChatMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+      // Remove typing indicator and add real response
+      setChatMessages(prev => [...prev.filter(msg => msg.message !== 'typing'), aiResponse]);
+    } catch (error) {
+      // Remove typing indicator and add error message
+      setChatMessages(prev => prev.filter(msg => msg.message !== 'typing'));
+      const errorMessage = {
+        id: Date.now() + 2,
+        type: 'ai',
+        message: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   // Show loading spinner only for instructors
@@ -483,7 +510,6 @@ const PredictiveAnalytics = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold">AI Analytics Assistant</h3>
-                    <p className="text-xs text-purple-200">Powered by ML predictions</p>
                   </div>
                 </div>
                 <button
@@ -510,10 +536,20 @@ const PredictiveAnalytics = () => {
                           : 'bg-gray-100 text-gray-800'
                       }`}
                     >
-                      <p className="text-sm">{message.message}</p>
-                      <p className="text-xs opacity-70 mt-1">
-                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                      {message.message === 'typing' ? (
+                        <div className="flex items-center">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full mr-1 animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full mr-1 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm">{message.message}</p>
+                          <p className="text-xs opacity-70 mt-1">
+                            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}

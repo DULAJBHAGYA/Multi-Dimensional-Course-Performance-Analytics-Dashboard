@@ -1499,6 +1499,9 @@ async def get_instructor_course_performance_analysis(
         
         # Generate detailed report data
         report_data = []
+
+# Remove the predictive risk report endpoints
+
         for course in courses_data:
             report_data.append({
                 'courseId': course.get('id'),
@@ -2122,73 +2125,6 @@ async def get_instructor_student_analytics_report(
         raise HTTPException(status_code=500, detail=f"Error generating student analytics report: {str(e)}")
 
 
-@router.get("/instructor/reports/predictive-risk")
-async def get_instructor_predictive_risk_report(
-    current_user: dict = Depends(verify_token)
-):
-    """Get predictive risk report for at-risk student identification"""
-    try:
-        db = get_firestore_client()
-        if not db:
-            raise HTTPException(status_code=500, detail="Database connection failed")
-        
-        instructor_id = current_user.get('instructorId')
-        if not instructor_id:
-            raise HTTPException(status_code=400, detail="Instructor ID not found")
-        
-        # Get instructor's sections
-        sections_query = db.collection('sections').where('instructorId', '==', instructor_id).stream()
-        instructor_sections = [section.to_dict() for section in sections_query]
-        
-        # Get course IDs
-        course_ids = list(set([section.get('courseId') for section in instructor_sections if section.get('courseId')]))
-        
-        # Mock at-risk students data
-        at_risk_students = []
-        risk_factors = ['Low Engagement', 'Missed Assignments', 'Poor Quiz Scores', 'Infrequent Logins']
-        
-        for i in range(15):  # Mock 15 at-risk students
-            at_risk_students.append({
-                'studentId': f'AR{i+1:03d}',
-                'studentName': f'At-Risk Student {i+1}',
-                'email': f'atrisk{i+1}@example.com',
-                'courseId': course_ids[i % len(course_ids)] if course_ids else 'Unknown',
-                'riskLevel': 'High' if i % 3 == 0 else 'Medium' if i % 3 == 1 else 'Low',
-                'riskFactors': [risk_factors[i % len(risk_factors)], risk_factors[(i+1) % len(risk_factors)]],
-                'lastActive': f'{i % 14 + 1} days ago',
-                'predictedDropoutProbability': 70 + (i % 30),  # 70-99%
-                'recommendedInterventions': [
-                    'Schedule one-on-one meeting',
-                    'Provide additional resources',
-                    'Connect with academic advisor'
-                ]
-            })
-        
-        # Categorize by risk level
-        high_risk = [s for s in at_risk_students if s['riskLevel'] == 'High']
-        medium_risk = [s for s in at_risk_students if s['riskLevel'] == 'Medium']
-        low_risk = [s for s in at_risk_students if s['riskLevel'] == 'Low']
-        
-        return {
-            "reportType": "predictive-risk",
-            "generatedAt": datetime.utcnow().isoformat(),
-            "instructorId": instructor_id,
-            "atRiskStudents": at_risk_students,
-            "summary": {
-                "totalAtRiskStudents": len(at_risk_students),
-                "highRisk": len(high_risk),
-                "mediumRisk": len(medium_risk),
-                "lowRisk": len(low_risk),
-                "avgDropoutProbability": round(sum(s['predictedDropoutProbability'] for s in at_risk_students) / len(at_risk_students), 1) if at_risk_students else 0
-            }
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating predictive risk report: {str(e)}")
-
-
-
-
 
 @router.get("/instructor/reports/detailed-assessment")
 async def get_instructor_detailed_assessment_report(
@@ -2597,43 +2533,6 @@ async def download_student_analytics_report(
                 content=buffer.getvalue(),
                 media_type="text/csv",
                 headers={"Content-Disposition": "attachment; filename=student-analytics-report.csv"}
-            )
-    
-    raise HTTPException(status_code=400, detail="Invalid format specified")
-
-@router.get("/instructor/reports/predictive-risk/download")
-async def download_predictive_risk_report(
-    format: str = Query("pdf", description="Export format: pdf, xlsx, or csv"),
-    current_user: dict = Depends(verify_token)
-):
-    """Download predictive risk report in specified format"""
-    # Get the report data first
-    report_data = await get_instructor_predictive_risk_report(current_user)
-    
-    if format.lower() == "pdf":
-        pdf_buffer = create_pdf_report(report_data, "predictive-risk")
-        return StreamingResponse(
-            pdf_buffer,
-            media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=predictive-risk-report.pdf"}
-        )
-    elif format.lower() in ["xlsx", "excel"]:
-        excel_buffer = create_excel_report(report_data, "predictive-risk")
-        return StreamingResponse(
-            excel_buffer,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=predictive-risk-report.xlsx"}
-        )
-    elif format.lower() == "csv":
-        buffer = io.StringIO()
-        if 'atRiskStudents' in report_data and report_data['atRiskStudents']:
-            df = pd.DataFrame(report_data['atRiskStudents'])
-            df.to_csv(buffer, index=False)
-            buffer.seek(0)
-            return Response(
-                content=buffer.getvalue(),
-                media_type="text/csv",
-                headers={"Content-Disposition": "attachment; filename=predictive-risk-report.csv"}
             )
     
     raise HTTPException(status_code=400, detail="Invalid format specified")

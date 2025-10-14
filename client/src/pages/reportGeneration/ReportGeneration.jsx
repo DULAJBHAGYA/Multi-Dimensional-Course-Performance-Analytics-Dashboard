@@ -13,9 +13,7 @@ const ReportGeneration = () => {
   const [activeReport, setActiveReport] = useState('course-performance');
   const [coursePerformanceReport, setCoursePerformanceReport] = useState(null);
   const [studentAnalyticsReport, setStudentAnalyticsReport] = useState(null);
-  const [predictiveRiskReport, setPredictiveRiskReport] = useState(null);
-  const [semesterComparisonReport, setSemesterComparisonReport] = useState(null);
-  const [detailedAssessmentReport, setDetailedAssessmentReport] = useState(null);
+  const [predictiveAnalyticsReport, setPredictiveAnalyticsReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -101,9 +99,9 @@ const ReportGeneration = () => {
           
           setCoursePerformanceReport(processedReportData);
           break;
-        case 'predictive-risk':
-          const predictiveRiskData = await apiService.getInstructorPredictiveRiskReport();
-          setPredictiveRiskReport(predictiveRiskData);
+        case 'predictive-analytics':
+          const predictiveAnalyticsData = await apiService.getInstructorPredictiveAnalyticsReport();
+          setPredictiveAnalyticsReport(predictiveAnalyticsData);
           break;
         case 'sections-analysis':
           // Fetch sections data from the new API endpoint
@@ -144,12 +142,12 @@ const ReportGeneration = () => {
         return;
       }
       
-      // For predictive risk report, export the currently displayed data
-      if (activeReport === 'predictive-risk' && predictiveRiskReport) {
+      // For predictive analytics report, export the currently displayed data
+      if (activeReport === 'predictive-analytics' && predictiveAnalyticsReport) {
         if (exportFormat === 'pdf') {
-          await exportPredictiveRiskToPDF();
+          await exportPredictiveAnalyticsToPDF();
         } else if (exportFormat === 'xlsx') {
-          await exportPredictiveRiskToExcel();
+          await exportPredictiveAnalyticsToExcel();
         }
         setLoading(false);
         return;
@@ -296,60 +294,72 @@ const ReportGeneration = () => {
     }
   };
   
-  // Export predictive risk report to PDF
-  const exportPredictiveRiskToPDF = async () => {
+  // Export predictive analytics report to PDF
+  const exportPredictiveAnalyticsToPDF = async () => {
     try {
       const doc = new jsPDF();
       
       // Add title
       doc.setFontSize(18);
-      doc.text('Predictive Risk Report', 14, 20);
+      doc.text('Predictive Analytics Report', 14, 20);
       doc.setFontSize(12);
-      doc.text(`Generated: ${new Date(predictiveRiskReport.generatedAt).toLocaleDateString()}`, 14, 30);
+      doc.text(`Generated: ${new Date(predictiveAnalyticsReport.generated_at).toLocaleDateString()}`, 14, 30);
+      doc.text(`Instructor: ${predictiveAnalyticsReport.instructor_name}`, 14, 40);
       
       // Add summary cards
       doc.setFontSize(14);
-      doc.text('Summary', 14, 45);
+      doc.text('Summary', 14, 55);
       
       doc.setFontSize(12);
-      doc.text(`At-Risk Students: ${predictiveRiskReport.summary.totalAtRiskStudents}`, 14, 55);
-      doc.text(`High Risk: ${predictiveRiskReport.summary.highRisk}`, 14, 65);
-      doc.text(`Medium Risk: ${predictiveRiskReport.summary.mediumRisk}`, 14, 75);
-      doc.text(`Low Risk: ${predictiveRiskReport.summary.lowRisk}`, 14, 85);
+      doc.text(`Total Courses: ${predictiveAnalyticsReport.total_courses}`, 14, 65);
+      doc.text(`At Risk Courses: ${predictiveAnalyticsReport.at_risk_courses_count}`, 14, 75);
+      doc.text(`Predicted Average Grade: ${predictiveAnalyticsReport.predicted_average_grade}%`, 14, 85);
+      doc.text(`Predicted Pass Rate: ${predictiveAnalyticsReport.predicted_pass_rate}%`, 14, 95);
+      doc.text(`Performance Risk Level: ${predictiveAnalyticsReport.risk_level === 'Low' ? 'Good' : 'At Risk'}`, 14, 105);
       
-      // Add at-risk students table
-      if (predictiveRiskReport.atRiskStudents && predictiveRiskReport.atRiskStudents.length > 0) {
+      // Add course predictions table
+      if (predictiveAnalyticsReport.courses && predictiveAnalyticsReport.courses.length > 0) {
         doc.setFontSize(14);
-        doc.text('At-Risk Students', 14, 100);
+        doc.text('Course Predictions', 14, 120);
         
-        const tableData = predictiveRiskReport.atRiskStudents.map(student => [
-          student.studentName,
-          `${student.riskLevel} Risk`,
-          `${student.predictedDropoutProbability}%`,
-          student.riskFactors.join(', '),
-          student.lastActive,
-          student.recommendedInterventions.slice(0, 2).join(', ')
+        const tableData = predictiveAnalyticsReport.courses.map(course => [
+          `${course.course_code} - ${course.course_name}`,
+          `${course.predicted_average_grade}%`,
+          `${course.predicted_pass_rate}%`
         ]);
         
         autoTable(doc, {
-          startY: 110,
-          head: [['Student', 'Risk Level', 'Dropout Probability', 'Risk Factors', 'Last Active', 'Interventions']],
+          startY: 130,
+          head: [['Course', 'Predicted Avg Grade', 'Predicted Pass Rate']],
           body: tableData,
           styles: { fontSize: 8 },
           headStyles: { fillColor: [110, 99, 229] }
         });
       }
       
+      // Add recommendations
+      if (predictiveAnalyticsReport.recommendations && predictiveAnalyticsReport.recommendations.length > 0) {
+        doc.setFontSize(14);
+        doc.text('AI Recommendations', 14, doc.lastAutoTable.finalY + 10);
+        
+        let yPosition = doc.lastAutoTable.finalY + 20;
+        predictiveAnalyticsReport.recommendations.forEach((rec, index) => {
+          doc.setFontSize(10);
+          doc.text(`${index + 1}. ${rec}`, 14, yPosition);
+          yPosition += 10;
+        });
+      }
+      
       // Save the PDF
-      doc.save(`predictive-risk-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(`predictive-analytics-report-${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Error exporting to PDF:', error);
       throw new Error('Failed to export to PDF: ' + error.message);
     }
   };
   
-  // Export predictive risk report to Excel/CSV
-  const exportPredictiveRiskToExcel = async () => {
+  // Export predictive analytics report to Excel/CSV
+  const exportPredictiveAnalyticsToExcel = async () => {
     try {
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
@@ -357,39 +367,52 @@ const ReportGeneration = () => {
       // Summary data
       const summaryData = [
         ['Metric', 'Value'],
-        ['At-Risk Students', predictiveRiskReport.summary.totalAtRiskStudents],
-        ['High Risk', predictiveRiskReport.summary.highRisk],
-        ['Medium Risk', predictiveRiskReport.summary.mediumRisk],
-        ['Low Risk', predictiveRiskReport.summary.lowRisk]
+        ['Instructor Name', predictiveAnalyticsReport.instructor_name],
+        ['Total Courses', predictiveAnalyticsReport.total_courses],
+        ['At Risk Courses', predictiveAnalyticsReport.at_risk_courses_count],
+        ['Predicted Average Grade', `${predictiveAnalyticsReport.predicted_average_grade}%`],
+        ['Predicted Pass Rate', `${predictiveAnalyticsReport.predicted_pass_rate}%`],
+        ['Performance Risk Level', predictiveAnalyticsReport.risk_level === 'Low' ? 'Good' : 'At Risk']
       ];
       
       const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
       
-      // At-risk students data
-      if (predictiveRiskReport.atRiskStudents && predictiveRiskReport.atRiskStudents.length > 0) {
-        const studentData = [
-          ['Student Name', 'Email', 'Risk Level', 'Dropout Probability', 'Risk Factors', 'Last Active', 'Interventions']
+      // Course predictions data
+      if (predictiveAnalyticsReport.courses && predictiveAnalyticsReport.courses.length > 0) {
+        const courseData = [
+          ['Course Code', 'Course Name', 'Predicted Average Grade', 'Predicted Pass Rate']
         ];
         
-        predictiveRiskReport.atRiskStudents.forEach(student => {
-          studentData.push([
-            student.studentName,
-            student.email,
-            `${student.riskLevel} Risk`,
-            `${student.predictedDropoutProbability}%`,
-            student.riskFactors.join(', '),
-            student.lastActive,
-            student.recommendedInterventions.slice(0, 2).join(', ')
+        predictiveAnalyticsReport.courses.forEach(course => {
+          courseData.push([
+            course.course_code,
+            course.course_name,
+            `${course.predicted_average_grade}%`,
+            `${course.predicted_pass_rate}%`
           ]);
         });
         
-        const studentWs = XLSX.utils.aoa_to_sheet(studentData);
-        XLSX.utils.book_append_sheet(wb, studentWs, 'At-Risk Students');
+        const courseWs = XLSX.utils.aoa_to_sheet(courseData);
+        XLSX.utils.book_append_sheet(wb, courseWs, 'Course Predictions');
+      }
+      
+      // Recommendations data
+      if (predictiveAnalyticsReport.recommendations && predictiveAnalyticsReport.recommendations.length > 0) {
+        const recData = [
+          ['AI Recommendations']
+        ];
+        
+        predictiveAnalyticsReport.recommendations.forEach(rec => {
+          recData.push([rec]);
+        });
+        
+        const recWs = XLSX.utils.aoa_to_sheet(recData);
+        XLSX.utils.book_append_sheet(wb, recWs, 'Recommendations');
       }
       
       // Export file
-      const filename = `predictive-risk-report-${new Date().toISOString().split('T')[0]}.xlsx`;
+      const filename = `predictive-analytics-report-${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(wb, filename);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
@@ -528,15 +551,15 @@ const ReportGeneration = () => {
             </button>
             
             <button
-              onClick={() => setActiveReport('predictive-risk')}
+              onClick={() => setActiveReport('predictive-analytics')}
               className={`p-4 rounded-2xl text-center transition-colors ${
-                activeReport === 'predictive-risk' 
+                activeReport === 'predictive-analytics' 
                   ? 'bg-[#6e63e5] text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <div className="font-medium">Predictive Risk</div>
-              <div className="text-sm mt-1">At-risk identification</div>
+              <div className="font-medium">Predictive Analytics</div>
+              <div className="text-sm mt-1">Performance predictions</div>
             </button>
             
             <button
@@ -643,90 +666,130 @@ const ReportGeneration = () => {
           </div>
         )}
 
-        {/* Predictive Risk Report */}
-        {activeReport === 'predictive-risk' && predictiveRiskReport && (
+        {/* Predictive Analytics Report */}
+        {activeReport === 'predictive-analytics' && predictiveAnalyticsReport && (
           <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Predictive Risk Report</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Predictive Analytics Report</h2>
               <div className="text-sm text-gray-500">
-                Generated: {new Date(predictiveRiskReport.generatedAt).toLocaleDateString()}
+                Generated: {new Date(predictiveAnalyticsReport.generated_at).toLocaleDateString()}
               </div>
             </div>
             
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="text-center p-4 bg-red-100 rounded-3xl">
-                <div className="text-2xl font-bold text-red-400">{predictiveRiskReport.summary.totalAtRiskStudents}</div>
-                <div className="text-sm text-gray-600">At-Risk Students</div>
+              <div className="text-center p-4 bg-blue-100 rounded-3xl">
+                <div className="text-2xl font-bold text-blue-400">{predictiveAnalyticsReport.total_courses}</div>
+                <div className="text-sm text-gray-600">Total Courses</div>
               </div>
               
               <div className="text-center p-4 bg-red-100 rounded-3xl">
-                <div className="text-2xl font-bold text-red-400">{predictiveRiskReport.summary.highRisk}</div>
-                <div className="text-sm text-gray-600">High Risk</div>
-              </div>
-              
-              <div className="text-center p-4 bg-yellow-100 rounded-3xl">
-                <div className="text-2xl font-bold text-yellow-400">{predictiveRiskReport.summary.mediumRisk}</div>
-                <div className="text-sm text-gray-600">Medium Risk</div>
+                <div className="text-2xl font-bold text-red-400">{predictiveAnalyticsReport.at_risk_courses_count}</div>
+                <div className="text-sm text-gray-600">At Risk Courses</div>
               </div>
               
               <div className="text-center p-4 bg-green-100 rounded-3xl">
-                <div className="text-2xl font-bold text-green-400">{predictiveRiskReport.summary.lowRisk}</div>
-                <div className="text-sm text-gray-600">Low Risk</div>
+                <div className="text-2xl font-bold text-green-400">{predictiveAnalyticsReport.predicted_average_grade}%</div>
+                <div className="text-sm text-gray-600">Predicted Avg Grade</div>
+              </div>
+              
+              <div className="text-center p-4 bg-purple-100 rounded-3xl">
+                <div className="text-2xl font-bold text-purple-400">{predictiveAnalyticsReport.predicted_pass_rate}%</div>
+                <div className="text-sm text-gray-600">Predicted Pass Rate</div>
               </div>
             </div>
             
-            {/* At-Risk Students Table */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Level</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dropout Probability</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Factors</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interventions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {predictiveRiskReport.atRiskStudents.map((student, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{student.studentName}</div>
-                        <div className="text-sm text-gray-500">{student.email}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getRiskLevelColor(student.riskLevel)}`}>
-                          {student.riskLevel} Risk
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {student.predictedDropoutProbability}%
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex flex-col">
-                          {student.riskFactors.map((factor, i) => (
-                            <span key={i} className="mb-1 last:mb-0">• {factor}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.lastActive}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex flex-col">
-                          {student.recommendedInterventions.slice(0, 2).map((intervention, i) => (
-                            <span key={i} className="mb-1 last:mb-0">• {intervention}</span>
-                          ))}
-                        </div>
-                      </td>
+            {/* Performance Risk Assessment */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Risk Assessment</h3>
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded-full mr-3 ${
+                  predictiveAnalyticsReport.risk_level === 'Low' ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                <span className="text-lg font-medium">
+                  {predictiveAnalyticsReport.risk_level === 'Low' ? 'Good' : 'At Risk'}
+                </span>
+              </div>
+              <p className="text-gray-600 mt-2">
+                Based on your current performance metrics, your overall risk level is assessed as <strong>{predictiveAnalyticsReport.risk_level === 'Low' ? 'Good' : 'At Risk'}</strong>.
+              </p>
+            </div>
+            
+            {/* Course Predictions Table */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Predicted Average Grades by Course</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Course Code
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Course Name
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Predicted Average Grade
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Predicted Pass Rate
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {predictiveAnalyticsReport.courses && predictiveAnalyticsReport.courses.map((course, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {course.course_code}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {course.course_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {course.predicted_average_grade}%
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {course.predicted_pass_rate}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(!predictiveAnalyticsReport.courses || predictiveAnalyticsReport.courses.length === 0) && (
+                  <div className="text-center py-4 text-gray-500">
+                    No course data available.
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* AI Recommendations */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Recommendations</h3>
+              <div className="space-y-4">
+                {predictiveAnalyticsReport.recommendations && predictiveAnalyticsReport.recommendations.map((recommendation, index) => (
+                  <div key={index} className="p-4 bg-blue-50 rounded-xl">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-blue-700">{recommendation}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {(!predictiveAnalyticsReport.recommendations || predictiveAnalyticsReport.recommendations.length === 0) && (
+                  <div className="text-center py-4 text-gray-500">
+                    No recommendations available.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
-
 
         {/* Sections Analysis Report */}
         {activeReport === 'sections-analysis' && studentAnalyticsReport && (
@@ -794,8 +857,6 @@ const ReportGeneration = () => {
             </div>
           </div>
         )}
-
-        {/* Sections Analysis Report - Already added above -->
 
         {/* Export Controls */}
         <div className="bg-white p-6 rounded-3xl shadow-sm">
