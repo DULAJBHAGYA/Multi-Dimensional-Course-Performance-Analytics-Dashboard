@@ -12,6 +12,10 @@ A comprehensive analytics dashboard for tracking course performance across multi
 - **Responsive Design**: Mobile-friendly interface with Tailwind CSS
 - **Authentication**: Secure login system with role-based access control
 - **Data Visualization**: Bar charts, line charts, pie charts with custom styling
+- **AI Predictive Analytics**: Machine learning-based performance predictions
+- **Risk Matrix Visualization**: Interactive scatter plot showing course risk levels
+- **RAG-based Chat Assistant**: Context-aware AI assistant for answering instructor questions
+- **Instructor Reports**: Comprehensive reporting for instructors with export capabilities
 
 ### Backend (FastAPI + Firebase)
 - **RESTful API**: FastAPI-based backend with comprehensive endpoints
@@ -21,6 +25,9 @@ A comprehensive analytics dashboard for tracking course performance across multi
 - **Analytics Processing**: Advanced data processing and aggregation
 - **Report Generation**: PDF and Excel report generation capabilities
 - **Admin Endpoints**: Dedicated API routes for admin reporting functionality
+- **Predictive Analytics**: Machine learning models for performance predictions
+- **Risk Assessment**: Automated risk detection for courses and students
+- **RAG Implementation**: Retrieval-Augmented Generation for intelligent chat responses
 
 ## 📋 Prerequisites
 
@@ -240,10 +247,11 @@ Multi-Dimensional-Course-Performance-Analytics-Dashboard/
 │   │   ├── pages/                  # Page components
 │   │   │   ├── admin/              # Admin-specific pages
 │   │   │   ├── dashboard/          # Dashboard pages
-│   │   │   └── courseAnalytics/    # Course analytics pages
+│   │   │   ├── courseAnalytics/    # Course analytics pages
+│   │   │   ├── predictiveAnalytics/ # Predictive analytics pages
+│   │   │   └── reportGeneration/   # Report generation pages
 │   │   ├── context/                # React Context (Auth, etc.)
-│   │   ├── data/                   # Mock data and data processing
-│   │   ├── utils/                  # Utility functions (Chart.js helpers)
+│   │   ├── services/               # API service layer
 │   │   └── index.css               # Global styles
 │   ├── package.json
 │   └── vite.config.js
@@ -255,6 +263,7 @@ Multi-Dimensional-Course-Performance-Analytics-Dashboard/
 │   │   │   ├── course_analytics.py # Course analytics endpoints
 │   │   │   ├── firebase_auth.py    # Authentication endpoints
 │   │   │   ├── instructor_dashboard.py # Instructor dashboard endpoints
+│   │   │   ├── instructor_predictive_rag.py # Instructor predictive analytics and RAG endpoints
 │   │   │   └── user_management.py  # User management endpoints
 │   │   ├── services/               # Business logic
 │   │   └── firebase_config.py      # Firebase configuration
@@ -315,6 +324,23 @@ The dashboard includes comprehensive admin reporting capabilities:
 - No date range restrictions for comprehensive data analysis
 - Role-based access control ensuring only admins can generate reports
 
+## 📈 Predictive Analytics
+
+The dashboard includes advanced predictive analytics for instructors:
+
+### Features
+- **Performance Predictions**: AI-powered predictions for course performance
+- **Risk Matrix**: Interactive scatter plot visualization of course risk levels
+- **At-Risk Detection**: Automated identification of at-risk courses and students
+- **RAG-based Chat Assistant**: Context-aware AI assistant for answering instructor questions
+- **Recommendations**: AI-generated recommendations for improving course performance
+- **Report Generation**: Export predictive analytics data to PDF or Excel
+
+### Risk Assessment
+- Courses with average grade ≥ 70 are considered "Good" (displayed in green)
+- Courses with average grade < 70 are considered "At Risk" (displayed in red)
+- Risk matrix visualization shows relationship between number of sections and predicted at-risk sections
+
 ## 🚀 Deployment
 
 ### Frontend Deployment (Vercel/Netlify)
@@ -343,6 +369,8 @@ The dashboard works with the following data entities:
 - **Courses**: Course information with performance metrics
 - **Campuses**: Multiple campus locations
 - **Analytics**: Performance data and insights
+- **Sections**: Course sections with student data
+- **Assessments**: Grade breakdowns and performance metrics
 
 ## 🔐 Security
 
