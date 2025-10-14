@@ -706,6 +706,14 @@ class ApiService {
     return this.get('/admin/predict/campus-performance');
   }
 
+  // New endpoints for instructor predictive RAG
+  async getInstructorPredictiveAnalytics() {
+    return this.get('/instructor/predictive-analytics');
+  }
+
+  async getInstructorRiskMatrix() {
+    return this.get('/instructor/risk-matrix');
+  }
 }
 
 // Create and export a singleton instance
