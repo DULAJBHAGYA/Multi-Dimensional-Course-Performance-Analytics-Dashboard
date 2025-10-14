@@ -135,8 +135,16 @@ async def get_department_predictive_analytics(
         department_doc = db.collection('departments').document(department_id).get()
         department_name = department_doc.to_dict().get('department', department_id) if department_doc.exists else department_id
         
-        # Get all sections for this department AND campus
-        sections_query = db.collection('sections').where('department', '==', department_id).where('campusId', '==', campus_id)
+        # Try to get sections for this department and campus
+        sections_query = db.collection('sections')
+        
+        # Apply department filter
+        sections_query = sections_query.where('department', '==', department_id)
+        
+        # Apply campus filter only if campus_id exists
+        if campus_id:
+            sections_query = sections_query.where('campusId', '==', campus_id)
+        
         sections_docs = list(sections_query.limit(1000).stream())
         sections_data = []
         
@@ -146,8 +154,30 @@ async def get_department_predictive_analytics(
             section_data['id'] = doc.id
             sections_data.append(section_data)
         
+        # If no sections found with both filters, try just department
+        if not sections_data and campus_id:
+            logger.info("No sections found for both department and campus, trying department only")
+            sections_query = db.collection('sections').where('department', '==', department_id)
+            sections_docs = list(sections_query.limit(1000).stream())
+            for doc in sections_docs:
+                section_data = doc.to_dict()
+                section_data['id'] = doc.id
+                sections_data.append(section_data)
+        
         if not sections_data:
-            raise HTTPException(status_code=404, detail="No sections found for department and campus")
+            logger.warning("No sections found for department")
+            # Return empty response instead of error
+            return DepartmentPredictionResponse(
+                generated_at=datetime.now().isoformat(),
+                department_id=department_id,
+                department_name=department_name,
+                predicted_average_grade=0.0,
+                predicted_pass_rate=0.0,
+                at_risk_crn_count=0,
+                low_performing_instructor_count=0,
+                courses=[],
+                instructors=[]
+            )
         
         # Pre-fetch course details to reduce database calls
         course_details = {}
@@ -156,18 +186,17 @@ async def get_department_predictive_analytics(
             course_code, course_name = get_course_details(db, course_id)
             course_details[course_id] = (course_code, course_name)
         
-        # Pre-fetch instructor names - ONLY for instructors in this department AND campus
+        # Pre-fetch instructor names - ONLY for instructors in this department
         instructor_names = {}
         instructor_ids = set(section.get('instructorId') for section in sections_data if section.get('instructorId'))
         
-        # Filter instructors to only those in this department AND campus
+        # Filter instructors to only those in this department
         for instructor_id in instructor_ids:
             instructor_doc = db.collection('instructors').document(instructor_id).get()
             if instructor_doc.exists:
                 instructor_data = instructor_doc.to_dict()
-                # Only include instructors from this department AND campus
-                if (instructor_data.get('department') == department_id and 
-                    instructor_data.get('campus') == campus_id):
+                # Only include instructors from this department
+                if instructor_data.get('department') == department_id:
                     instructor_names[instructor_id] = instructor_data.get('display_name', instructor_data.get('username', 'Unknown Instructor'))
         
         # Calculate metrics
@@ -210,9 +239,9 @@ async def get_department_predictive_analytics(
                 course_metrics[course_id]['grades'].append(section['averageGrade'])
                 course_metrics[course_id]['pass_rates'].append(pass_rate)
             
-            # Group by instructor - ONLY for instructors in this department AND campus
+            # Group by instructor - ONLY for instructors in this department
             instructor_id = section.get('instructorId', 'unknown')
-            # Only process instructors that belong to this department AND campus
+            # Only process instructors that belong to this department
             if instructor_id in instructor_names:
                 if instructor_id not in instructor_metrics:
                     instructor_metrics[instructor_id] = {
@@ -237,7 +266,7 @@ async def get_department_predictive_analytics(
                     predicted_pass_rate=round(avg_pass_rate, 2)
                 ))
         
-        # Calculate instructor-level predictions - ONLY for instructors in this department AND campus
+        # Calculate instructor-level predictions - ONLY for instructors in this department
         instructor_predictions = []
         low_performing_instructors = 0
         

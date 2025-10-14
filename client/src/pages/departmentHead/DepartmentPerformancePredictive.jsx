@@ -21,7 +21,20 @@ const DepartmentPerformancePredictive = () => {
       setPredictiveData(data);
     } catch (err) {
       console.error('Error fetching predictive data:', err);
-      setError(err.message || 'Failed to load predictive analytics data');
+      // Don't set error for "No sections found" - just show empty data
+      if (err.message && err.message.includes('No sections found')) {
+        // Set empty data instead of error
+        setPredictiveData({
+          predicted_average_grade: 0,
+          predicted_pass_rate: 0,
+          at_risk_crn_count: 0,
+          low_performing_instructor_count: 0,
+          courses: [],
+          instructors: []
+        });
+      } else {
+        setError(err.message || 'Failed to load predictive analytics data');
+      }
     } finally {
       setLoading(false);
     }
@@ -198,6 +211,11 @@ const DepartmentPerformancePredictive = () => {
                 options={getChartOptionsWithBorderRadius('bar', '')}
               />
             </div>
+            {(!predictiveData?.courses || predictiveData.courses.length === 0) && (
+              <div className="text-center py-4 text-gray-500">
+                No course data available.
+              </div>
+            )}
           </div>
         </div>
 
@@ -211,10 +229,15 @@ const DepartmentPerformancePredictive = () => {
                 options={getChartOptionsWithBorderRadius('bar', '')}
               />
             </div>
+            {(!predictiveData?.courses || predictiveData.courses.length === 0) && (
+              <div className="text-center py-4 text-gray-500">
+                No course data available.
+              </div>
+            )}
           </div>
-        </div>
+        {/* </div>
 
-        {/* Instructor Predicted Average Grades */}
+        Instructor Predicted Average Grades
         <div className="grid grid-cols-1 gap-6 mb-8">
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Instructor Predicted Average Grades</h3>
@@ -245,8 +268,9 @@ const DepartmentPerformancePredictive = () => {
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </div>*/}
+        </div> 
+
       </div>
     </DashboardLayout>
   );
