@@ -360,6 +360,7 @@ async def get_admin_campus_course_performance(
     current_user: dict = Depends(verify_token)
 ):
     """Get campus course performance data - average grade and pass rate for each unique course"""
+    start_time = datetime.now()
     try:
         # Verify user is admin
         if current_user.get("role") != "admin":
@@ -384,8 +385,8 @@ async def get_admin_campus_course_performance(
         if not admin_campus:
             raise HTTPException(status_code=400, detail="Admin campus not found")
         
-        # Get all sections for this campus
-        sections_query = db.collection('sections').where('campus', '==', admin_campus).stream()
+        # Get all sections for this campus with limit for performance
+        sections_query = db.collection('sections').where('campus', '==', admin_campus).limit(300).stream()
         campus_sections = [section.to_dict() for section in sections_query]
         
         # Group sections by course
@@ -405,20 +406,21 @@ async def get_admin_campus_course_performance(
             
             course_sections[course_code]['sections'].append(section)
         
-        # Get course details from courses collection
+        # Get course details from courses collection with batch operation
+        course_codes = list(course_sections.keys())
         course_details = {}
-        for course_code in course_sections.keys():
-            # Query courses collection by courseCode
-            courses_query = db.collection('courses').where('courseCode', '==', course_code).limit(1).stream()
-            course_docs = list(courses_query)
-            
-            if course_docs:
-                course_doc = course_docs[0]
+        
+        if course_codes:
+            # Batch query courses by courseCode
+            courses_query = db.collection('courses').where('courseCode', 'in', course_codes[:10]).stream()
+            for course_doc in courses_query:
                 course_data = course_doc.to_dict() or {}
-                course_details[course_code] = {
-                    'courseName': course_data.get('courseName', f'Unknown Course ({course_code})'),
-                    'department': course_data.get('department', 'Unknown Department')
-                }
+                course_code = course_data.get('courseCode')
+                if course_code:
+                    course_details[course_code] = {
+                        'courseName': course_data.get('courseName', f'Unknown Course ({course_code})'),
+                        'department': course_data.get('department', 'Unknown Department')
+                    }
         
         # Calculate metrics for each course
         course_performance = []
@@ -469,9 +471,17 @@ async def get_admin_campus_course_performance(
                 'averageGrade': average_grade,
                 'passRate': pass_rate
             })
+            
+            # Limit results to improve performance
+            if len(course_performance) >= 50:
+                break
         
         # Sort by course code for consistent display
         course_performance.sort(key=lambda x: x['courseCode'])
+        
+        end_time = datetime.now()
+        processing_time = (end_time - start_time).total_seconds()
+        print(f"Campus course performance endpoint took {processing_time} seconds")
         
         return course_performance
         
@@ -485,6 +495,7 @@ async def get_admin_campus_performance_trend(
     current_user: dict = Depends(verify_token)
 ):
     """Get campus performance trend data for line chart - average grades by semester"""
+    start_time = datetime.now()
     try:
         # Verify user is admin
         if current_user.get("role") != "admin":
@@ -509,8 +520,8 @@ async def get_admin_campus_performance_trend(
         if not admin_campus:
             raise HTTPException(status_code=400, detail="Admin campus not found")
         
-        # Get all sections for this campus
-        sections_query = db.collection('sections').where('campus', '==', admin_campus).stream()
+        # Get sections for this campus with limit for performance
+        sections_query = db.collection('sections').where('campus', '==', admin_campus).limit(300).stream()
         campus_sections = [section.to_dict() for section in sections_query]
         
         # Group sections by semesterId and calculate average grades
@@ -533,12 +544,15 @@ async def get_admin_campus_performance_trend(
             semester_performance[semester_id]["total_grades"] += average_grade
             semester_performance[semester_id]["section_count"] += 1
         
-        # Get semester names from semesters collection
-        semesters_query = db.collection('semesters').stream()
+        # Get semester names from semesters collection (limit to recent semesters)
+        semester_ids = list(semester_performance.keys())[:20]  # Limit to 20 semesters
         semester_names = {}
-        for semester_doc in semesters_query:
-            semester_data = semester_doc.to_dict() or {}
-            semester_names[semester_doc.id] = semester_data.get('semester', f'Semester {semester_doc.id}')
+        
+        if semester_ids:
+            semesters_query = db.collection('semesters').where('__name__', 'in', semester_ids[:10]).stream()
+            for semester_doc in semesters_query:
+                semester_data = semester_doc.to_dict() or {}
+                semester_names[semester_doc.id] = semester_data.get('semester', f'Semester {semester_doc.id}')
         
         # Calculate average grades for each semester and add semester names
         performance_trend = []
@@ -551,8 +565,13 @@ async def get_admin_campus_performance_trend(
                     "averageGrade": avg_grade
                 })
         
-        # Sort by semester name for proper chronological display
+        # Sort by semester name for proper chronological display (limit to 12 items)
         performance_trend.sort(key=lambda x: x["semesterName"])
+        performance_trend = performance_trend[-12:]  # Only last 12 semesters
+        
+        end_time = datetime.now()
+        processing_time = (end_time - start_time).total_seconds()
+        print(f"Campus performance trend endpoint took {processing_time} seconds")
         
         return performance_trend
         
@@ -566,6 +585,7 @@ async def get_admin_campus_grade_distribution(
     current_user: dict = Depends(verify_token)
 ):
     """Get campus grade distribution data for pie chart - percentage of grades (A, B, C, D, F)"""
+    start_time = datetime.now()
     try:
         # Verify user is admin
         if current_user.get("role") != "admin":
@@ -590,8 +610,8 @@ async def get_admin_campus_grade_distribution(
         if not admin_campus:
             raise HTTPException(status_code=400, detail="Admin campus not found")
         
-        # Get all sections for this campus
-        sections_query = db.collection('sections').where('campus', '==', admin_campus).stream()
+        # Get sections for this campus with limit for performance
+        sections_query = db.collection('sections').where('campus', '==', admin_campus).limit(300).stream()
         campus_sections = [section.to_dict() for section in sections_query]
         
         # Initialize grade counters
@@ -639,6 +659,10 @@ async def get_admin_campus_grade_distribution(
                     "count": 0,
                     "percentage": 0.0
                 })
+        
+        end_time = datetime.now()
+        processing_time = (end_time - start_time).total_seconds()
+        print(f"Campus grade distribution endpoint took {processing_time} seconds")
         
         return grade_distribution
         

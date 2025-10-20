@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import apiService from '../../services/api';
@@ -27,6 +27,8 @@ ChartJS.register(
 
 const DepartmentHeadDashboard = () => {
   const { user } = useAuth();
+  const hasFetchedData = useRef(false);
+  const hasFetchedOptions = useRef(false);
   const [kpiData, setKpiData] = useState({
     totalCourses: 0,
     totalInstructors: 0,
@@ -50,6 +52,10 @@ const DepartmentHeadDashboard = () => {
   const [comparisonError, setComparisonError] = useState(null);
 
   useEffect(() => {
+    // Prevent duplicate API calls in development due to React Strict Mode
+    if (hasFetchedData.current) return;
+    hasFetchedData.current = true;
+    
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
@@ -92,10 +98,19 @@ const DepartmentHeadDashboard = () => {
     };
 
     fetchDashboardData();
+    
+    // Cleanup function
+    return () => {
+      hasFetchedData.current = false;
+    };
   }, []);
 
   // Fetch instructor and course options for comparison
   useEffect(() => {
+    // Prevent duplicate API calls in development due to React Strict Mode
+    if (hasFetchedOptions.current) return;
+    hasFetchedOptions.current = true;
+    
     const fetchOptions = async () => {
       try {
         const [instructorResponse, courseResponse] = await Promise.all([
@@ -111,6 +126,11 @@ const DepartmentHeadDashboard = () => {
     };
 
     fetchOptions();
+    
+    // Cleanup function
+    return () => {
+      hasFetchedOptions.current = false;
+    };
   }, []);
 
   const handleCompare = async () => {

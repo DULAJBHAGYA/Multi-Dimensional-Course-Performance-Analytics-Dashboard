@@ -7,6 +7,7 @@ from app.firebase_config import get_firestore_client
 from app.routes.firebase_auth_updated import verify_token
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from collections import defaultdict
 import logging
 from datetime import datetime
 
@@ -96,6 +97,66 @@ def get_instructor_name(db, instructor_id: str) -> str:
         logger.error(f"Error fetching instructor name for {instructor_id}: {str(e)}")
         return 'Unknown Instructor'
 
+def get_course_details_batch(db, course_ids: List[str]) -> Dict[str, tuple]:
+    """Get course code and name for multiple course IDs in a single query"""
+    if not course_ids:
+        return {}
+    
+    try:
+        # Batch get course documents
+        course_refs = [db.collection('courses').document(course_id) for course_id in course_ids]
+        course_docs = db.get_all(course_refs)
+        
+        course_details = {}
+        for doc in course_docs:
+            if doc.exists:
+                course_data = doc.to_dict()
+                course_code = course_data.get('courseCode', 'Unknown')
+                course_name = course_data.get('courseName', 'Unknown Course')
+                course_details[doc.id] = (course_code, course_name)
+            else:
+                course_details[doc.id] = ('Unknown', 'Unknown Course')
+        
+        return course_details
+    except Exception as e:
+        logger.error(f"Error batch fetching course details: {str(e)}")
+        # Fallback to individual fetching
+        course_details = {}
+        for course_id in course_ids:
+            course_code, course_name = get_course_details(db, course_id)
+            course_details[course_id] = (course_code, course_name)
+        return course_details
+
+def get_instructor_names_batch(db, instructor_ids: List[str], department_id: str) -> Dict[str, str]:
+    """Get instructor names for multiple instructor IDs in a single query, filtered by department"""
+    if not instructor_ids:
+        return {}
+    
+    try:
+        # Batch get instructor documents
+        instructor_refs = [db.collection('instructors').document(instructor_id) for instructor_id in instructor_ids]
+        instructor_docs = db.get_all(instructor_refs)
+        
+        instructor_names = {}
+        for doc in instructor_docs:
+            if doc.exists:
+                instructor_data = doc.to_dict()
+                # Only include instructors from this department
+                if instructor_data.get('department') == department_id:
+                    name = instructor_data.get('display_name', instructor_data.get('username', 'Unknown Instructor'))
+                    instructor_names[doc.id] = name
+        
+        return instructor_names
+    except Exception as e:
+        logger.error(f"Error batch fetching instructor names: {str(e)}")
+        # Fallback to individual fetching
+        instructor_names = {}
+        for instructor_id in instructor_ids:
+            name = get_instructor_name(db, instructor_id)
+            # We'll filter by department on the client side since we don't have access to db here
+            instructor_names[instructor_id] = name
+        return instructor_names
+
 @router.get("/predictive-analytics", response_model=DepartmentPredictionResponse)
 async def get_department_predictive_analytics(
     current_user: dict = Depends(verify_token)
@@ -135,7 +196,7 @@ async def get_department_predictive_analytics(
         department_doc = db.collection('departments').document(department_id).get()
         department_name = department_doc.to_dict().get('department', department_id) if department_doc.exists else department_id
         
-        # Try to get sections for this department and campus
+        # Try to get sections for this department and campus with limit for performance
         sections_query = db.collection('sections')
         
         # Apply department filter
@@ -145,7 +206,8 @@ async def get_department_predictive_analytics(
         if campus_id:
             sections_query = sections_query.where('campusId', '==', campus_id)
         
-        sections_docs = list(sections_query.limit(1000).stream())
+        # Limit to 500 sections for performance (instead of 1000)
+        sections_docs = list(sections_query.limit(500).stream())
         sections_data = []
         
         # Process sections data
@@ -158,7 +220,7 @@ async def get_department_predictive_analytics(
         if not sections_data and campus_id:
             logger.info("No sections found for both department and campus, trying department only")
             sections_query = db.collection('sections').where('department', '==', department_id)
-            sections_docs = list(sections_query.limit(1000).stream())
+            sections_docs = list(sections_query.limit(500).stream())  # Also limit here
             for doc in sections_docs:
                 section_data = doc.to_dict()
                 section_data['id'] = doc.id
@@ -179,25 +241,13 @@ async def get_department_predictive_analytics(
                 instructors=[]
             )
         
-        # Pre-fetch course details to reduce database calls
-        course_details = {}
-        course_ids = set(section.get('courseId') for section in sections_data if section.get('courseId'))
-        for course_id in course_ids:
-            course_code, course_name = get_course_details(db, course_id)
-            course_details[course_id] = (course_code, course_name)
+        # Batch pre-fetch course details to reduce database calls
+        course_ids = list(set(section.get('courseId') for section in sections_data if section.get('courseId')))
+        course_details = get_course_details_batch(db, course_ids)
         
-        # Pre-fetch instructor names - ONLY for instructors in this department
-        instructor_names = {}
-        instructor_ids = set(section.get('instructorId') for section in sections_data if section.get('instructorId'))
-        
-        # Filter instructors to only those in this department
-        for instructor_id in instructor_ids:
-            instructor_doc = db.collection('instructors').document(instructor_id).get()
-            if instructor_doc.exists:
-                instructor_data = instructor_doc.to_dict()
-                # Only include instructors from this department
-                if instructor_data.get('department') == department_id:
-                    instructor_names[instructor_id] = instructor_data.get('display_name', instructor_data.get('username', 'Unknown Instructor'))
+        # Batch pre-fetch instructor names - ONLY for instructors in this department
+        instructor_ids = list(set(section.get('instructorId') for section in sections_data if section.get('instructorId')))
+        instructor_names = get_instructor_names_batch(db, instructor_ids, department_id)
         
         # Calculate metrics
         total_sections = len(sections_data)
@@ -228,11 +278,12 @@ async def get_department_predictive_analytics(
             # Group by course
             course_id = section.get('courseId', 'unknown')
             if course_id not in course_metrics:
+                course_code, course_name = course_details.get(course_id, ('Unknown', 'Unknown Course'))
                 course_metrics[course_id] = {
                     'grades': [],
                     'pass_rates': [],
-                    'course_code': course_details.get(course_id, ('Unknown', 'Unknown Course'))[0],
-                    'course_name': course_details.get(course_id, ('Unknown', 'Unknown Course'))[1]
+                    'course_code': course_code,
+                    'course_name': course_name
                 }
             
             if section.get('averageGrade') is not None:
@@ -244,9 +295,10 @@ async def get_department_predictive_analytics(
             # Only process instructors that belong to this department
             if instructor_id in instructor_names:
                 if instructor_id not in instructor_metrics:
+                    instructor_name = instructor_names.get(instructor_id, 'Unknown Instructor')
                     instructor_metrics[instructor_id] = {
                         'grades': [],
-                        'instructor_name': instructor_names.get(instructor_id, 'Unknown Instructor')
+                        'instructor_name': instructor_name
                     }
                 
                 if section.get('averageGrade') is not None:

@@ -398,7 +398,7 @@ const PredictiveAnalytics = () => {
                         x: {
                           title: {
                             display: true,
-                            text: 'Number of Sections (Count)'
+                            text: 'Number of CRNs (Count)'
                           },
                           beginAtZero: true,
                           ticks: {
@@ -408,7 +408,7 @@ const PredictiveAnalytics = () => {
                         y: {
                           title: {
                             display: true,
-                            text: 'Predicted At-Risk Sections (Count)'
+                            text: 'Predicted At-Risk CRNs (Count)'
                           },
                           beginAtZero: true,
                           ticks: {

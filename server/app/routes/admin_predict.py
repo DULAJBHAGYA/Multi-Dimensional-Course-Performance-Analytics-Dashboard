@@ -7,6 +7,7 @@ from app.firebase_config import get_firestore_client
 from app.routes.firebase_auth_updated import verify_token
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from collections import defaultdict
 import logging
 from datetime import datetime
 
@@ -96,19 +97,45 @@ def get_semester_name(db, semester_id: str) -> str:
         logger.error(f"Error fetching semester name for {semester_id}: {str(e)}")
         return semester_id
 
-def get_course_details(db, course_id: str) -> tuple:
-    """Get course code and name from course ID"""
+def get_course_details_batch(db, course_ids: List[str]) -> Dict[str, tuple]:
+    """Get course code and name for multiple course IDs in a single query"""
+    if not course_ids:
+        return {}
+    
     try:
-        course_doc = db.collection('courses').document(course_id).get()
-        if course_doc.exists:
-            course_data = course_doc.to_dict()
-            course_code = course_data.get('courseCode', 'Unknown')
-            course_name = course_data.get('courseName', 'Unknown Course')
-            return course_code, course_name
-        return 'Unknown', 'Unknown Course'
+        # Batch get course documents
+        course_refs = [db.collection('courses').document(course_id) for course_id in course_ids]
+        course_docs = db.get_all(course_refs)
+        
+        course_details = {}
+        for doc in course_docs:
+            if doc.exists:
+                course_data = doc.to_dict()
+                course_code = course_data.get('courseCode', 'Unknown')
+                course_name = course_data.get('courseName', 'Unknown Course')
+                course_details[doc.id] = (course_code, course_name)
+            else:
+                course_details[doc.id] = ('Unknown', 'Unknown Course')
+        
+        return course_details
     except Exception as e:
-        logger.error(f"Error fetching course details for {course_id}: {str(e)}")
-        return 'Unknown', 'Unknown Course'
+        logger.error(f"Error batch fetching course details: {str(e)}")
+        # Fallback to individual fetching
+        course_details = {}
+        for course_id in course_ids:
+            try:
+                course_doc = db.collection('courses').document(course_id).get()
+                if course_doc.exists:
+                    course_data = course_doc.to_dict()
+                    course_code = course_data.get('courseCode', 'Unknown')
+                    course_name = course_data.get('courseName', 'Unknown Course')
+                    course_details[course_id] = (course_code, course_name)
+                else:
+                    course_details[course_id] = ('Unknown', 'Unknown Course')
+            except Exception as inner_e:
+                logger.error(f"Error fetching course {course_id}: {str(inner_e)}")
+                course_details[course_id] = ('Unknown', 'Unknown Course')
+        return course_details
 
 @router.get("/campus-performance", response_model=PredictionResponse)
 async def predict_campus_performance(
@@ -126,6 +153,9 @@ async def predict_campus_performance(
     The predictions are based on historical section data and machine learning models.
     """
     try:
+        start_time = datetime.now()
+        logger.info(f"Starting campus performance prediction for campus_id: {campus_id}")
+        
         db = get_firestore_client()
         if not db:
             raise HTTPException(status_code=500, detail="Database connection failed")
@@ -136,7 +166,8 @@ async def predict_campus_performance(
             sections_query = sections_query.where('campusId', '==', campus_id)
         
         # Limit the number of sections to process to prevent performance issues
-        sections_docs = list(sections_query.limit(1000).stream())
+        # Reduced limit for better performance
+        sections_docs = list(sections_query.limit(500).stream())
         sections_data = []
         
         # Process sections data
@@ -146,11 +177,13 @@ async def predict_campus_performance(
             sections_data.append(section_data)
         
         if not sections_data:
+            logger.warning("No sections found for prediction")
             raise HTTPException(status_code=404, detail="No sections found")
+        
+        logger.info(f"Processing {len(sections_data)} sections")
         
         # Pre-fetch campus, course, and semester data to reduce database calls
         campus_names = {}
-        course_details = {}
         semester_names = {}
         
         # Get unique campus IDs, course IDs, and semester IDs
@@ -166,31 +199,34 @@ async def predict_campus_performance(
             if section.get('semesterId'):
                 semester_ids.add(section['semesterId'])
         
+        logger.info(f"Pre-fetching data for {len(campus_ids)} campuses, {len(course_ids)} courses, {len(semester_ids)} semesters")
+        
         # Batch fetch campus names
         for campus_id_key in campus_ids:
             campus_names[campus_id_key] = get_campus_name(db, campus_id_key)
         
-        # Batch fetch course details
-        for course_id in course_ids:
-            course_code, course_name = get_course_details(db, course_id)
-            course_details[course_id] = (course_code, course_name)
+        # Batch fetch course details using optimized batch method
+        course_details = get_course_details_batch(db, list(course_ids))
         
         # Batch fetch semester names
         for semester_id in semester_ids:
             semester_names[semester_id] = get_semester_name(db, semester_id)
         
         # Group sections by campus
-        campus_sections = {}
+        campus_sections = defaultdict(list)
         for section in sections_data:
             campus_id = section.get('campusId', '')
             if campus_id:
-                if campus_id not in campus_sections:
-                    campus_sections[campus_id] = []
                 campus_sections[campus_id].append(section)
+        
+        logger.info(f"Grouped sections into {len(campus_sections)} campuses")
         
         # Generate predictions for each campus
         campus_predictions = []
         all_at_risk_sections = []
+        
+        # Limit the number of at-risk sections to return to prevent large responses
+        at_risk_count_limit = 20  # Reduced from 50 for better performance
         
         for campus_id_key, sections in campus_sections.items():
             # Get campus name from pre-fetched data
@@ -206,9 +242,6 @@ async def predict_campus_performance(
             # Calculate pass rates for each section
             section_pass_rates = []
             at_risk_sections = []
-            
-            # Limit the number of at-risk sections to return to prevent large responses
-            at_risk_count_limit = 50
             
             for section in sections:
                 # Calculate pass rate from grade breakdown
@@ -258,12 +291,18 @@ async def predict_campus_performance(
             
             campus_predictions.append(campus_prediction)
         
+        end_time = datetime.now()
+        processing_time = (end_time - start_time).total_seconds()
+        logger.info(f"Completed campus performance prediction in {processing_time} seconds")
+        
         return PredictionResponse(
             generated_at=datetime.now().isoformat(),
             campus_predictions=campus_predictions,
-            at_risk_sections=all_at_risk_sections
+            at_risk_sections=all_at_risk_sections[:at_risk_count_limit]  # Ensure we don't exceed limit
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error predicting campus performance: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error predicting campus performance: {str(e)}")
