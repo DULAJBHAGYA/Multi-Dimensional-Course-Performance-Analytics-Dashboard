@@ -685,6 +685,7 @@ class ApiService {
     return this.get('/department-head/predictive-analytics');
   }
 
+
   async getAdminCampusGradeDistribution() {
     return this.get('/firebase/dashboard/admin/campus-grade-distribution');
   }

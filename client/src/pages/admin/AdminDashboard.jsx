@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import apiService from '../../services/api';
@@ -17,70 +17,282 @@ const AdminDashboard = () => {
   const [coursesPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [cache, setCache] = useState(null);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
+  const [loadingStates, setLoadingStates] = useState({
+    dashboard: false,
+    departmentMetrics: false,
+    campusPerformance: false,
+    gradeDistribution: false,
+    coursePerformance: false,
+    predictive: false
+  });
 
-  // Fetch dashboard data with error handling and loading states
+  // Cache timeout (5 minutes)
+  const CACHE_TIMEOUT = 5 * 60 * 1000;
+
+  // Fetch individual data with better error handling and timeouts
+  const fetchDataWithTimeout = async (apiCall, timeout = 10000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const result = await apiCall();
+      clearTimeout(timeoutId);
+      return result;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error('Request timeout');
+      }
+      throw err;
+    }
+  };
+
+  // Fetch dashboard data with sequential loading and better error handling
   const fetchDashboardData = useCallback(async () => {
+    // Check if we have valid cached data
+    if (cache && lastFetchTime) {
+      const now = Date.now();
+      if (now - lastFetchTime < CACHE_TIMEOUT) {
+        // Use cached data
+        setDashboardData(cache.dashboardData);
+        setCampusPerformanceTrend(cache.campusPerformanceTrend);
+        setCampusGradeDistribution(cache.campusGradeDistribution);
+        setCampusCoursePerformance(cache.campusCoursePerformance || []);
+        setPredictiveInsights(cache.predictiveInsights);
+        setDepartmentMetrics(cache.departmentMetrics);
+        setLoading(false);
+        return;
+      }
+    }
+    
     try {
       setLoading(true);
       setError(null);
       
-      // Fetch dashboard data, filter options, department metrics, campus performance trend, grade distribution, and course performance in parallel
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      // Reset loading states
+      setLoadingStates({
+        dashboard: true,
+        departmentMetrics: true,
+        campusPerformance: true,
+        gradeDistribution: true,
+        coursePerformance: true,
+        predictive: true
+      });
       
+      // Fetch data sequentially to reduce server load and improve error handling
       try {
-        const [dashboardResult, departmentMetricsResult, departmentInstructorsResult, campusPerformanceTrendResult, campusGradeDistributionResult, campusCoursePerformanceResult, predictiveInsightsResult] = await Promise.all([
-          apiService.getAdminDashboard(),
-          apiService.getAdminDepartmentMetrics(),
-          apiService.getAdminDepartmentInstructors(),
-          apiService.getAdminCampusPerformanceTrend(),
-          apiService.getAdminCampusGradeDistribution(),
-          apiService.getAdminCampusCoursePerformance(),
-          apiService.getAdminPredictions()
+        // Fetch core dashboard data first
+        setLoadingStates(prev => ({ ...prev, dashboard: true }));
+        const dashboardResult = await fetchDataWithTimeout(() => apiService.getAdminDashboard(), 8000);
+        setDashboardData(dashboardResult);
+        setLoadingStates(prev => ({ ...prev, dashboard: false }));
+        
+        // Fetch department metrics
+        setLoadingStates(prev => ({ ...prev, departmentMetrics: true }));
+        const [departmentMetricsResult, departmentInstructorsResult] = await Promise.all([
+          fetchDataWithTimeout(() => apiService.getAdminDepartmentMetrics(), 5000),
+          fetchDataWithTimeout(() => apiService.getAdminDepartmentInstructors(), 5000)
         ]);
         
-        clearTimeout(timeoutId);
-        setDashboardData(dashboardResult);
-        setCampusPerformanceTrend(campusPerformanceTrendResult);
-        setCampusGradeDistribution(campusGradeDistributionResult);
-        setCampusCoursePerformance(campusCoursePerformanceResult || []);
-        setPredictiveInsights(predictiveInsightsResult); // Set predictive insights data
-        
-        // Use the campus-specific instructor count while keeping other metrics
-        setDepartmentMetrics({
+        // Combine department metrics with instructor count
+        const combinedDepartmentMetrics = {
           ...departmentMetricsResult,
           totalInstructors: departmentInstructorsResult?.totalInstructors || 0
-        });
+        };
+        
+        setDepartmentMetrics(combinedDepartmentMetrics);
+        setLoadingStates(prev => ({ ...prev, departmentMetrics: false }));
+        
+        // Fetch campus performance data
+        setLoadingStates(prev => ({ ...prev, campusPerformance: true }));
+        const campusPerformanceTrendResult = await fetchDataWithTimeout(() => apiService.getAdminCampusPerformanceTrend(), 6000);
+        setCampusPerformanceTrend(campusPerformanceTrendResult);
+        setLoadingStates(prev => ({ ...prev, campusPerformance: false }));
+        
+        // Fetch grade distribution
+        setLoadingStates(prev => ({ ...prev, gradeDistribution: true }));
+        const campusGradeDistributionResult = await fetchDataWithTimeout(() => apiService.getAdminCampusGradeDistribution(), 5000);
+        setCampusGradeDistribution(campusGradeDistributionResult);
+        setLoadingStates(prev => ({ ...prev, gradeDistribution: false }));
+        
+        // Fetch course performance (can be delayed as it's used in a table)
+        setLoadingStates(prev => ({ ...prev, coursePerformance: true }));
+        const campusCoursePerformanceResult = await fetchDataWithTimeout(() => apiService.getAdminCampusCoursePerformance(), 7000);
+        setCampusCoursePerformance(campusCoursePerformanceResult || []);
+        setLoadingStates(prev => ({ ...prev, coursePerformance: false }));
+        
+        // Fetch predictive insights last (can be delayed as it's supplementary)
+        setLoadingStates(prev => ({ ...prev, predictive: true }));
+        const predictiveInsightsResult = await fetchDataWithTimeout(() => apiService.getAdminPredictions(), 8000);
+        setPredictiveInsights(predictiveInsightsResult);
+        setLoadingStates(prev => ({ ...prev, predictive: false }));
+        
+        // Cache all the data
+        const cachedData = {
+          dashboardData: dashboardResult,
+          departmentMetrics: combinedDepartmentMetrics,
+          campusPerformanceTrend: campusPerformanceTrendResult,
+          campusGradeDistribution: campusGradeDistributionResult,
+          campusCoursePerformance: campusCoursePerformanceResult || [],
+          predictiveInsights: predictiveInsightsResult
+        };
+        
+        setCache(cachedData);
+        setLastFetchTime(Date.now());
       } catch (err) {
-        clearTimeout(timeoutId);
-        if (err.name === 'AbortError') {
-          throw new Error('Request timeout - please try again');
+        console.error('Error fetching admin dashboard data:', err);
+        setError(err.message || 'Failed to load admin dashboard data');
+        
+        // If we have cached data, use it as fallback
+        if (cache) {
+          setDashboardData(cache.dashboardData);
+          setCampusPerformanceTrend(cache.campusPerformanceTrend);
+          setCampusGradeDistribution(cache.campusGradeDistribution);
+          setCampusCoursePerformance(cache.campusCoursePerformance || []);
+          setPredictiveInsights(cache.predictiveInsights);
+          setDepartmentMetrics(cache.departmentMetrics);
         }
-        throw err;
       }
-    } catch (err) {
-      console.error('Error fetching admin dashboard data:', err);
-      setError(err.message || 'Failed to load admin dashboard data');
     } finally {
       setLoading(false);
+      // Reset all loading states
+      setLoadingStates({
+        dashboard: false,
+        departmentMetrics: false,
+        campusPerformance: false,
+        gradeDistribution: false,
+        coursePerformance: false,
+        predictive: false
+      });
     }
-  }, []);
+  }, [cache, lastFetchTime]);
 
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  if (loading) {
+  // Memoize chart data to prevent unnecessary re-renders
+  const performanceOverTime = useMemo(() => {
+    return campusPerformanceTrend?.map(item => ({
+      semester: item.semesterName,
+      passRate: item.averageGrade,
+      gpa: item.averageGrade / 20, // Converting to GPA scale (assuming 100 point scale)
+      students: 0 // Placeholder, as we don't have student count per semester
+    })) || [];
+  }, [campusPerformanceTrend]);
+
+  const courseDistribution = useMemo(() => {
+    return dashboardData?.courses?.map(course => ({
+      department: course.department || course.courseName || course.name,
+      averagePerformance: course.average_performance || 0,
+      totalCourses: 1,
+      students: course.total_students || 0
+    })) || [];
+  }, [dashboardData]);
+
+  const campusPerformanceData = useMemo(() => {
+    return dashboardData?.campuses?.map(campus => ({
+      campus: campus.campusName || campus.name,
+      passRate: campus.average_performance || 0,
+      students: campus.total_students || 0,
+      courses: campus.total_courses || 0,
+      instructors: campus.total_instructors || 0
+    })) || [];
+  }, [dashboardData]);
+
+  const gradeDistribution = useMemo(() => {
+    return campusGradeDistribution || [
+      { grade: 'A', count: 0, percentage: 0 },
+      { grade: 'B', count: 0, percentage: 0 },
+      { grade: 'C', count: 0, percentage: 0 },
+      { grade: 'D', count: 0, percentage: 0 },
+      { grade: 'F', count: 0, percentage: 0 }
+    ];
+  }, [campusGradeDistribution]);
+
+  // Use department-specific data from the new API
+  const adminKPIs = useMemo(() => {
+    return departmentMetrics ? {
+      totalStudents: departmentMetrics.totalStudents || 0,
+      totalCourses: departmentMetrics.totalCourses || 0,
+      totalInstructors: departmentMetrics.totalInstructors || 0
+    } : {
+      totalStudents: 0,
+      totalCourses: 0,
+      totalInstructors: 0
+    };
+  }, [departmentMetrics]);
+
+  // AI Predictive Insights - now using real data from API
+  const aiPredictions = useMemo(() => {
+    return predictiveInsights?.campus_predictions?.[0] || {
+      predicted_average_grade: 0,
+      predicted_pass_rate: 0,
+      at_risk_sections_count: 0
+    };
+  }, [predictiveInsights]);
+
+  // Get current courses for pagination
+  const indexOfLastCourse = currentPage * coursesPerPage;
+  const indexOfFirstCourse = indexOfLastCourse - coursesPerPage;
+  const currentCourses = useMemo(() => {
+    return campusCoursePerformance.slice(indexOfFirstCourse, indexOfLastCourse);
+  }, [campusCoursePerformance, indexOfFirstCourse, indexOfLastCourse]);
+  
+  const totalPages = Math.ceil(campusCoursePerformance.length / coursesPerPage);
+
+  // Change page
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Chart data using Chart.js format (memoized)
+  const performanceOverTimeChartData = useMemo(() => {
+    return generateLineChartData(performanceOverTime, 'semester', 'passRate', '');
+  }, [performanceOverTime]);
+
+  const courseDistributionChartData = useMemo(() => {
+    return generateBarChartData(courseDistribution, 'department', 'averagePerformance', 'Average Performance');
+  }, [courseDistribution]);
+
+  const campusPerformanceChartData = useMemo(() => {
+    return generateBarChartData(campusPerformanceData, 'campus', 'passRate', 'Pass Rate');
+  }, [campusPerformanceData]);
+
+  const gradeDistributionChartData = useMemo(() => {
+    return generatePieChartData(gradeDistribution, 'grade', 'count');
+  }, [gradeDistribution]);
+
+  // Check if any critical data is still loading
+  const isCriticalDataLoading = loadingStates.dashboard || loadingStates.departmentMetrics || 
+                               loadingStates.campusPerformance || loadingStates.gradeDistribution;
+
+  if (loading && !cache) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#6e63e5]"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6e63e5] mx-auto"></div>
+            <p className="mt-4 text-gray-600">
+              {isCriticalDataLoading 
+                ? "Loading dashboard data..." 
+                : "Finishing up..."}
+            </p>
+            <div className="mt-2 text-sm text-gray-500">
+              {loadingStates.dashboard && <div>Fetching core dashboard data...</div>}
+              {loadingStates.departmentMetrics && <div>Fetching department metrics...</div>}
+              {loadingStates.campusPerformance && <div>Fetching performance trends...</div>}
+              {loadingStates.gradeDistribution && <div>Fetching grade distribution...</div>}
+              {loadingStates.coursePerformance && <div>Fetching course performance...</div>}
+              {loadingStates.predictive && <div>Fetching predictive insights...</div>}
+            </div>
+          </div>
         </div>
       </DashboardLayout>
     );
   }
 
-  if (error) {
+  if (error && !cache) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
@@ -99,81 +311,9 @@ const AdminDashboard = () => {
     );
   }
 
-  // Use department-specific data from the new API
-  const adminKPIs = departmentMetrics ? {
-    totalStudents: departmentMetrics.totalStudents || 0,
-    totalCourses: departmentMetrics.totalCourses || 0,
-    totalInstructors: departmentMetrics.totalInstructors || 0
-  } : {
-    totalStudents: 0,
-    totalCourses: 0,
-    totalInstructors: 0
-  };
-  console.log('Processed adminKPIs:', adminKPIs);
-
-  // Debug logging to see what data is being received
-  console.log('Department Metrics Data:', departmentMetrics);
-  console.log('Admin KPIs:', adminKPIs);
-  console.log('Campus Performance Trend:', campusPerformanceTrend);
-  console.log('Campus Grade Distribution:', campusGradeDistribution);
-  console.log('Campus Course Performance:', campusCoursePerformance);
-  console.log('Predictive Insights:', predictiveInsights);
-
-  // Performance over time data - now using campus performance trend data
-  const performanceOverTime = campusPerformanceTrend?.map(item => ({
-    semester: item.semesterName,
-    passRate: item.averageGrade,
-    gpa: item.averageGrade / 20, // Converting to GPA scale (assuming 100 point scale)
-    students: 0 // Placeholder, as we don't have student count per semester
-  })) || [];
-
-  // Course distribution data from Firebase
-  const courseDistribution = dashboardData?.courses?.map(course => ({
-    department: course.department || course.courseName || course.name,
-    averagePerformance: course.average_performance || 0,
-    totalCourses: 1,
-    students: course.total_students || 0
-  })) || [];
-
-  // Campus performance comparison from Firebase
-  const campusPerformance = dashboardData?.campuses?.map(campus => ({
-    campus: campus.campusName || campus.name,
-    passRate: campus.average_performance || 0,
-    students: campus.total_students || 0,
-    courses: campus.total_courses || 0,
-    instructors: campus.total_instructors || 0
-  })) || [];
-
-  // Campus grade distribution - now using campus-specific data
-  const gradeDistribution = campusGradeDistribution || [
-    { grade: 'A', count: 0, percentage: 0 },
-    { grade: 'B', count: 0, percentage: 0 },
-    { grade: 'C', count: 0, percentage: 0 },
-    { grade: 'D', count: 0, percentage: 0 },
-    { grade: 'F', count: 0, percentage: 0 }
-  ];
-
-  // Get current courses for pagination
-  const indexOfLastCourse = currentPage * coursesPerPage;
-  const indexOfFirstCourse = indexOfLastCourse - coursesPerPage;
-  const currentCourses = campusCoursePerformance.slice(indexOfFirstCourse, indexOfLastCourse);
-  const totalPages = Math.ceil(campusCoursePerformance.length / coursesPerPage);
-
-  // Change page
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  // Chart data using Chart.js format
-  const performanceOverTimeChartData = generateLineChartData(performanceOverTime, 'semester', 'passRate', '');
-  const courseDistributionChartData = generateBarChartData(courseDistribution, 'department', 'averagePerformance', 'Average Performance');
-  const campusPerformanceChartData = generateBarChartData(campusPerformance, 'campus', 'passRate', 'Pass Rate');
-  const gradeDistributionChartData = generatePieChartData(gradeDistribution, 'grade', 'count');
-
-  // AI Predictive Insights - now using real data from API
-  const aiPredictions = predictiveInsights?.campus_predictions?.[0] || {
-    predicted_average_grade: 0,
-    predicted_pass_rate: 0,
-    at_risk_sections_count: 0
-  };
+  // Show cached data with a refresh indicator
+  const isUsingCachedData = cache && lastFetchTime && 
+    (Date.now() - lastFetchTime >= CACHE_TIMEOUT);
 
   return (
     <DashboardLayout>
@@ -187,6 +327,16 @@ const AdminDashboard = () => {
               </h1>
               <p className="text-gray-600 mt-2">System overview, analytics, and administrative insights</p>
             </div>
+            {isUsingCachedData && (
+              <div className="mt-2 sm:mt-0">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                  <svg className="mr-1.5 h-2 w-2 text-yellow-400" fill="currentColor" viewBox="0 0 8 8">
+                    <circle cx="4" cy="4" r="3" />
+                  </svg>
+                  Cached data
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

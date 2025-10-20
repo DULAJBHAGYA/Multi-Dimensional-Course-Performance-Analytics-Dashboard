@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { Bar } from 'react-chartjs-2';
@@ -10,42 +10,53 @@ const DepartmentPerformancePredictive = () => {
   const [predictiveData, setPredictiveData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [cache, setCache] = useState(null);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
+
+  // Cache timeout (5 minutes)
+  const CACHE_TIMEOUT = 5 * 60 * 1000;
 
   const fetchPredictiveData = useCallback(async () => {
+    // Check if we have valid cached data
+    if (cache && lastFetchTime) {
+      const now = Date.now();
+      if (now - lastFetchTime < CACHE_TIMEOUT) {
+        setPredictiveData(cache);
+        setLoading(false);
+        return;
+      }
+    }
+    
     try {
       setLoading(true);
       setError(null);
       
       // Fetch predictive analytics data
       const data = await apiService.getDepartmentHeadPredictiveAnalytics();
+      
+      // Cache the data
+      setCache(data);
+      setLastFetchTime(Date.now());
       setPredictiveData(data);
     } catch (err) {
       console.error('Error fetching predictive data:', err);
-      // Don't set error for "No sections found" - just show empty data
-      if (err.message && err.message.includes('No sections found')) {
-        // Set empty data instead of error
-        setPredictiveData({
-          predicted_average_grade: 0,
-          predicted_pass_rate: 0,
-          at_risk_crn_count: 0,
-          low_performing_instructor_count: 0,
-          courses: [],
-          instructors: []
-        });
-      } else {
-        setError(err.message || 'Failed to load predictive analytics data');
+      setError(err.message || 'Failed to load predictive analytics data');
+      
+      // If we have cached data, use it as fallback
+      if (cache) {
+        setPredictiveData(cache);
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cache, lastFetchTime]);
 
   useEffect(() => {
     fetchPredictiveData();
   }, [fetchPredictiveData]);
 
   // Prepare predicted average grade by course data with border radius
-  const predictedAverageGradeData = {
+  const predictedAverageGradeData = useMemo(() => ({
     labels: predictiveData?.courses?.map(course => course.course_code) || [],
     datasets: [
       {
@@ -58,10 +69,10 @@ const DepartmentPerformancePredictive = () => {
         borderSkipped: false, // Ensure all borders are rounded
       }
     ]
-  };
+  }), [predictiveData]);
 
   // Prepare predicted pass rate by course data with border radius
-  const predictedPassRateData = {
+  const predictedPassRateData = useMemo(() => ({
     labels: predictiveData?.courses?.map(course => course.course_code) || [],
     datasets: [
       {
@@ -74,10 +85,10 @@ const DepartmentPerformancePredictive = () => {
         borderSkipped: false, // Ensure all borders are rounded
       }
     ]
-  };
+  }), [predictiveData]);
 
   // Chart options with border radius support
-  const getChartOptionsWithBorderRadius = (chartType, yAxisLabel) => {
+  const getChartOptionsWithBorderRadius = useCallback((chartType, yAxisLabel) => {
     const options = getChartOptions(chartType, yAxisLabel);
     
     // Add border radius support to the options
@@ -94,9 +105,9 @@ const DepartmentPerformancePredictive = () => {
     };
     
     return options;
-  };
+  }, []);
 
-  if (loading) {
+  if (loading && !predictiveData) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
@@ -106,7 +117,7 @@ const DepartmentPerformancePredictive = () => {
     );
   }
 
-  if (error) {
+  if (error && !predictiveData) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
@@ -125,6 +136,10 @@ const DepartmentPerformancePredictive = () => {
     );
   }
 
+  // Show cached data with a refresh indicator
+  const isUsingCachedData = cache && predictiveData === cache && lastFetchTime && 
+    (Date.now() - lastFetchTime >= CACHE_TIMEOUT);
+
   return (
     <DashboardLayout>
       <div className="max-w-full mx-auto px-4">
@@ -135,6 +150,16 @@ const DepartmentPerformancePredictive = () => {
               <h1 className="text-3xl font-semibold text-gray-900">Performance Predictive Analytics</h1>
               <p className="text-gray-600 mt-2">Predictive insights for your department's course performance</p>
             </div>
+            {isUsingCachedData && (
+              <div className="mt-2 sm:mt-0">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                  <svg className="mr-1.5 h-2 w-2 text-yellow-400" fill="currentColor" viewBox="0 0 8 8">
+                    <circle cx="4" cy="4" r="3" />
+                  </svg>
+                  Cached data
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -179,7 +204,7 @@ const DepartmentPerformancePredictive = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">At-Risk CRNs</p>
+                <p className="text-sm font-medium text-gray-600">Predicted At-Risk CRNs</p>
                 <p className="text-2xl font-bold text-gray-900">{predictiveData?.at_risk_crn_count || 0}</p>
               </div>
             </div>
@@ -194,7 +219,7 @@ const DepartmentPerformancePredictive = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Low-Performing Instructors</p>
+                <p className="text-sm font-medium text-gray-600">Predictive Low-Performing Instructors</p>
                 <p className="text-2xl font-bold text-gray-900">{predictiveData?.low_performing_instructor_count || 0}</p>
               </div>
             </div>
@@ -211,11 +236,6 @@ const DepartmentPerformancePredictive = () => {
                 options={getChartOptionsWithBorderRadius('bar', '')}
               />
             </div>
-            {(!predictiveData?.courses || predictiveData.courses.length === 0) && (
-              <div className="text-center py-4 text-gray-500">
-                No course data available.
-              </div>
-            )}
           </div>
         </div>
 
@@ -229,15 +249,10 @@ const DepartmentPerformancePredictive = () => {
                 options={getChartOptionsWithBorderRadius('bar', '')}
               />
             </div>
-            {(!predictiveData?.courses || predictiveData.courses.length === 0) && (
-              <div className="text-center py-4 text-gray-500">
-                No course data available.
-              </div>
-            )}
           </div>
-        {/* </div>
+        </div>
 
-        Instructor Predicted Average Grades
+        {/* Instructor Predicted Average Grades */}
         <div className="grid grid-cols-1 gap-6 mb-8">
           <div className="bg-white p-6 rounded-3xl shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Instructor Predicted Average Grades</h3>
@@ -268,9 +283,8 @@ const DepartmentPerformancePredictive = () => {
                 </div>
               )}
             </div>
-          </div>*/}
-        </div> 
-
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

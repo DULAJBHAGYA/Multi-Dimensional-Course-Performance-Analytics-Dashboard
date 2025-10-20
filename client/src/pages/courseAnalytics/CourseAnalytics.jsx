@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import apiService from '../../services/api';
@@ -20,44 +20,103 @@ const CourseAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchCounts = async () => {
+  // Function to fetch data with increased timeout
+  const fetchDataWithTimeout = useCallback((fetchFunction, timeout = 15000) => {
+    return Promise.race([
+      fetchFunction(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request taking longer than expected')), timeout)
+      )
+    ]);
+  }, []);
+
+  // Optimized data fetching with sequential loading and better error handling
+  const fetchCounts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch essential data first (course count, section count)
       try {
-        setLoading(true);
-        // Fetch course count, section count, average grade, pass rate, at-risk courses count, grade distribution data, course performance data, at-risk courses data, semester comparison data, course performance comparison data, and course pass-fail summary data from the backend API
-        const [courseCountResult, sectionCountResult, averageGradeResult, passRateResult, atRiskCoursesCountResult, gradeDistributionResult, coursePerformanceResult, atRiskCoursesResult, semesterComparisonResult, coursePerformanceComparisonResult, coursePassFailSummaryResult] = await Promise.all([
-          apiService.getInstructorCourseCount(),
-          apiService.getInstructorSectionCount(),
-          apiService.getInstructorSectionBasedPerformanceAverage(),
-          apiService.getInstructorPassRate(),
-          apiService.getInstructorAtRiskRate(),
-          apiService.getInstructorGradeDistribution(), // New API call for grade distribution data
-          apiService.getInstructorCoursePerformance(),
-          apiService.getInstructorAtRiskCourses(), // New API call for at-risk courses data
-          apiService.getInstructorSemesterComparison(), // New API call for semester comparison data
-          apiService.getInstructorCoursePerformanceComparison(), // New API call for course performance comparison data
-          apiService.getInstructorCoursePassFailSummary() // New API call for course pass-fail summary data
+        const [courseCountResult, sectionCountResult] = await Promise.all([
+          fetchDataWithTimeout(() => apiService.getInstructorCourseCount(), 8000),
+          fetchDataWithTimeout(() => apiService.getInstructorSectionCount(), 8000)
         ]);
+
         setCourseCount(courseCountResult?.total_courses || 0);
         setSectionCount(sectionCountResult?.total_sections || 0);
-        setAverageGrade(averageGradeResult?.avg_performance || 0);
-        setPassRate(passRateResult?.pass_rate || 0);
-        setAtRiskCoursesCount(atRiskCoursesCountResult?.at_risk_rate || 0);
-        setGradeDistributionData(gradeDistributionResult?.assessments || []); // Set grade distribution data
-        setCoursePerformanceData(coursePerformanceComparisonResult?.courses || []);
-        setAtRiskCoursesData(atRiskCoursesResult?.courses || []); // Set at-risk courses data
-        setRealSemesterComparisonData(semesterComparisonResult?.semesters || []); // Set semester comparison data
-        setCoursePassFailSummaryData(coursePassFailSummaryResult?.courses || []); // Set course pass-fail summary data
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data');
-      } finally {
-        setLoading(false);
+        console.warn('Failed to fetch essential data (course/section counts):', err);
       }
-    };
 
-    fetchCounts();
+      // Fetch performance data next with individual timeouts
+      try {
+        const averageGradeResult = await fetchDataWithTimeout(() => apiService.getInstructorSectionBasedPerformanceAverage(), 8000);
+        setAverageGrade(averageGradeResult?.avg_performance || 0);
+      } catch (err) {
+        console.warn('Failed to fetch average grade data:', err);
+      }
+
+      try {
+        const passRateResult = await fetchDataWithTimeout(() => apiService.getInstructorPassRate(), 8000);
+        setPassRate(passRateResult?.pass_rate || 0);
+      } catch (err) {
+        console.warn('Failed to fetch pass rate data:', err);
+      }
+
+      try {
+        const atRiskCoursesCountResult = await fetchDataWithTimeout(() => apiService.getInstructorAtRiskRate(), 8000);
+        setAtRiskCoursesCount(atRiskCoursesCountResult?.at_risk_rate || 0);
+      } catch (err) {
+        console.warn('Failed to fetch at-risk courses data:', err);
+      }
+
+      // Fetch chart data sequentially with individual error handling
+      try {
+        const gradeDistributionResult = await fetchDataWithTimeout(() => apiService.getInstructorGradeDistribution(), 10000);
+        setGradeDistributionData(gradeDistributionResult?.assessments || []);
+      } catch (err) {
+        console.warn('Failed to fetch grade distribution data:', err);
+      }
+
+      try {
+        const coursePerformanceResult = await fetchDataWithTimeout(() => apiService.getInstructorCoursePerformanceComparison(), 10000);
+        setCoursePerformanceData(coursePerformanceResult?.courses || []);
+      } catch (err) {
+        console.warn('Failed to fetch course performance data:', err);
+      }
+
+      try {
+        const atRiskCoursesResult = await fetchDataWithTimeout(() => apiService.getInstructorAtRiskCourses(), 10000);
+        setAtRiskCoursesData(atRiskCoursesResult?.courses || []);
+      } catch (err) {
+        console.warn('Failed to fetch at-risk courses detailed data:', err);
+      }
+
+      try {
+        const semesterComparisonResult = await fetchDataWithTimeout(() => apiService.getInstructorSemesterComparison(), 10000);
+        setRealSemesterComparisonData(semesterComparisonResult?.semesters || []);
+      } catch (err) {
+        console.warn('Failed to fetch semester comparison data:', err);
+      }
+
+      try {
+        const coursePassFailSummaryResult = await fetchDataWithTimeout(() => apiService.getInstructorCoursePassFailSummary(), 10000);
+        setCoursePassFailSummaryData(coursePassFailSummaryResult?.courses || []);
+      } catch (err) {
+        console.warn('Failed to fetch course pass-fail summary data:', err);
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load data. Please try refreshing the page.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCounts();
+  }, [fetchCounts]);
 
   // Mock data for all other KPIs
   const mockKpiData = {
@@ -179,6 +238,12 @@ const CourseAnalytics = () => {
           <div className="text-center">
             <div className="text-red-500 text-xl mb-4">⚠️</div>
             <p className="text-gray-600">{error}</p>
+            <button 
+              onClick={fetchCounts}
+              className="mt-4 px-4 py-2 bg-[#6e63e5] text-white rounded-lg hover:bg-[#4c46a0]"
+            >
+              Retry
+            </button>
           </div>
         </div>
       </DashboardLayout>
@@ -415,7 +480,7 @@ const CourseAnalytics = () => {
               )}
             </div>
             <div className="mt-4 text-sm text-gray-500">
-              <p>* Courses with average grade below 40% are considered at risk</p>
+              <p>* Courses with average grade below 70% are considered at risk</p>
             </div>
           </div>
         </div>
