@@ -691,7 +691,9 @@ class ApiService {
   }
 
   async getAdminCampusCoursePerformance() {
-    return this.get('/firebase/dashboard/admin/campus-course-performance');
+    const response = await this.get('/firebase/dashboard/admin/campus-course-performance');
+    console.log('Campus course performance data:', response); // Debug log
+    return response;
   }
 
   async getAdminCampusUserDetails() {

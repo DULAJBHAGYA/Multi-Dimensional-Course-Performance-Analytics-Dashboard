@@ -392,7 +392,7 @@ async def get_admin_campus_course_performance(
         # Group sections by course
         course_sections = {}
         for section in campus_sections:
-            course_id = section.get('courseId')
+            course_id = section.get('courseId')  # This is the document ID in courses collection
             course_code = section.get('courseCode', 'Unknown')
             
             if not course_id or not course_code:
@@ -406,20 +406,32 @@ async def get_admin_campus_course_performance(
             
             course_sections[course_code]['sections'].append(section)
         
-        # Get course details from courses collection with batch operation
-        course_codes = list(course_sections.keys())
+        # Get course details from courses collection
         course_details = {}
         
-        if course_codes:
-            # Batch query courses by courseCode
-            courses_query = db.collection('courses').where('courseCode', 'in', course_codes[:10]).stream()
-            for course_doc in courses_query:
-                course_data = course_doc.to_dict() or {}
-                course_code = course_data.get('courseCode')
-                if course_code:
+        # Fetch course details for each unique courseId
+        for course_code, course_data in course_sections.items():
+            course_id = course_data['courseId']
+            if course_id:
+                try:
+                    course_doc = db.collection('courses').document(course_id).get()
+                    if course_doc.exists:
+                        course_info = course_doc.to_dict() or {}
+                        course_details[course_code] = {
+                            'courseName': course_info.get('courseName', f'Unknown Course ({course_code})'),
+                            'department': course_info.get('department', 'Unknown Department')
+                        }
+                    else:
+                        # If course document doesn't exist, use fallback values
+                        course_details[course_code] = {
+                            'courseName': f'Unknown Course ({course_code})',
+                            'department': 'Unknown Department'
+                        }
+                except Exception as e:
+                    # If there's an error fetching course details, use fallback values
                     course_details[course_code] = {
-                        'courseName': course_data.get('courseName', f'Unknown Course ({course_code})'),
-                        'department': course_data.get('department', 'Unknown Department')
+                        'courseName': f'Unknown Course ({course_code})',
+                        'department': 'Unknown Department'
                     }
         
         # Calculate metrics for each course
@@ -471,10 +483,6 @@ async def get_admin_campus_course_performance(
                 'averageGrade': average_grade,
                 'passRate': pass_rate
             })
-            
-            # Limit results to improve performance
-            if len(course_performance) >= 50:
-                break
         
         # Sort by course code for consistent display
         course_performance.sort(key=lambda x: x['courseCode'])
