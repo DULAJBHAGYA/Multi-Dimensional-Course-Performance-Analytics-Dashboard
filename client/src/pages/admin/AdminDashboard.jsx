@@ -120,6 +120,7 @@ const AdminDashboard = () => {
         // Fetch course performance (can be delayed as it's used in a table)
         setLoadingStates(prev => ({ ...prev, coursePerformance: true }));
         const campusCoursePerformanceResult = await fetchDataWithTimeout(() => apiService.getAdminCampusCoursePerformance(), 7000);
+        console.log('Campus course performance result:', campusCoursePerformanceResult); // Debug log
         setCampusCoursePerformance(campusCoursePerformanceResult || []);
         setLoadingStates(prev => ({ ...prev, coursePerformance: false }));
         
@@ -431,6 +432,7 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
+                    {console.log('Rendering course performance table, currentCourses:', currentCourses) /* Debug log */}
                     {currentCourses.map((course, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.courseCode}</td>
