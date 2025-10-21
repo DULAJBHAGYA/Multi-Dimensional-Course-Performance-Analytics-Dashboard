@@ -15,8 +15,8 @@ const AdminPanel = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [campuses, setCampuses] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [campuses, setCampuses] = useState([]); // Initialize as empty array
+  const [departments, setDepartments] = useState([]); // Initialize as empty array
   const [platformMetrics, setPlatformMetrics] = useState({
     totalInstructors: 0,
     totalCourses: 0,
@@ -98,16 +98,38 @@ const AdminPanel = () => {
     }
   }, []);
 
-
-
-
+  const fetchCampusesAndDepartments = useCallback(async () => {
+    try {
+      console.log('Fetching campuses and departments...'); // Debug log
+      const campusesData = await apiService.getCampuses();
+      const departmentsData = await apiService.getDepartments();
+      
+      console.log('Raw campuses data:', campusesData); // Debug log
+      console.log('Raw departments data:', departmentsData); // Debug log
+      console.log('Campuses data type:', typeof campusesData, 'Is array:', Array.isArray(campusesData)); // Debug log
+      console.log('Departments data type:', typeof departmentsData, 'Is array:', Array.isArray(departmentsData)); // Debug log
+      
+      // The API returns arrays of strings, not objects
+      const campusesArray = Array.isArray(campusesData) ? campusesData : [];
+      const departmentsArray = Array.isArray(departmentsData) ? departmentsData : [];
+      
+      console.log('Processed campuses array:', campusesArray); // Debug log
+      console.log('Processed departments array:', departmentsArray); // Debug log
+      
+      setCampuses(campusesArray);
+      setDepartments(departmentsArray);
+    } catch (err) {
+      console.error('Failed to fetch campuses and departments:', err);
+    }
+  }, []);
 
   // Fetch users when activeTab is 'users'
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
+      fetchCampusesAndDepartments();
     }
-  }, [activeTab, fetchUsers]);
+  }, [activeTab, fetchUsers, fetchCampusesAndDepartments]);
 
   // Fetch platform metrics and course popularity when activeTab is 'metrics'
   useEffect(() => {
@@ -194,15 +216,25 @@ const AdminPanel = () => {
   });
 
   const renderDepartmentOptions = () => {
-    return departments.map((department) => (
-      <option key={department} value={department}>{department}</option>
-    ));
+    console.log('Rendering department options, departments:', departments); // Debug log
+    console.log('Departments type:', typeof departments, 'Is array:', Array.isArray(departments)); // Debug log
+    return departments.map((department, index) => {
+      console.log('Rendering department option:', department); // Debug log
+      return (
+        <option key={department || index} value={department}>{department}</option>
+      );
+    });
   };
 
   const renderCampusOptions = () => {
-    return campuses.map((campus) => (
-      <option key={campus} value={campus}>{campus}</option>
-    ));
+    console.log('Rendering campus options, campuses:', campuses); // Debug log
+    console.log('Campuses type:', typeof campuses, 'Is array:', Array.isArray(campuses)); // Debug log
+    return campuses.map((campus, index) => {
+      console.log('Rendering campus option:', campus); // Debug log
+      return (
+        <option key={campus || index} value={campus}>{campus}</option>
+      );
+    });
   };
 
   const handleAddUser = async (e) => {
@@ -270,6 +302,13 @@ const AdminPanel = () => {
         console.error('Failed to delete user:', err);
         alert('Failed to delete user: ' + (err.message || 'Unknown error'));
       }
+    }
+  };
+
+  const handleEditUser = (userId) => {
+    const userToEdit = users.find(u => u.id === userId);
+    if (userToEdit) {
+      setEditingUser({ ...userToEdit });
     }
   };
 
@@ -433,7 +472,7 @@ const AdminPanel = () => {
                         >
                           <option value="instructor">Instructor</option>
                           <option value="admin">Admin</option>
-                          <option value="department_head">Department Head</option>  {/* Add department head option */}
+                          <option value="department_head">Department Head</option>
                         </select>
                       </div>
                       <div>
@@ -525,13 +564,13 @@ const AdminPanel = () => {
                         >
                           <option value="instructor">Instructor</option>
                           <option value="admin">Admin</option>
-                          <option value="department_head">Department Head</option>  {/* Add department head option */}
+                          <option value="department_head">Department Head</option>
                         </select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Department</label>
                         <select
-                          value={editingUser.department}
+                          value={editingUser.department || ''}
                           onChange={(e) => setEditingUser({ ...editingUser, department: e.target.value })}
                           className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                         >
@@ -542,7 +581,7 @@ const AdminPanel = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Campus</label>
                         <select
-                          value={editingUser.campus}
+                          value={editingUser.campus || ''}
                           onChange={(e) => setEditingUser({ ...editingUser, campus: e.target.value })}
                           className="mt-1 block w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
                         >
