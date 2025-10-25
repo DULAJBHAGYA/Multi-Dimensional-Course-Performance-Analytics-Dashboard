@@ -105,31 +105,50 @@ const PredictiveAnalytics = () => {
     // Use RAG endpoint for more intelligent responses
     try {
       const response = await apiService.getInstructorChatRagResponse(userMessage);
+      console.log('RAG response:', response); // Debug log
       return response.response;
     } catch (error) {
       console.error('Error getting RAG response:', error);
+      // Log more details about the error
+      console.error('Full error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       // Fallback to static responses if RAG fails
       if (message.includes('completion') || message.includes('finish')) {
         return `I can help you analyze completion rates based on your course data. For specific predictions, please check the predictive analytics section.`;
       }
       
-      if (message.includes('dropout') || message.includes('risk') || message.includes('at-risk')) {
+      else if (message.includes('dropout') || message.includes('risk') || message.includes('at-risk')) {
         return `I can help identify at-risk students based on their performance data. The risk matrix visualization shows courses with potential issues.`;
       }
       
-      if (message.includes('enrollment') || message.includes('future') || message.includes('forecast')) {
+      // Handle pass rate questions specifically - let backend handle these
+      else if (message.includes('pass') && message.includes('rate')) {
+        // Let backend handle this - don't return early
+      }
+      
+      // Handle specific questions about sections that need attention
+      else if (message.includes('which sections need attention') || 
+          (message.includes('sections') && message.includes('attention')) ||
+          (message.includes('sections') && message.includes('need'))) {
+        return `I cannot give a detailed response at the moment. Please specify your question related to course performance, student grades, at-risk courses, or teaching recommendations, and I'll be happy to help.`;
+      }
+      
+      else if (message.includes('enrollment') || message.includes('future') || message.includes('forecast')) {
         return `I can provide insights on enrollment trends and forecasts based on historical data. Please check the analytics dashboard for detailed information.`;
       }
       
-      if (message.includes('certification') || message.includes('certificate') || message.includes('completion')) {
+      else if (message.includes('certification') || message.includes('certificate') || message.includes('completion')) {
         return `I can analyze certification completion rates based on your course data. Check the predictive analytics section for detailed insights.`;
       }
       
-      if (message.includes('content') || message.includes('lesson') || message.includes('engagement')) {
+      else if (message.includes('content') || message.includes('lesson') || message.includes('engagement')) {
         return `I can help analyze content performance and engagement metrics. Please refer to the course analytics section for detailed information.`;
       }
       
-      if (message.includes('help') || message.includes('what can you do')) {
+      else if ((message.includes('help') && !message.includes('attention') && !message.includes('sections') && !message.includes('need')) || message.includes('what can you do')) {
         return `I can help you with:
         • Analyzing completion and dropout predictions
         • Identifying at-risk students and their specific issues
@@ -140,11 +159,13 @@ const PredictiveAnalytics = () => {
         Just ask me about any aspect of your course analytics!`;
       }
       
-      if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
+      else if ((message.includes('hello') || message.includes('hi') || message.includes('hey')) && 
+               !message.includes('course') && !message.includes('grade') && !message.includes('highest') && 
+               !message.includes('best') && !message.includes('top')) {
         return `Hello! I'm here to help you make sense of your predictive analytics. I can explain any of the predictions, suggest improvements, or help you understand what the data means for your course. What would you like to explore?`;
       }
       
-      return `I understand you're asking about "${userMessage}". I can provide insights on completion rates, student engagement, content performance, or enrollment forecasts based on your course data. Could you be more specific about what aspect you'd like me to analyze?`;
+      return `I cannot give a detailed response at the moment. Please specify your question related to course performance, student grades, at-risk courses, or teaching recommendations, and I'll be happy to help.`;
     }
   };
 
