@@ -513,97 +513,251 @@ async def get_chat_rag_response(
         # Generate context-aware response based on the question
         question_lower = question.lower()
         
-        if 'performance' in question_lower or 'grade' in question_lower:
-            response = f"Based on your performance data, your overall average grade is {instructor_avg_grade:.1f}%. "
-            if instructor_avg_grade >= 90:
-                response += "This is excellent performance! "
-            elif instructor_avg_grade >= 80:
-                response += "This is good performance. "
-            elif instructor_avg_grade >= 70:
-                response += "This is acceptable performance, but there's room for improvement. "
-            else:
-                response += "This indicates performance issues that need attention. "
-            
-            if best_performing:
-                best_courses = []
-                for c in best_performing[:2]:
-                    best_courses.append(f"{c['course_code']} ({c['average_grade']}%)")
-                response += f"Your best performing courses include {', '.join(best_courses)}. "
-            
-            if worst_performing:
-                worst_courses = []
-                for c in worst_performing[:2]:
-                    worst_courses.append(f"{c['course_code']} ({c['average_grade']}%)")
-                response += f"Courses that need attention include {', '.join(worst_courses)}. "
+        # Debug logging to help identify issues
+        logger.debug(f"Question: {question}")
+        logger.debug(f"Question lower: {question_lower}")
+        logger.debug(f"Total sections: {len(sections_data)}, Total courses: {len(course_performances)}")
+        logger.debug(f"At-risk count: {at_risk_count}")
         
-        elif 'pass' in question_lower or 'rate' in question_lower:
-            response = f"Your overall pass rate is {instructor_pass_rate:.1f}%. "
-            if instructor_pass_rate >= 90:
-                response += "This is an excellent pass rate. "
-            elif instructor_pass_rate >= 80:
-                response += "This is a good pass rate. "
-            elif instructor_pass_rate >= 70:
-                response += "This is an acceptable pass rate, but could be improved. "
-            else:
-                response += "This pass rate indicates issues that need to be addressed. "
+        # Check for course-specific questions in all cases, not just specific categories
+        import re
         
-        elif 'risk' in question_lower or 'at-risk' in question_lower:
-            response = f"You currently have {at_risk_count} sections identified as at-risk (average grade < 70%). "
-            if at_risk_count == 0:
-                response += "This is excellent - no at-risk sections were identified. "
-            elif at_risk_count <= 2:
-                response += "This is a manageable number of at-risk sections. "
-            else:
-                response += "This indicates several sections need attention. "
-            
-            if at_risk_count > 0 and worst_performing:
-                at_risk_courses = [c for c in worst_performing if c['average_grade'] < 70][:2]
-                if at_risk_courses:
-                    at_risk_course_codes = [c['course_code'] for c in at_risk_courses]
-                    response += f"Focus on courses like {', '.join(at_risk_course_codes)} which have lower performance. "
+        # Look for course codes in the question (e.g., CIS005, ET&S014, etc.)
+        course_code_pattern = r'\b[A-Z0-9&]+[0-9]{3,}\b'
+        specific_courses = re.findall(course_code_pattern, question)
         
-        elif 'course' in question_lower or 'teach' in question_lower:
-            total_courses = len(course_performances)
-            total_sections = len(sections_data)
-            response = f"You are currently teaching {total_sections} sections across {total_courses} courses. "
-            
-            if total_courses > 0:
-                avg_sections_per_course = total_sections / total_courses
-                response += f"On average, you teach {avg_sections_per_course:.1f} sections per course. "
-        
-        elif 'recommend' in question_lower or 'improve' in question_lower:
-            response = "Based on your performance data, here are some recommendations: "
-            
-            if instructor_avg_grade < 70:
-                response += "Focus on improving student engagement and providing additional support resources. "
-                response += "Consider reviewing course content and teaching methodologies. "
-            elif instructor_avg_grade < 80:
-                response += "Monitor student performance closely and provide timely feedback. "
-                response += "Consider offering review sessions before major assessments. "
-            else:
-                response += "Maintain your current teaching approach and continue monitoring performance. "
-                response += "Share best practices with other instructors. "
-            
-            if at_risk_count > 0:
-                response += "Implement regular check-ins with students in at-risk sections. "
-        
+        # If we found course codes, handle them specifically
+        if specific_courses:
+            # Handle specific course questions
+            response = ""
+            for course_code in specific_courses:
+                # Find this course in the course_performances
+                matching_courses = [c for c in course_performances if course_code in c['course_code']]
+                if matching_courses:
+                    course = matching_courses[0]  # Take the first match
+                    response += f"Course {course['course_code']} has an average grade of {course['average_grade']}% "
+                    if course['average_grade'] >= 90:
+                        response += "(Excellent performance). "
+                    elif course['average_grade'] >= 80:
+                        response += "(Good performance). "
+                    elif course['average_grade'] >= 70:
+                        response += "(Acceptable performance). "
+                    else:
+                        response += "(Needs improvement). "
+                else:
+                    response += f"I don't have specific data for course {course_code}. "
         else:
-            # General response
-            response = f"Based on your performance data: "
-            response += f"- Overall average grade: {instructor_avg_grade:.1f}% "
-            response += f"- Pass rate: {instructor_pass_rate:.1f}% "
-            response += f"- At-risk sections: {at_risk_count} "
-            response += f"- Courses taught: {len(course_performances)} "
+            # Log what keywords we're checking for
+            logger.debug(f"Checking keywords - recommend: {'recommend' in question_lower}, improve: {'improve' in question_lower}")
+            logger.debug(f"Checking keywords - hello/hi/hey: {('hello' in question_lower or 'hi' in question_lower or 'hey' in question_lower)}")
+            logger.debug(f"Checking keywords - performance/grade: {('performance' in question_lower or 'grade' in question_lower)}")
+            logger.debug(f"Checking keywords - pass/rate: {('pass' in question_lower or 'rate' in question_lower)}")
+            logger.debug(f"Checking keywords - risk-related: {('risk' in question_lower or 'at-risk' in question_lower or 'danger' in question_lower or 'dangerous' in question_lower or 'problem' in question_lower or 'trouble' in question_lower or 'failing' in question_lower or 'poor' in question_lower or 'warning' in question_lower or 'concern' in question_lower or 'issue' in question_lower or 'in danger' in question_lower or 'attention' in question_lower or 'sections' in question_lower or 'need' in question_lower)}")
+            logger.debug(f"Checking keywords - course/teach: {('course' in question_lower or 'teach' in question_lower)}")
+            logger.debug(f"Checking specific question: {'which sections need attention' in question_lower}")
             
-            if instructor_avg_grade >= 70:
-                response += "Your overall performance is good. "
+            # Handle pass rate questions specifically (prioritize this over general topics)
+            if 'pass' in question_lower and 'rate' in question_lower:
+                logger.debug("Matched pass/rate condition")
+                response = f"Your overall pass rate is {instructor_pass_rate:.1f}%. "
+                if instructor_pass_rate >= 90:
+                    response += "This is an excellent pass rate. "
+                elif instructor_pass_rate >= 80:
+                    response += "This is a good pass rate. "
+                elif instructor_pass_rate >= 70:
+                    response += "This is an acceptable pass rate, but could be improved. "
+                else:
+                    response += "This pass rate indicates issues that need to be addressed. "
+            
+            # Handle recommendation/improvement questions
+            elif 'recommend' in question_lower or 'improve' in question_lower:
+                response = "Based on your performance data, here are some recommendations: "
+                
+                if instructor_avg_grade < 70:
+                    response += "Focus on improving student engagement and providing additional support resources. "
+                    response += "Consider reviewing course content and teaching methodologies. "
+                elif instructor_avg_grade < 80:
+                    response += "Monitor student performance closely and provide timely feedback. "
+                    response += "Consider offering review sessions before major assessments. "
+                else:
+                    response += "Maintain your current teaching approach and continue monitoring performance. "
+                    response += "Share best practices with other instructors. "
+                
+                if at_risk_count > 0:
+                    response += "Implement regular check-ins with students in at-risk sections. "
+            
+            # Handle greeting messages
+            elif 'hello' in question_lower or 'hi' in question_lower or 'hey' in question_lower:
+                # Handle greeting messages specifically
+                response = "Hello! I'm here to help you make sense of your predictive analytics. "
+                response += "I can explain any of the predictions, suggest improvements, or help you understand what the data means for your course. "
+                response += "What would you like to explore?"
+            
+            # Handle questions about courses with highest grades
+            elif 'highest' in question_lower and 'grade' in question_lower and 'course' in question_lower:
+                if best_performing:
+                    response = "Your courses with the highest grades are: "
+                    best_courses = []
+                    for c in best_performing[:3]:  # Show top 3 courses
+                        best_courses.append(f"{c['course_code']} with an average grade of {c['average_grade']}%")
+                    response += ", ".join(best_courses) + ". "
+                    
+                    # Add performance context
+                    if best_performing[0]['average_grade'] >= 90:
+                        response += "These are excellent results! "
+                    elif best_performing[0]['average_grade'] >= 80:
+                        response += "These are strong results. "
+                    else:
+                        response += "These courses are performing well. "
+                else:
+                    response = "I don't have enough data to determine your courses with the highest grades. "
+            
+            # Handle performance/grade questions
+            elif 'performance' in question_lower or 'grade' in question_lower:
+                response = f"Based on your performance data, your overall average grade is {instructor_avg_grade:.1f}%. "
+                if instructor_avg_grade >= 90:
+                    response += "This is excellent performance! "
+                elif instructor_avg_grade >= 80:
+                    response += "This is good performance. "
+                elif instructor_avg_grade >= 70:
+                    response += "This is acceptable performance, but there's room for improvement. "
+                else:
+                    response += "This indicates performance issues that need attention. "
+                
+                if best_performing:
+                    best_courses = []
+                    for c in best_performing[:2]:
+                        best_courses.append(f"{c['course_code']} ({c['average_grade']}%)")
+                    response += f"Your best performing courses include {', '.join(best_courses)}. "
+                
+                if worst_performing:
+                    worst_courses = []
+                    for c in worst_performing[:2]:
+                        worst_courses.append(f"{c['course_code']} ({c['average_grade']}%)")
+                    response += f"Courses that need attention include {', '.join(worst_courses)}. "
+            
+            # Handle specific risk-related questions
+            elif 'which sections need attention' in question_lower:
+                # Direct handling for this specific question
+                response_parts = []
+                response_parts.append(f"You currently have {at_risk_count} sections identified as at-risk (average grade < 70%).")
+                
+                if at_risk_count == 0:
+                    response_parts.append("This is excellent - no at-risk sections were identified.")
+                elif at_risk_count <= 2:
+                    response_parts.append("This is a manageable number of at-risk sections.")
+                else:
+                    response_parts.append("This indicates several sections need attention.")
+                
+                # Provide specific information about at-risk courses
+                if at_risk_count > 0 and worst_performing:
+                    at_risk_courses = [c for c in worst_performing if c['average_grade'] < 70][:3]  # Increase to 3 courses
+                    if at_risk_courses:
+                        course_descriptions = []
+                        for course in at_risk_courses:
+                            course_descriptions.append(f"{course['course_code']} (avg. grade: {course['average_grade']}%)")
+                        course_info = f"The courses with the lowest performance are: {', '.join(course_descriptions)}."
+                        response_parts.append(course_info)
+                
+                # Add more specific information about sections
+                if at_risk_count > 0:
+                    response_parts.append(f"The specific sections that need attention are those with average grades below 70%. You should review the teaching materials and provide additional support to students in these sections.")
+                
+                # Add recommendations for at-risk courses
+                if at_risk_count > 0:
+                    response_parts.append("Consider reviewing the content and teaching methods for these courses, providing additional support to struggling students, and offering review sessions before major assessments.")
+                
+                response = " ".join(response_parts)
+            elif 'risk' in question_lower or 'at-risk' in question_lower or 'danger' in question_lower:
+                response_parts = []
+                response_parts.append(f"You currently have {at_risk_count} sections identified as at-risk (average grade < 70%).")
+                
+                if at_risk_count == 0:
+                    response_parts.append("This is excellent - no at-risk sections were identified.")
+                elif at_risk_count <= 2:
+                    response_parts.append("This is a manageable number of at-risk sections.")
+                else:
+                    response_parts.append("This indicates several sections need attention.")
+                
+                # Provide specific information about at-risk courses
+                if at_risk_count > 0 and worst_performing:
+                    at_risk_courses = [c for c in worst_performing if c['average_grade'] < 70][:3]  # Increase to 3 courses
+                    if at_risk_courses:
+                        course_descriptions = []
+                        for course in at_risk_courses:
+                            course_descriptions.append(f"{course['course_code']} (avg. grade: {course['average_grade']}%)")
+                        course_info = f"The courses with the lowest performance are: {', '.join(course_descriptions)}."
+                        response_parts.append(course_info)
+                
+                # Add more specific information about sections
+                if at_risk_count > 0:
+                    response_parts.append(f"The specific sections that need attention are those with average grades below 70%. You should review the teaching materials and provide additional support to students in these sections.")
+                
+                # Add recommendations for at-risk courses
+                if at_risk_count > 0:
+                    response_parts.append("Consider reviewing the content and teaching methods for these courses, providing additional support to struggling students, and offering review sessions before major assessments.")
+                
+                response = " ".join(response_parts)
+            elif 'course' in question_lower or 'teach' in question_lower:
+                # General course information (no specific course codes found)
+                total_courses = len(course_performances)
+                total_sections = len(sections_data)
+                
+                # More comprehensive calculation of unique courses
+                unique_course_ids = set()
+                for section in sections_data:
+                    course_id = section.get('courseId')
+                    if course_id and course_id != 'unknown':
+                        unique_course_ids.add(course_id)
+                
+                # Use the more accurate count if it's different
+                if len(unique_course_ids) > 0 and len(unique_course_ids) != total_courses:
+                    total_courses = len(unique_course_ids)
+                
+                # Ensure we have a valid number for display
+                try:
+                    total_courses = int(total_courses)
+                except (ValueError, TypeError):
+                    total_courses = len(unique_course_ids)
+                    
+                # Additional safeguard to ensure we have a valid positive number
+                if total_courses <= 0:
+                    total_courses = len(unique_course_ids)
+                    
+                # Make sure we're displaying a valid number
+                total_courses_display = max(1, total_courses) if isinstance(total_courses, int) else len(course_performances) or 1
+                
+                response = f"You are currently teaching {total_sections} sections across {total_courses_display} courses. "
+                
+                if total_courses_display > 0:
+                    avg_sections_per_course = total_sections / total_courses_display
+                    response += f"On average, you teach {avg_sections_per_course:.1f} sections per course. "
+                
+                # Add information about best and worst performing courses
+                if best_performing:
+                    best_courses = []
+                    for c in best_performing[:2]:
+                        best_courses.append(f"{c['course_code']} ({c['average_grade']}%)")
+                    response += f"Your best performing courses include {', '.join(best_courses)}. "
+                
+                if worst_performing:
+                    worst_courses = []
+                    for c in worst_performing[:2]:
+                        worst_courses.append(f"{c['course_code']} ({c['average_grade']}%)")
+                    response += f"Courses that need attention include {', '.join(worst_courses)}. "
             else:
-                response += "Your overall performance needs improvement. "
+                # General response - changed to prompt for more specific questions
+                logger.debug("Fell through to general response")
+                response = "I cannot give a detailed response at the moment. Please specify your question related to course performance, student grades, at-risk courses, or teaching recommendations, and I'll be happy to help."
         
-        # Add a friendly closing
-        response += "Is there anything specific about your courses or performance you'd like to discuss further?"
-        
-        return {"response": response}
+        # Ensure proper string formatting and return
+        final_response = response.strip()
+        # Make sure we're returning a clean string without encoding issues
+        final_response = final_response.replace('\u2039', '<').replace('\u203a', '>')
+        # Ensure the response isn't too long (safeguard against truncation issues)
+        if len(final_response) > 1000:
+            final_response = final_response[:997] + "..."
+        return {"response": final_response}
         
     except HTTPException:
         raise
