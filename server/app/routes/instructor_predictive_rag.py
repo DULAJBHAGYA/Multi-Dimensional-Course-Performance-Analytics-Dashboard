@@ -29,6 +29,8 @@ class InstructorPredictionResponse(BaseModel):
     predicted_average_grade: float
     predicted_pass_rate: float
     at_risk_courses_count: int
+    at_risk_crns_count: int
+    high_performing_crns_count: int
     total_courses: int
     courses: List[CoursePredictionData]
     risk_level: str
@@ -240,6 +242,12 @@ async def get_instructor_predictive_analytics(
         # Calculate instructor pass rate
         instructor_avg_pass_rate = sum(section_pass_rates) / len(section_pass_rates) if section_pass_rates else 0
         
+        # Calculate at-risk CRNs (sections with average grade < 70)
+        at_risk_crns_count = sum(1 for section in sections_data if section.get('averageGrade', 0) < 70)
+        
+        # Calculate high performing CRNs (sections with average grade > 80)
+        high_performing_crns_count = sum(1 for section in sections_data if section.get('averageGrade', 0) > 80)
+        
         # Determine risk level (only Good and At Risk, no Medium)
         if instructor_avg_grade >= 70:
             risk_level = "Low"  # Will be displayed as "Good" in frontend
@@ -264,6 +272,8 @@ async def get_instructor_predictive_analytics(
             predicted_average_grade=round(instructor_avg_grade, 2),
             predicted_pass_rate=round(instructor_avg_pass_rate, 2),
             at_risk_courses_count=at_risk_courses_count,
+            at_risk_crns_count=at_risk_crns_count,
+            high_performing_crns_count=high_performing_crns_count,
             total_courses=len(course_metrics),
             courses=course_predictions,
             risk_level=risk_level,
@@ -773,6 +783,8 @@ class PredictiveAnalyticsReportResponse(BaseModel):
     predicted_average_grade: float
     predicted_pass_rate: float
     at_risk_courses_count: int
+    at_risk_crns_count: int
+    high_performing_crns_count: int
     total_courses: int
     courses: List[CoursePredictionData]
     risk_level: str
@@ -894,6 +906,12 @@ async def get_instructor_predictive_analytics_report(
         # Calculate instructor pass rate
         instructor_avg_pass_rate = sum(section_pass_rates) / len(section_pass_rates) if section_pass_rates else 0
         
+        # Calculate at-risk CRNs (sections with average grade < 70)
+        at_risk_crns_count = sum(1 for section in sections_data if section.get('averageGrade', 0) < 70)
+        
+        # Calculate high performing CRNs (sections with average grade > 80)
+        high_performing_crns_count = sum(1 for section in sections_data if section.get('averageGrade', 0) > 80)
+        
         # Determine risk level (only Good and At Risk, no Medium)
         if instructor_avg_grade >= 70:
             risk_level = "Low"  # Will be displayed as "Good" in frontend
@@ -918,6 +936,8 @@ async def get_instructor_predictive_analytics_report(
             predicted_average_grade=round(instructor_avg_grade, 2),
             predicted_pass_rate=round(instructor_avg_pass_rate, 2),
             at_risk_courses_count=at_risk_courses_count,
+            at_risk_crns_count=at_risk_crns_count,
+            high_performing_crns_count=high_performing_crns_count,
             total_courses=len(course_metrics),
             courses=course_predictions,
             risk_level=risk_level,
