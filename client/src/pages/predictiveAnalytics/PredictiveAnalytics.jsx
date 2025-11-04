@@ -301,11 +301,13 @@ const PredictiveAnalytics = () => {
                     </svg>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Predicted At-Risk Courses</p>
-                    <p className="text-2xl font-bold text-gray-900">{predictiveData.at_risk_courses_count || 0}</p>
+                    <p className="text-sm font-medium text-gray-600">Predicted At-Risk CRNs</p>
+                    <p className="text-2xl font-bold text-gray-900">{predictiveData.at_risk_crns_count || 0}</p>
                   </div>
                 </div>
               </div>
+
+              
             </div>
 
             {/* Risk Level Indicator */}
