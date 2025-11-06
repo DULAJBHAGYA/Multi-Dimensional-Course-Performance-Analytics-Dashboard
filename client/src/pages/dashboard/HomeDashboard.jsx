@@ -10,6 +10,7 @@ const HomeDashboard = () => {
   const [selectedCourse, setSelectedCourse] = useState('all');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
+  const [selectedCrnOverviewCourse, setSelectedCrnOverviewCourse] = useState('all'); // New state for CRN overview course selection
   const [dashboardData, setDashboardData] = useState(null);
   const [crnComparisonData, setCrnComparisonData] = useState(null);
   const [selectedCrn1, setSelectedCrn1] = useState('');
@@ -39,6 +40,10 @@ const HomeDashboard = () => {
   });
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [performanceLoading, setPerformanceLoading] = useState(false); // New loading state for performance section
+
+  // New state for CRN overview data
+  const [crnOverviewData, setCrnOverviewData] = useState(null);
+  const [crnOverviewLoading, setCrnOverviewLoading] = useState(false);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -155,6 +160,35 @@ const HomeDashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [selectedSemester, selectedCourse, selectedDepartment, selectedCampus]);
+
+  // Fetch CRN overview data when a course is selected
+  useEffect(() => {
+    const fetchCrnOverviewData = async () => {
+      if (selectedCrnOverviewCourse !== 'all') {
+        try {
+          setCrnOverviewLoading(true);
+          // Fetch all sections grades data
+          const allSectionsData = await apiService.getAllSectionsGrades();
+          
+          // Filter sections for the selected course
+          const filteredSections = allSectionsData.sections.filter(section => 
+            section.courseCode === selectedCrnOverviewCourse
+          );
+          
+          setCrnOverviewData(filteredSections);
+        } catch (err) {
+          console.error('Error fetching CRN overview data:', err);
+          setError('Failed to load CRN overview data');
+        } finally {
+          setCrnOverviewLoading(false);
+        }
+      } else {
+        setCrnOverviewData(null);
+      }
+    };
+
+    fetchCrnOverviewData();
+  }, [selectedCrnOverviewCourse]);
 
   const handleCrnComparison = async () => {
     if (!selectedCrn1 || !selectedCrn2) {
@@ -430,7 +464,7 @@ const HomeDashboard = () => {
         </div>
 
         {/* CRN Comparison Section */}
-        <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+        {/* <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">CRN Performance Comparison</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
@@ -482,7 +516,6 @@ const HomeDashboard = () => {
             </div>
           ) : crnComparisonData ? (
             <div className="mt-6">
-              {/* Average Performance Comparison Bar Chart */}
               <div className="mb-6">
                 <h4 className="font-medium text-gray-900 mb-3">Average Performance Comparison</h4>
                 <div className="h-64">
@@ -512,7 +545,6 @@ const HomeDashboard = () => {
                 </div>
               </div>
               
-              {/* Detailed CRN Data */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="border border-gray-200 rounded-2xl p-4">
                   <h5 className="font-medium text-gray-900 mb-3">{crnComparisonData.crn1.crn} - {crnComparisonData.crn1.courseName}</h5>
@@ -560,6 +592,95 @@ const HomeDashboard = () => {
               </div>
             </div>
           ) : null}
+        </div> */}
+
+        {/* CRNs Section with Course Selection and Bar Chart */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">CRNs Overview</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Course</label>
+              <select 
+                value={selectedCrnOverviewCourse} 
+                onChange={(e) => setSelectedCrnOverviewCourse(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6e63e5]"
+              >
+                <option value="all">All Courses</option>
+                {filterOptions.courses.map(course => (
+                  <option key={course} value={course}>{course}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* CRNs Bar Chart */}
+          <div className="h-80">
+            {crnOverviewLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6e63e5]"></div>
+              </div>
+            ) : selectedCrnOverviewCourse !== 'all' && crnOverviewData ? (
+              <Bar 
+                data={{
+                  labels: crnOverviewData.map(section => section.crn || section.sectionId || 'Unknown CRN'),
+                  datasets: [
+                    {
+                      label: 'Average Grade',
+                      data: crnOverviewData.map(section => section.averageGrade || 0),
+                      backgroundColor: '#6e63e5',
+                      borderColor: '#6e63e5',
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      borderSkipped: false,
+                    }
+                  ]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      max: 100,
+                      ticks: {
+                        callback: function(value) {
+                          return value + '%';
+                        }
+                      },
+                      title: {
+                        display: true,
+                        text: 'Average Grade (%)'
+                      }
+                    },
+                    x: {
+                      title: {
+                        display: true,
+                        text: 'CRNs'
+                      }
+                    }
+                  },
+                  plugins: {
+                    legend: {
+                      display: false
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: function(context) {
+                          return `Average Grade: ${context.parsed.y}%`;
+                        }
+                      }
+                    }
+                  }
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                {selectedCrnOverviewCourse === 'all' 
+                  ? 'Please select a course to view CRN overview' 
+                  : 'No CRN data available for the selected course'}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Course Overview - Single Column Layout (Removed Students Column) */}
