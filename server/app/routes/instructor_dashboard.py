@@ -107,6 +107,7 @@ class InstructorCoursesWithDepartmentsData(BaseModel):
 # New data model for section grades
 class SectionGradeData(BaseModel):
     sectionId: str
+    crn: str
     courseCode: str
     semester: str
     campus: str
@@ -876,6 +877,7 @@ async def get_all_sections_grades(
         sections_data = []
         for section in instructor_sections:
             section_id = section.get('sectionId') or section.get('id')
+            crn = section.get('crn', 'Unknown CRN')
             average_grade = section.get('averageGrade', 0)
             semester = section.get('semester', 'Unknown')
             
@@ -906,6 +908,7 @@ async def get_all_sections_grades(
             
             sections_data.append({
                 "sectionId": section_id or 'Unknown',
+                "crn": crn,
                 "courseCode": course_code,
                 "semester": semester,
                 "campus": campus_name,
